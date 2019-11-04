@@ -1,0 +1,10 @@
+[package]
+name = "gdlk_lib"
+version = "0.1.0"
+authors = [
+    "John Reilly Murray <johnreillymurray@gmail.com>",
+    "Lucas Pickering <lucas@lucaspickering.me>",
+]
+edition = "2018"
+
+[dependencies]
