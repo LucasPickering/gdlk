@@ -1,5 +1,5 @@
 [package]
-name = "gdlk_lib"
+name = "gdlk"
 version = "0.1.0"
 authors = [
     "John Reilly Murray <johnreillymurray@gmail.com>",
@@ -8,3 +8,4 @@ authors = [
 edition = "2018"
 
 [dependencies]
+failure = "0.1"
