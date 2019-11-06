@@ -1,0 +1,23 @@
+name: Run tests and other checks
+
+on: [push]
+
+jobs:
+  test:
+    name: Run Rust tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: rustfmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: -- --check
+      - name: clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+      - name: test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test

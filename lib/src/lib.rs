@@ -1,3 +1,5 @@
+#![deny(clippy::all)]
+
 use crate::compiler::Compiler;
 use failure::Error;
 use std::io::{Read, Write};
