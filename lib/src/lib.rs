@@ -1,4 +1,4 @@
-#![deny(clippy::all)]
+#![deny(clippy::all, unused_must_use)]
 
 use crate::compiler::Compiler;
 use failure::Error;
@@ -6,7 +6,9 @@ use std::io::{Read, Write};
 
 mod ast;
 mod compiler;
+mod env;
 mod error;
+mod util;
 
 /// Reads source code from the given [`Read`](Read), compiles it, and outputs
 /// the corresponding target language code as a string.

@@ -18,12 +18,12 @@ enum Opt {
     Compile {
         /// Input file, to read source code from. If not specified, will read
         /// from stdin.
-        #[structopt(parse(from_os_str))]
+        #[structopt(parse(from_os_str), long = "input", short = "i")]
         input: Option<PathBuf>,
 
         /// Output file, to write assembly code to. If not specified, will
         /// write to stdout.
-        #[structopt(parse(from_os_str))]
+        #[structopt(parse(from_os_str), long = "output", short = "o")]
         output: Option<PathBuf>,
     },
 }
