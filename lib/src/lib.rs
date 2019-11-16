@@ -1,27 +1,38 @@
 #![deny(clippy::all, unused_must_use)]
 
-use crate::compiler::Compiler;
-use failure::Error;
-use std::io::{Read, Write};
+use failure::Fallible;
+use std::io::Read;
 
 mod ast;
-mod compiler;
-mod env;
 mod error;
+mod machine;
+mod parse;
 mod util;
 
-/// Reads source code from the given [`Read`](Read), compiles it, and outputs
-/// the corresponding target language code as a string.
-///
-/// In the future, this should take in multiple input files, but that's a
-/// problem for future me.
-pub fn compile(
-    input: &mut impl Read,
-    output: &mut impl Write,
-) -> Result<(), Error> {
-    // Run all the pipeline stages in order. If any stage fails, bail out.
-    Compiler::new()
-        .parse(input)?
-        .check_well_formed()?
-        .generate_code(output)
+pub use crate::{
+    ast::{Environment, LangValue, Program},
+    machine::{Machine, MachineState, Stacks},
+};
+
+/// Reads source code from the given [`Read`](Read), validates it, and executes
+/// it. Returns `true` if the program was successful, `false` if not.
+pub fn run_program(env: Environment, source: &mut impl Read) -> Fallible<bool> {
+    let program = Program::parse(source)?;
+    let mut machine = Machine::new(&env, &program);
+
+    while let Some(instr) = &mut machine.execute_next()? {
+        // this hullabaloo is necessary because of lifetimes
+        let instr_str = format!("{:?}", instr);
+        println!("Executed {}; State: {:?}", instr_str, machine.get_state());
+    }
+    println!(
+        "Program terminated with {}",
+        if machine.is_successful() {
+            "success"
+        } else {
+            "failure"
+        }
+    );
+
+    Ok(machine.is_successful())
 }
