@@ -8,7 +8,7 @@ pub type StackIdentifier = usize;
 
 /// The environment surrounding a program. This is needed both at compile time
 /// and runtime. In the context of the game, this represents one puzzle.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Environment {
     /// Maximum number of stacks permitted
     pub num_stacks: usize,
@@ -24,7 +24,7 @@ pub struct Environment {
 
 // ===== AST types =====
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum Instruction {
     /// Reads one value from the input buffer to the workspace
     Read,
@@ -43,7 +43,7 @@ pub enum Instruction {
 }
 
 /// A parsed program, i.e. an Abstract Syntax Tree.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Program {
     pub body: Vec<Instruction>,
 }
