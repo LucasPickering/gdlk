@@ -10,7 +10,7 @@ use std::iter;
 /// All stack manipulation logic should be implemented here, to keep it
 /// contained and scalable.
 /// This is zero-cost at runtime, see [newtype pattern](https://doc.rust-lang.org/1.0.0/style/features/types/newtype.html).
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Stacks(Vec<Vec<LangValue>>);
 
 impl Stacks {
@@ -83,7 +83,7 @@ impl Stacks {
 /// The fields are public for read-only purposes. They should never be mutated.
 /// Initialized from an [Environment](Environment), which controls the input
 /// and stack parameters.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct MachineState {
     /// The current input buffer. This can be popped from as the program is
     /// executed. This will be initialized as the reverse of the input from the
@@ -317,5 +317,63 @@ impl<'a> Machine<'a> {
         self.program_counter.is_exhausted()
             && self.state.input.is_empty()
             && self.state.output == self.env.expected_output
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_simple_program() {
+        // Just a simple sanity check test
+        let env = Environment {
+            num_stacks: 0,
+            max_stack_size: None,
+            input: vec![1],
+            expected_output: vec![1],
+        };
+        let program = Program {
+            body: vec![Instruction::Read, Instruction::Write],
+        };
+        let mut machine = Machine::new(&env, &program);
+
+        // Initial state
+        assert_eq!(
+            *machine.get_state(),
+            MachineState {
+                input: vec![1],
+                output: vec![],
+                workspace: 0,
+                stacks: Stacks(vec![])
+            }
+        );
+        assert!(!machine.is_successful());
+
+        // Run one instruction
+        assert_eq!(machine.execute_next().unwrap(), Some(&Instruction::Read));
+        assert_eq!(
+            *machine.get_state(),
+            MachineState {
+                input: vec![],
+                output: vec![],
+                workspace: 1,
+                stacks: Stacks(vec![])
+            }
+        );
+        assert!(!machine.is_successful());
+
+        // Run the second instruction
+        assert_eq!(machine.execute_next().unwrap(), Some(&Instruction::Write));
+        assert_eq!(
+            *machine.get_state(),
+            MachineState {
+                input: vec![],
+                output: vec![1],
+                workspace: 1,
+                stacks: Stacks(vec![])
+            }
+        );
+        assert!(machine.is_successful()); // Job's done
     }
 }
