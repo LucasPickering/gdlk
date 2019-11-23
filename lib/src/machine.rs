@@ -3,7 +3,6 @@ use crate::{
     error::RuntimeError,
 };
 use failure::Fallible;
-use std::iter;
 
 /// Wrapper around a vec of stacks, to make it a bit easier to initialize/use.
 ///
@@ -15,12 +14,8 @@ pub struct Stacks(Vec<Vec<LangValue>>);
 
 impl Stacks {
     fn new(env: &Environment) -> Self {
-        Self(
-            iter::repeat(0)
-                .take(env.num_stacks)
-                .map(|_| Vec::new())
-                .collect(),
-        )
+        // Initialize x new stacks, where x is env.num_stacks
+        Self((0..env.num_stacks).map(|_| Vec::new()).collect())
     }
 
     /// Gets a read-only view of the current set of stacks. Useful for
