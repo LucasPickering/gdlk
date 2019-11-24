@@ -1,8 +1,9 @@
 use crate::{
-    ast::{Environment, Instruction, LangValue, Program, StackIdentifier},
+    ast::{Environment, LangValue, MachineInstr, StackIdentifier},
     error::RuntimeError,
 };
 use failure::Fallible;
+use std::iter;
 
 /// Wrapper around a vec of stacks, to make it a bit easier to initialize/use.
 ///
@@ -14,8 +15,8 @@ pub struct Stacks(Vec<Vec<LangValue>>);
 
 impl Stacks {
     fn new(env: &Environment) -> Self {
-        // Initialize x new stacks, where x is env.num_stacks
-        Self((0..env.num_stacks).map(|_| Vec::new()).collect())
+        // Initialize `env.num_stacks` new stacks
+        Self(iter::repeat_with(Vec::new).take(env.num_stacks).collect())
     }
 
     /// Gets a read-only view of the current set of stacks. Useful for
@@ -108,91 +109,6 @@ impl MachineState {
     }
 }
 
-/// A recursive structure to track the progression of a program. A program
-/// counter consist of a flat list of instructions that need to be run, plus
-/// an optional child `ProgramCounter`. If the child is present, the child's
-/// instructions will always be executed before any of the parent's. Once all
-/// of a program counter's instructions have been executed, it's considered
-/// exhausted.
-#[derive(Debug)]
-struct ProgramCounter<'a> {
-    child: Option<Box<Self>>,
-    instructions: &'a [Instruction],
-}
-
-impl<'a> ProgramCounter<'a> {
-    /// Creates a new `ProgramCounter` with the given instructions and no child.
-    fn new(body: &'a [Instruction]) -> Self {
-        Self {
-            child: None,
-            instructions: body,
-        }
-    }
-
-    /// Adds a child to this program counter. If this PC already has a child,
-    /// then the new body will be passed down the family tree until a childless
-    /// PC is found, at which point it will be stored.
-    fn add_child(&mut self, body: &'a [Instruction]) {
-        if let Some(child) = &mut self.child {
-            // If we already have a child, pass the new one down the chain
-            child.add_child(body);
-        } else {
-            // We don't have a child yet, store this one
-            self.child = Some(Box::new(Self::new(body)));
-        }
-    }
-
-    /// Gets the next executable instruction from this PC. If a child is
-    /// present, calls down to it first, then falls back on our own list of
-    /// instructions. This does _not_ modify the PC, so subsequent calls to
-    /// `get_next()` will return the same instruction. If no more instructions
-    /// are available, that means this PC is exhausted, so return `None`.
-    fn get_next(&self) -> Option<&'a Instruction> {
-        if let Some(child) = &self.child {
-            // We have a child, call down to it
-            let child_opt = child.get_next();
-
-            // A child should never be exhausted (enforced in advance()). Do a
-            // safety check here just to be safe though.
-            if child_opt.is_none() {
-                panic!("child.get_next() returned None");
-            }
-
-            child_opt
-        } else {
-            // We are the innermost expression, go to the next instruction
-            self.instructions.get(0)
-        }
-    }
-
-    /// Advance the PC by one instruction. This removes the foremost instruction
-    /// from the PC, so that it is no longer executable. If this PC is
-    /// exhausted, then this will panic!. Don't do that!
-    fn advance(&mut self) {
-        if let Some(child) = &mut self.child {
-            child.advance();
-
-            // If the child is exhausted, we can throw it away
-            if child.is_exhausted() {
-                self.child = None
-            }
-        }
-
-        if !self.instructions.is_empty() {
-            self.instructions = &self.instructions[1..];
-        } else {
-            // This case indicates a bug in the calling code, so we want a panic
-            panic!("Cannot advance an exhausted program counter");
-        }
-    }
-
-    /// Checks if this PC has been exhausted, meaning that it has no more
-    /// executable instructions.
-    fn is_exhausted(&self) -> bool {
-        self.get_next().is_none()
-    }
-}
-
 /// A steppable program executor. Maintains the current state of the program,
 /// and execution can be progressed one instruction at a time.
 ///
@@ -200,26 +116,25 @@ impl<'a> ProgramCounter<'a> {
 /// current machine state can be obtained at any time, which allows for handy
 /// visualizations of execution.
 #[derive(Debug)]
-pub struct Machine<'a> {
+pub struct Machine {
     // Static data
-    env: &'a Environment,
-    // It'd be nice to be able to store the Program here too, but that creates
-    // lifetime headaches with ProgramCounter. Punting for now, will figure
-    // this out later if we need it
-
+    env: Environment,
+    program: Vec<MachineInstr>,
     // Runtime state
     state: MachineState,
-    program_counter: ProgramCounter<'a>,
+    /// The index of the next instruction to be executed
+    program_counter: usize,
 }
 
-impl<'a> Machine<'a> {
+impl Machine {
     /// Creates a new machine, ready to be executed.
-    pub fn new(env: &'a Environment, program: &'a Program) -> Self {
+    pub fn new(env: Environment, program: Vec<MachineInstr>) -> Self {
         let state = MachineState::new(&env);
         Self {
             env,
+            program,
             state,
-            program_counter: ProgramCounter::new(&program.body),
+            program_counter: 0,
         }
     }
 
@@ -228,88 +143,78 @@ impl<'a> Machine<'a> {
         &self.state
     }
 
-    /// Executes the given instruction, modifying internal state as needed. This
-    /// will advance the program counter after execution, if necessary. In some
-    /// cases, advancing the PC is not necessarily, which is when an instruction
-    /// should be executed again. This occurs with loops.
-    fn execute_instruction(&mut self, instr: &'a Instruction) -> Fallible<()> {
-        // Run the instruction, for most instructions, execution exhausts the
-        // instruction, so exhausted=true. But for WHILE, we may need to repeat
-        // the instruction, so it might not be exhausted.
-        let exhausted = match instr {
-            Instruction::Read => match self.state.input.pop() {
+    /// Executes the next instruction in the program. If there are no
+    /// instructions left to execute, this panics.
+    pub fn execute_next(&mut self) -> Fallible<()> {
+        let instr = self
+            .program
+            .get(self.program_counter)
+            .expect("No instructions left to execute!");
+
+        // Execute the instruction. For more instructions, the next pc is just
+        // the next line, for those, return None and we'll populate the next
+        // pc later. For jumps though, they need to specify a special next pc.
+        let next_pc: Option<usize> = match instr {
+            MachineInstr::Read => match self.state.input.pop() {
                 Some(val) => {
                     self.state.workspace = val;
-                    true
+                    None
                 }
                 None => return Err(RuntimeError::EmptyInput.into()),
             },
-            Instruction::Write => {
+            MachineInstr::Write => {
                 self.state.output.push(self.state.workspace);
-                true
+                None
             }
-            Instruction::Set(val) => {
+            MachineInstr::Set(val) => {
                 self.state.workspace = *val;
-                true
+                None
             }
-            Instruction::Push(stack_id) => {
+            MachineInstr::Push(stack_id) => {
                 self.state.stacks.push(
                     &self.env,
                     *stack_id,
                     self.state.workspace,
                 )?;
-                true
+                None
             }
-            Instruction::Pop(stack_id) => {
+            MachineInstr::Pop(stack_id) => {
                 self.state.stacks.pop(*stack_id)?;
-                true
+                None
             }
-            Instruction::If(body) => {
-                if self.state.workspace != 0 {
-                    self.program_counter.add_child(body)
-                }
-                true
-            }
-            Instruction::While(body) => {
-                if self.state.workspace != 0 {
-                    self.program_counter.add_child(body);
-                    // We'll have to check the condition again after the child
-                    // is exhausted, so don't exhaust this WHILE instruction yet
-                    false
+            MachineInstr::Jez(next_pc) => {
+                if self.state.workspace == 0 {
+                    Some(*next_pc)
                 } else {
-                    true
+                    None
+                }
+            }
+            MachineInstr::Jnz(next_pc) => {
+                if self.state.workspace != 0 {
+                    Some(*next_pc)
+                } else {
+                    None
                 }
             }
         };
 
-        // If we're done with this instruction, advance to the next one.
-        if exhausted {
-            self.program_counter.advance();
-        }
+        // Advance the pc
+        self.program_counter = next_pc.unwrap_or(self.program_counter + 1);
         Ok(())
     }
 
-    /// Executes the next instruction in the program, i.e. "take one step".
-    /// Returns the executed instruction. If there are no more instructions to
-    /// execute, returns `Ok(None)`. If an error occurs, returns `Err`.
-    pub fn execute_next(&mut self) -> Fallible<Option<&Instruction>> {
-        if let Some(instr) = self.program_counter.get_next() {
-            // Run the instruction, and check if it emitted a new body
-            self.execute_instruction(instr)?;
-            Ok(Some(instr))
-        } else {
-            // No more instructions left
-            Ok(None)
-        }
+    /// Checks if this machine has finished executing.
+    pub fn is_complete(&self) -> bool {
+        self.program_counter >= self.program.len()
     }
 
-    /// Checks if this machine has successfully completed. The criteria are:
-    /// 1. Program has been exhausted (all instructions have been executed)
+    /// Checks if this machine has completed successfully. The criteria are:
+    /// 1. Program is complete (all instructions have been executed)
     /// 2. Input buffer has been exhausted (all input has been consumed)
     /// 3. Output buffer matches the expected buffer, as defined by the
     /// [Environment](Environment)
     pub fn is_successful(&self) -> bool {
-        self.program_counter.is_exhausted()
+        self.is_complete()
             && self.state.input.is_empty()
             && self.state.output == self.env.expected_output
     }
@@ -328,10 +233,8 @@ mod tests {
             input: vec![1],
             expected_output: vec![1],
         };
-        let program = Program {
-            body: vec![Instruction::Read, Instruction::Write],
-        };
-        let mut machine = Machine::new(&env, &program);
+        let program = vec![MachineInstr::Read, MachineInstr::Write];
+        let mut machine = Machine::new(env, program);
 
         // Initial state
         assert_eq!(
@@ -346,7 +249,7 @@ mod tests {
         assert!(!machine.is_successful());
 
         // Run one instruction
-        assert_eq!(machine.execute_next().unwrap(), Some(&Instruction::Read));
+        machine.execute_next().unwrap();
         assert_eq!(
             *machine.get_state(),
             MachineState {
@@ -359,7 +262,7 @@ mod tests {
         assert!(!machine.is_successful());
 
         // Run the second instruction
-        assert_eq!(machine.execute_next().unwrap(), Some(&Instruction::Write));
+        machine.execute_next().unwrap();
         assert_eq!(
             *machine.get_state(),
             MachineState {
