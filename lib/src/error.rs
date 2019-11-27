@@ -1,7 +1,15 @@
 use crate::ast::StackIdentifier;
 use failure::Fail;
+use serde::Serialize;
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Fail, Serialize)]
+pub enum CompileError {
+    /// Failed to parse the program
+    #[fail(display = "Parse error: {}", 0)]
+    ParseError(String),
+}
+
+#[derive(Debug, Fail, Serialize)]
 pub enum RuntimeError {
     /// Referenced a stack with an invalid identifier
     #[fail(display = "Invalid stack reference: {}", 0)]
@@ -18,4 +26,8 @@ pub enum RuntimeError {
     /// POP attempted while stack is empty
     #[fail(display = "Stack {} is empty", 0)]
     EmptyStack(StackIdentifier),
+
+    /// Instruction list has been exhausted, program is terminated
+    #[fail(display = "Program has terminated, nothing left to execute")]
+    ProgramTerminated,
 }

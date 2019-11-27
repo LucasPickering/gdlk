@@ -13,12 +13,16 @@ use crate::compiler::Compiler;
 
 pub use crate::{
     ast::{Environment, LangValue, Program},
+    error::{CompileError, RuntimeError},
     machine::{Machine, MachineState, Stacks},
 };
 
 /// Compiles the given source program, with the given environment, into a
 /// [Machine](Machine). The returned machine can then be executed.
-pub fn compile(env: Environment, source: &mut impl Read) -> Fallible<Machine> {
+pub fn compile(
+    env: Environment,
+    source: &mut impl Read,
+) -> Result<Machine, CompileError> {
     Ok(Compiler::new()
         .parse(source)?
         .desugar()
