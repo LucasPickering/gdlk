@@ -2,7 +2,7 @@ use crate::{
     ast::{Environment, LangValue, MachineInstr, StackIdentifier},
     error::RuntimeError,
 };
-use failure::Fallible;
+use serde::Serialize;
 use std::iter;
 
 /// Wrapper around a vec of stacks, to make it a bit easier to initialize/use.
@@ -10,7 +10,7 @@ use std::iter;
 /// All stack manipulation logic should be implemented here, to keep it
 /// contained and scalable.
 /// This is zero-cost at runtime, see [newtype pattern](https://doc.rust-lang.org/1.0.0/style/features/types/newtype.html).
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize)]
 pub struct Stacks(Vec<Vec<LangValue>>);
 
 impl Stacks {
@@ -30,10 +30,10 @@ impl Stacks {
     fn get_stack(
         &mut self,
         stack_id: StackIdentifier,
-    ) -> Fallible<&mut Vec<LangValue>> {
+    ) -> Result<&mut Vec<LangValue>, RuntimeError> {
         self.0
             .get_mut(stack_id)
-            .ok_or_else(|| RuntimeError::InvalidStackReference(stack_id).into())
+            .ok_or_else(|| RuntimeError::InvalidStackReference(stack_id))
     }
 
     /// Pushes the given value onto the given stack. The environment is needed
@@ -45,13 +45,13 @@ impl Stacks {
         env: &Environment,
         stack_id: StackIdentifier,
         value: LangValue,
-    ) -> Fallible<()> {
+    ) -> Result<(), RuntimeError> {
         let stack = self.get_stack(stack_id)?;
 
         // If the stack is capacity, make sure we're not over it
         if let Some(max_stack_size) = env.max_stack_size {
             if stack.len() == max_stack_size {
-                return Err(RuntimeError::StackOverflow(stack_id).into());
+                return Err(RuntimeError::StackOverflow(stack_id));
             }
         }
 
@@ -62,13 +62,16 @@ impl Stacks {
     /// Pops an element off the given stack. If the pop is successful, the
     /// popped value is returned. If the stack doesn't exist or is empty, an
     /// error is returned.
-    fn pop(&mut self, stack_id: StackIdentifier) -> Fallible<LangValue> {
+    fn pop(
+        &mut self,
+        stack_id: StackIdentifier,
+    ) -> Result<LangValue, RuntimeError> {
         let stack = self.get_stack(stack_id)?;
 
         if let Some(val) = stack.pop() {
             Ok(val)
         } else {
-            Err(RuntimeError::EmptyStack(stack_id).into())
+            Err(RuntimeError::EmptyStack(stack_id))
         }
     }
 }
@@ -79,7 +82,7 @@ impl Stacks {
 /// The fields are public for read-only purposes. They should never be mutated.
 /// Initialized from an [Environment](Environment), which controls the input
 /// and stack parameters.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize)]
 pub struct MachineState {
     /// The current input buffer. This can be popped from as the program is
     /// executed. This will be initialized as the reverse of the input from the
@@ -145,11 +148,11 @@ impl Machine {
 
     /// Executes the next instruction in the program. If there are no
     /// instructions left to execute, this panics.
-    pub fn execute_next(&mut self) -> Fallible<()> {
+    pub fn execute_next(&mut self) -> Result<(), RuntimeError> {
         let instr = self
             .program
             .get(self.program_counter)
-            .expect("No instructions left to execute!");
+            .ok_or(RuntimeError::ProgramTerminated)?;
 
         // Execute the instruction. For more instructions, the next pc is just
         // the next line, for those, return None and we'll populate the next
@@ -160,7 +163,7 @@ impl Machine {
                     self.state.workspace = val;
                     None
                 }
-                None => return Err(RuntimeError::EmptyInput.into()),
+                None => return Err(RuntimeError::EmptyInput),
             },
             MachineInstr::Write => {
                 self.state.output.push(self.state.workspace);
