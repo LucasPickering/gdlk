@@ -1,20 +1,17 @@
 [package]
-name = "gdlk_server"
+name = "gdlk"
 version = "0.1.0"
 authors = [
     "John Reilly Murray <johnreillymurray@gmail.com>",
     "Lucas Pickering <lucas@lucaspickering.me>",
 ]
 edition = "2018"
-default-run = "gdlk_server"
 
 [dependencies]
 actix = "0.8"
 actix-web = "1.0"
 actix-web-actors = "1.0"
 env_logger = "0.7"
-failure = "0.1"
-gdlk = { path = "../lib" }
+nom = "5.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-

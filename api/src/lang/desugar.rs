@@ -1,6 +1,6 @@
-use crate::{
+use crate::lang::{
     ast::{DietInstr, Instr, Program},
-    compiler::Compiler,
+    Compiler,
 };
 use std::iter;
 

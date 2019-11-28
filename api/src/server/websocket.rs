@@ -1,9 +1,11 @@
+use crate::{
+    error::{CompileError, RuntimeError},
+    lang::{compile, Machine, MachineState},
+    models::Environment,
+};
 use actix::{Actor, ActorContext, AsyncContext, StreamHandler};
 use actix_web::{web, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
-use gdlk::{
-    self, CompileError, Environment, Machine, MachineState, RuntimeError,
-};
 use serde::{Deserialize, Serialize};
 use std::{
     convert,
@@ -147,8 +149,7 @@ impl ProgramWebsocket {
 
                 // Clone the source so the parsing doesn't mutate our copy
                 let src_copy = self.source_code.clone();
-                self.machine =
-                    Some(gdlk::compile(env, &mut src_copy.as_bytes())?);
+                self.machine = Some(compile(env, &mut src_copy.as_bytes())?);
 
                 // we need this fuckery cause lol borrow checker
                 self.machine.as_ref().unwrap().into()
@@ -176,7 +177,6 @@ impl Actor for ProgramWebsocket {
             // Check if client has timed out
             if Instant::now().duration_since(act.heartbeat) > CLIENT_TIMEOUT {
                 // Timed out, kill the connection
-                println!("Websocket Client heartbeat failed, disconnecting!");
                 ctx.stop();
             } else {
                 // Not timed out, send another ping
@@ -221,8 +221,5 @@ pub fn ws_index(
     r: HttpRequest,
     stream: web::Payload,
 ) -> Result<HttpResponse, actix_web::Error> {
-    println!("{:?}", r);
-    let res = ws::start(ProgramWebsocket::new(), &r, stream);
-    println!("{:?}", res.as_ref().unwrap());
-    res
+    ws::start(ProgramWebsocket::new(), &r, stream)
 }
