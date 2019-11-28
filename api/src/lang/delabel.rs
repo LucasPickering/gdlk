@@ -1,6 +1,6 @@
-use crate::{
+use crate::lang::{
     ast::{DietInstr, MachineInstr},
-    compiler::Compiler,
+    Compiler,
 };
 use std::collections::HashMap;
 
@@ -71,7 +71,7 @@ impl Compiler<Vec<DietInstr>> {
                     Some(MachineInstr::Jez(get_idx_for_label(&label)))
                 }
                 DietInstr::Jnz(label) => {
-                    Some(MachineInstr::Jez(get_idx_for_label(&label)))
+                    Some(MachineInstr::Jnz(get_idx_for_label(&label)))
                 }
             })
             .collect();

@@ -1,6 +1,7 @@
 use crate::{
-    ast::{Environment, LangValue, MachineInstr, StackIdentifier},
     error::RuntimeError,
+    lang::ast::{LangValue, MachineInstr, StackIdentifier},
+    models::Environment,
 };
 use serde::Serialize;
 use std::iter;

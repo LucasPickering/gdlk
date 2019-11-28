@@ -1,11 +1,18 @@
 use crate::{
-    ast::{Environment, MachineInstr},
-    machine::Machine,
+    error::CompileError, lang::ast::MachineInstr, models::Environment,
 };
+use std::io::Read;
 
+mod ast;
 mod delabel;
 mod desugar;
+mod machine;
 mod parse;
+
+pub use crate::lang::{
+    ast::{LangValue, StackIdentifier},
+    machine::{Machine, MachineState},
+};
 
 /// Struct to contain all compiler pipeline steps. By having this on a struct,
 /// it makes it nice and easy to call functions in order with readability. Each
@@ -20,7 +27,7 @@ mod parse;
 /// from being directly constructed from outside this module. This means that
 /// you must follow the proper pipeline stages to get the compiler to a certain
 /// state.
-pub struct Compiler<T>(T);
+struct Compiler<T>(T);
 
 impl Compiler<()> {
     /// Constructs a new compiler with no internal state. This is how you start
@@ -37,4 +44,17 @@ impl Compiler<Vec<MachineInstr>> {
     pub fn compile(self, env: Environment) -> Machine {
         Machine::new(env, self.0)
     }
+}
+
+/// Compiles the given source program, with the given environment, into a
+/// [Machine](Machine). The returned machine can then be executed.
+pub fn compile(
+    env: Environment,
+    source: &mut impl Read,
+) -> Result<Machine, CompileError> {
+    Ok(Compiler::new()
+        .parse(source)?
+        .desugar()
+        .delabel()
+        .compile(env))
 }

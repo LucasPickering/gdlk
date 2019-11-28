@@ -1,7 +1,9 @@
 use crate::{
-    ast::{Instr, LangValue, Program, StackIdentifier},
-    compiler::Compiler,
     error::CompileError,
+    lang::{
+        ast::{Instr, LangValue, Program, StackIdentifier},
+        Compiler,
+    },
 };
 use nom::{
     branch::alt,
