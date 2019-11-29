@@ -41,7 +41,7 @@ impl Compiler<Vec<MachineInstr>> {
     /// Compiles a program into a [Machine](Machine). This takes an environment,
     /// which the program will executing in, and builds a machine around it so
     /// that it can be executed.
-    pub fn compile(self, env: Environment) -> Machine {
+    pub fn compile(self, env: &Environment) -> Machine {
         Machine::new(env, self.0)
     }
 }
@@ -49,7 +49,7 @@ impl Compiler<Vec<MachineInstr>> {
 /// Compiles the given source program, with the given environment, into a
 /// [Machine](Machine). The returned machine can then be executed.
 pub fn compile(
-    env: Environment,
+    env: &Environment,
     source: &mut impl Read,
 ) -> Result<Machine, CompileError> {
     Ok(Compiler::new()

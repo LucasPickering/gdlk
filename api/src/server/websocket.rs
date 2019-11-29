@@ -1,11 +1,13 @@
 use crate::{
-    error::{CompileError, RuntimeError},
+    error::{CompileError, RuntimeError, ServerError},
     lang::{compile, Machine, MachineState},
     models::Environment,
+    schema::environments,
 };
 use actix::{Actor, ActorContext, AsyncContext, StreamHandler};
 use actix_web::{web, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
+use diesel::{prelude::*, r2d2::ConnectionManager, PgConnection};
 use serde::{Deserialize, Serialize};
 use std::{
     convert,
@@ -16,6 +18,8 @@ use std::{
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 /// How long before lack of client response causes a timeout
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
+
+type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 /// All the different types of events that we can receive over the websocket.
 /// These events are typically triggered by user input, but might not
@@ -97,6 +101,8 @@ impl<'a> From<RuntimeError> for OutgoingEvent<'a> {
 
 /// The controlling struct for a single websocket instance
 struct ProgramWebsocket {
+    /// Environment to build/execute the progrma under, pulled from the DB
+    env: Environment,
     /// Track the last time we pinged/ponged the client, if this exceeds
     /// CLIENT_TIMEOUT, drop the connection
     heartbeat: Instant,
@@ -108,8 +114,9 @@ struct ProgramWebsocket {
 }
 
 impl ProgramWebsocket {
-    fn new() -> Self {
+    fn new(env: Environment) -> Self {
         ProgramWebsocket {
+            env,
             heartbeat: Instant::now(),
             source_code: String::new(),
             machine: None,
@@ -140,16 +147,11 @@ impl ProgramWebsocket {
             }
             IncomingEvent::Compile => {
                 // Compile the program into a machine
-                let env = Environment {
-                    num_stacks: 0,
-                    max_stack_size: None,
-                    input: vec![1, 2, 3],
-                    expected_output: vec![1, 2, 3],
-                }; // TODO read from DB
 
                 // Clone the source so the parsing doesn't mutate our copy
                 let src_copy = self.source_code.clone();
-                self.machine = Some(compile(env, &mut src_copy.as_bytes())?);
+                self.machine =
+                    Some(compile(&self.env, &mut src_copy.as_bytes())?);
 
                 // we need this fuckery cause lol borrow checker
                 self.machine.as_ref().unwrap().into()
@@ -216,10 +218,18 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ProgramWebsocket {
     }
 }
 
-/// do websocket handshake and start `ProgramWebsocket` actor
-pub fn ws_index(
+/// Do websocket handshake, look up the request Environment by ID, then (if it
+/// exists), start a handler for it.
+pub fn ws_environments_by_id(
     r: HttpRequest,
+    pool: web::Data<Pool>,
+    env_id: web::Path<i32>,
     stream: web::Payload,
 ) -> Result<HttpResponse, actix_web::Error> {
-    ws::start(ProgramWebsocket::new(), &r, stream)
+    let conn: &PgConnection = &pool.get().unwrap();
+    let env = environments::dsl::environments
+        .find(env_id.into_inner())
+        .get_result(conn)
+        .map_err(ServerError::from)?;
+    ws::start(ProgramWebsocket::new(env), &r, stream)
 }

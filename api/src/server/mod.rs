@@ -1,3 +1,3 @@
 mod websocket;
 
-pub use websocket::ws_index;
+pub use websocket::ws_environments_by_id;
