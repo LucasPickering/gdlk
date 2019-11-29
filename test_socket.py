@@ -6,11 +6,13 @@ import json
 import websockets
 
 
-async def ws(program, uri):
+async def ws(host, env_id, program):
     with open(program) as f:
         source = f.read().strip()
 
-    async with websockets.connect(uri) as websocket:
+    async with websockets.connect(
+        f"{host}/ws/environments/{env_id}/"
+    ) as websocket:
 
         async def send_and_recv(event_type, content=None):
             msg = json.dumps({"type": event_type, "content": content})
@@ -36,10 +38,13 @@ def main():
         "either error or completion"
     )
     parser.add_argument(
-        "--uri",
-        "-u",
-        default="ws://localhost:8080/ws/",
-        help="The websocket host address",
+        "--host", default="ws://localhost:8000", help="The server host address"
+    )
+    parser.add_argument(
+        "--env-id",
+        "-e",
+        default=1,
+        help="The ID for the environment to execute under",
     )
     parser.add_argument(
         "--program",

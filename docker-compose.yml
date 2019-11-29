@@ -1,0 +1,32 @@
+version: "3"
+
+# Use these instead of the local directory for building the projects
+# to prevent the containers from fighting with external build tools
+volumes:
+  api_build:
+
+services:
+  db:
+    image: postgres:10-alpine
+    environment:
+      - POSTGRES_DB=gdlk
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=root
+    ports:
+      - "5432:5432"
+
+  api:
+    build: ./api/
+    command: cargo watch -x run
+    tty: true # Colorize output
+    volumes:
+      - ./api:/app/api:rw
+      - api_build:/app/api/target
+    depends_on:
+      - db
+    environment:
+      - RUST_BACKTRACE=1
+      - SERVER_HOST=0.0.0.0:8000
+      - DATABASE_URL=postgres://root:root@db/gdlk
+    ports:
+      - "8000:8000"

@@ -4,35 +4,47 @@ use crate::{
     models::Environment,
 };
 use serde::Serialize;
-use std::iter;
+use std::{convert::TryFrom, iter};
 
 /// Wrapper around a vec of stacks, to make it a bit easier to initialize/use.
 ///
 /// All stack manipulation logic should be implemented here, to keep it
 /// contained and scalable.
-/// This is zero-cost at runtime, see [newtype pattern](https://doc.rust-lang.org/1.0.0/style/features/types/newtype.html).
 #[derive(Debug, PartialEq, Serialize)]
-pub struct Stacks(Vec<Vec<LangValue>>);
+pub struct Stacks {
+    stacks: Vec<Vec<LangValue>>,
+    max_stack_size: Option<usize>,
+}
 
 impl Stacks {
     fn new(env: &Environment) -> Self {
-        // Initialize `env.num_stacks` new stacks
-        Self(iter::repeat_with(Vec::new).take(env.num_stacks).collect())
+        // We need to do unsafe numeric conversions because the DB can only
+        // store signed values. The values should be validated before getting
+        // passed here.
+        Self {
+            // Initialize `env.num_stacks` new stacks
+            stacks: iter::repeat_with(Vec::new)
+                .take(usize::try_from(env.num_stacks).unwrap())
+                .collect(),
+            max_stack_size: env
+                .max_stack_size
+                .map(|n| usize::try_from(n).unwrap()),
+        }
     }
 
     /// Gets a read-only view of the current set of stacks. Useful for
     /// visualizations and the like.
-    pub fn get_all_stacks(&self) -> &[Vec<LangValue>] {
-        &self.0
+    pub fn _get_all_stacks(&self) -> &[Vec<LangValue>] {
+        &self.stacks
     }
 
     /// Gets the stack with the given ID. If the stack doesn't exist, returns an
     /// InvalidStackReference error.
     fn get_stack(
-        &mut self,
+        stacks: &mut Vec<Vec<LangValue>>,
         stack_id: StackIdentifier,
     ) -> Result<&mut Vec<LangValue>, RuntimeError> {
-        self.0
+        stacks
             .get_mut(stack_id)
             .ok_or_else(|| RuntimeError::InvalidStackReference(stack_id))
     }
@@ -43,14 +55,13 @@ impl Stacks {
     /// returned.
     fn push(
         &mut self,
-        env: &Environment,
         stack_id: StackIdentifier,
         value: LangValue,
     ) -> Result<(), RuntimeError> {
-        let stack = self.get_stack(stack_id)?;
+        let stack = Self::get_stack(&mut self.stacks, stack_id)?;
 
         // If the stack is capacity, make sure we're not over it
-        if let Some(max_stack_size) = env.max_stack_size {
+        if let Some(max_stack_size) = self.max_stack_size {
             if stack.len() == max_stack_size {
                 return Err(RuntimeError::StackOverflow(stack_id));
             }
@@ -67,7 +78,7 @@ impl Stacks {
         &mut self,
         stack_id: StackIdentifier,
     ) -> Result<LangValue, RuntimeError> {
-        let stack = self.get_stack(stack_id)?;
+        let stack = Self::get_stack(&mut self.stacks, stack_id)?;
 
         if let Some(val) = stack.pop() {
             Ok(val)
@@ -122,8 +133,8 @@ impl MachineState {
 #[derive(Debug)]
 pub struct Machine {
     // Static data
-    env: Environment,
     program: Vec<MachineInstr>,
+    expected_output: Vec<LangValue>,
     // Runtime state
     state: MachineState,
     /// The index of the next instruction to be executed
@@ -132,11 +143,12 @@ pub struct Machine {
 
 impl Machine {
     /// Creates a new machine, ready to be executed.
-    pub fn new(env: Environment, program: Vec<MachineInstr>) -> Self {
-        let state = MachineState::new(&env);
+    pub fn new(env: &Environment, program: Vec<MachineInstr>) -> Self {
+        let state = MachineState::new(env);
         Self {
-            env,
             program,
+            // This is a punt but w/e
+            expected_output: env.expected_output.clone(),
             state,
             program_counter: 0,
         }
@@ -175,11 +187,7 @@ impl Machine {
                 None
             }
             MachineInstr::Push(stack_id) => {
-                self.state.stacks.push(
-                    &self.env,
-                    *stack_id,
-                    self.state.workspace,
-                )?;
+                self.state.stacks.push(*stack_id, self.state.workspace)?;
                 None
             }
             MachineInstr::Pop(stack_id) => {
@@ -220,7 +228,7 @@ impl Machine {
     pub fn is_successful(&self) -> bool {
         self.is_complete()
             && self.state.input.is_empty()
-            && self.state.output == self.env.expected_output
+            && self.state.output == self.expected_output
     }
 }
 
@@ -232,13 +240,14 @@ mod tests {
     fn test_simple_program() {
         // Just a simple sanity check test
         let env = Environment {
+            id: 0,
             num_stacks: 0,
             max_stack_size: None,
             input: vec![1],
             expected_output: vec![1],
         };
         let program = vec![MachineInstr::Read, MachineInstr::Write];
-        let mut machine = Machine::new(env, program);
+        let mut machine = Machine::new(&env, program);
 
         // Initial state
         assert_eq!(
@@ -247,7 +256,7 @@ mod tests {
                 input: vec![1],
                 output: vec![],
                 workspace: 0,
-                stacks: Stacks(vec![])
+                stacks: Stacks::new(&env)
             }
         );
         assert!(!machine.is_successful());
@@ -260,7 +269,7 @@ mod tests {
                 input: vec![],
                 output: vec![],
                 workspace: 1,
-                stacks: Stacks(vec![])
+                stacks: Stacks::new(&env)
             }
         );
         assert!(!machine.is_successful());
@@ -273,7 +282,7 @@ mod tests {
                 input: vec![],
                 output: vec![1],
                 workspace: 1,
-                stacks: Stacks(vec![])
+                stacks: Stacks::new(&env)
             }
         );
         assert!(machine.is_successful()); // Job's done

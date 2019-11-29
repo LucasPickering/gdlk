@@ -23,4 +23,6 @@ In the repo root:
 
 ```
 docker-compose up
+# Wait for DB to start up
+docker exec gdlk_api_1 diesel migration run
 ```
