@@ -147,11 +147,8 @@ impl ProgramWebsocket {
             }
             IncomingEvent::Compile => {
                 // Compile the program into a machine
-
-                // Clone the source so the parsing doesn't mutate our copy
-                let src_copy = self.source_code.clone();
                 self.machine =
-                    Some(compile(&self.env, &mut src_copy.as_bytes())?);
+                    Some(compile(&self.env, self.source_code.clone())?);
 
                 // we need this fuckery cause lol borrow checker
                 self.machine.as_ref().unwrap().into()
