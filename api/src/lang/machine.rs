@@ -1,4 +1,5 @@
 use crate::{
+    debug,
     error::RuntimeError,
     lang::ast::{LangValue, MachineInstr, StackIdentifier},
     models::Environment,
@@ -191,7 +192,7 @@ impl Machine {
                 None
             }
             MachineInstr::Pop(stack_id) => {
-                self.state.stacks.pop(*stack_id)?;
+                self.state.workspace = self.state.stacks.pop(*stack_id)?;
                 None
             }
             MachineInstr::Jez(next_pc) => {
@@ -212,6 +213,7 @@ impl Machine {
 
         // Advance the pc
         self.program_counter = next_pc.unwrap_or(self.program_counter + 1);
+        debug!(println!("Executed {:?}; State: {:?}", instr, self.state));
         Ok(())
     }
 

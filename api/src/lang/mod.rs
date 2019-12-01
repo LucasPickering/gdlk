@@ -1,7 +1,7 @@
 use crate::{
-    error::CompileError, lang::ast::MachineInstr, models::Environment,
+    debug, error::CompileError, lang::ast::MachineInstr, models::Environment,
 };
-use std::io::Read;
+use std::fmt::Debug;
 
 mod ast;
 mod delabel;
@@ -27,13 +27,24 @@ pub use crate::lang::{
 /// from being directly constructed from outside this module. This means that
 /// you must follow the proper pipeline stages to get the compiler to a certain
 /// state.
-struct Compiler<T>(T);
+#[derive(Debug)]
+struct Compiler<T: Debug>(T);
 
-impl Compiler<()> {
+impl<T: Debug> Compiler<T> {
+    /// Prints out the current state of this compiler, if debug mode is enabled.
+    /// Takes in self and returns the same value, so that this can be used
+    /// in the function call chain.
+    pub fn debug(self) -> Self {
+        debug!(println!("{:?}", &self));
+        self
+    }
+}
+
+impl Compiler<String> {
     /// Constructs a new compiler with no internal state. This is how you start
     /// a fresh compiler pipeline.
-    pub fn new() -> Self {
-        Compiler(())
+    pub fn new(source: String) -> Self {
+        Compiler(source)
     }
 }
 
@@ -50,11 +61,123 @@ impl Compiler<Vec<MachineInstr>> {
 /// [Machine](Machine). The returned machine can then be executed.
 pub fn compile(
     env: &Environment,
-    source: &mut impl Read,
+    source: String,
 ) -> Result<Machine, CompileError> {
-    Ok(Compiler::new()
-        .parse(source)?
+    Ok(Compiler::new(source)
+        .debug()
+        .parse()?
+        .debug()
         .desugar()
+        .debug()
         .delabel()
+        .debug()
         .compile(env))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn execute_expect_success(env: Environment, src: &str) {
+        // Compile from env+src
+        let mut machine = compile(&env, src.into()).unwrap();
+
+        // Execute to completion
+        while !machine.is_complete() {
+            machine.execute_next().unwrap();
+        }
+
+        // Make sure program terminated successfully
+        // Check each bit of state individually to make debugging easier
+        let state = machine.get_state();
+        assert_eq!(state.input, Vec::new() as Vec<LangValue>);
+        assert_eq!(state.output, env.expected_output);
+        // Final sanity check, in case we change the criteria for is_successful
+        assert!(machine.is_successful());
+    }
+
+    #[test]
+    fn test_read_write() {
+        execute_expect_success(
+            Environment {
+                id: 0,
+                num_stacks: 0,
+                max_stack_size: None,
+                input: vec![1, 2],
+                expected_output: vec![1, 2],
+            },
+            "
+            READ
+            WRITE
+            READ
+            WRITE
+            ",
+        );
+    }
+
+    #[test]
+    fn test_set_push_pop() {
+        execute_expect_success(
+            Environment {
+                id: 0,
+                num_stacks: 1,
+                max_stack_size: None,
+                input: vec![],
+                expected_output: vec![10],
+            },
+            "
+            SET 10
+            PUSH 0
+            SET 0
+            POP 0
+            WRITE
+            ",
+        );
+    }
+
+    #[test]
+    fn test_if() {
+        execute_expect_success(
+            Environment {
+                id: 0,
+                num_stacks: 0,
+                max_stack_size: None,
+                input: vec![],
+                expected_output: vec![1],
+            },
+            "
+            IF {
+                WRITE
+            }
+            SET 1
+            IF {
+                WRITE
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn test_while() {
+        execute_expect_success(
+            Environment {
+                id: 0,
+                num_stacks: 1,
+                max_stack_size: None,
+                input: vec![],
+                expected_output: vec![2, 1, 0],
+            },
+            "
+            PUSH 0
+            SET 1
+            PUSH 0
+            SET 2
+            PUSH 0
+            WHILE {
+                POP 0
+                WRITE
+            }
+            ",
+        );
+    }
 }

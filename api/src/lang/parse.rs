@@ -14,7 +14,6 @@ use nom::{
     sequence::{delimited, preceded, terminated},
     IResult,
 };
-use std::io::Read;
 
 fn parse_read(input: &str) -> IResult<&str, Instr> {
     // tag_no_case returns a (str, str) tuple
@@ -104,17 +103,10 @@ fn parse_gdlk(input: &str) -> IResult<&str, Vec<Instr>> {
     Ok((input, res))
 }
 
-impl Compiler<()> {
+impl Compiler<String> {
     /// Parses source code from the given input, into an abstract syntax tree.
-    pub fn parse(
-        self,
-        source: &mut impl Read,
-    ) -> Result<Compiler<Program>, CompileError> {
-        let mut source_buffer = String::new();
-        source
-            .read_to_string(&mut source_buffer)
-            .map_err(|err| CompileError::ParseError(format!("{}", err)))?;
-        match parse_gdlk(&source_buffer) {
+    pub fn parse(self) -> Result<Compiler<Program>, CompileError> {
+        match parse_gdlk(&self.0) {
             // TODO: can probably refactor the parser funcs to use
             // Verbose error to make the errors nicer
             // example: https://github.com/Geal/nom/blob/master/examples/s_expression.rs
