@@ -1,5 +1,5 @@
 use crate::{
-    error::{CompileError, CompileErrors},
+    error::CompileError,
     lang::{
         ast::{
             Instr, LangValue, Operator, Program, RegisterRef, StackIdentifier,
@@ -12,56 +12,90 @@ use crate::{
 use nom::{
     branch::alt,
     bytes::complete::tag_no_case,
-    character::complete::{char, digit1, multispace0, one_of},
-    combinator::{all_consuming, map, map_res},
+    character::complete::{alpha1, char, digit1, multispace0, space1},
+    combinator::{all_consuming, cut, map, map_res, peek},
+    error::{
+        context, convert_error, ErrorKind, ParseError, VerboseError,
+        VerboseErrorKind,
+    },
+    lib::std::ops::RangeTo,
     multi::many0,
     sequence::{delimited, preceded, tuple},
-    Compare, IResult, InputLength, InputTake,
+    AsChar, Compare, IResult, InputTake, InputTakeAtPosition, Slice,
 };
 
-fn arg_delim(input: &str) -> IResult<&str, char> {
-    one_of(" \t")(input)
+fn one_arg<I, O, E: ParseError<I>, F>(
+    arg_parser: F,
+) -> impl Fn(I) -> IResult<I, O, E>
+where
+    I: InputTakeAtPosition,
+    <I as InputTakeAtPosition>::Item: AsChar + Clone,
+    F: Fn(I) -> IResult<I, O, E>,
+{
+    preceded(space1, arg_parser)
 }
 
-/// Parses one instruction keyword, not including its arguments. This type
-/// signature was stolen from tag_no_case. This is just a wrapper around
-/// tag_no_case, in case we want to make parsing case senstitive or something
-/// in the future.
-fn instr<T, Input>(instr: T) -> impl Fn(Input) -> IResult<Input, Input>
+fn two_args<I, O1, O2, E: ParseError<I>, F, G>(
+    arg_parser_one: F,
+    arg_parser_two: G,
+) -> impl Fn(I) -> IResult<I, (O1, O2), E>
 where
-    Input: InputTake + Compare<T>,
-    T: InputLength + Clone,
+    I: InputTakeAtPosition + Clone,
+    <I as InputTakeAtPosition>::Item: AsChar + Clone,
+    F: Fn(I) -> IResult<I, O1, E>,
+    G: Fn(I) -> IResult<I, O2, E>,
 {
-    tag_no_case(instr)
+    tuple((one_arg(arg_parser_one), one_arg(arg_parser_two)))
+}
+
+/// Parses one instruction keyword, and uses the passed parser to parse the
+/// arguments
+fn instr<'a, Input: 'a, O, F, Error: ParseError<Input>>(
+    instr: &'static str,
+    arg_parser: F,
+) -> impl Fn(Input) -> IResult<Input, O, Error>
+where
+    Input: InputTake + Clone + Compare<&'static str> + Slice<RangeTo<usize>>,
+    F: Fn(Input) -> IResult<Input, O, Error>,
+{
+    preceded(
+        context(instr, tag_no_case(instr)),
+        context(instr, cut(arg_parser)),
+    )
 }
 
 /// Parses a register identifer, something like "RX0". Does not parse any
 /// whitespace around it.
-fn reg_ident(input: &str) -> IResult<&str, RegisterRef> {
-    let (input, val) = alt((
-        // "RLI" => RegisterRef::InputLength
-        map(tag_no_case(REG_INPUT_LEN), |_| RegisterRef::InputLength),
-        // "RSx" => RegisterRef::StackLength(x)
-        preceded(
-            tag_no_case(REG_STACK_LEN_PREFIX),
-            map_res(digit1, |s: &str| {
-                s.parse::<StackIdentifier>().map(RegisterRef::StackLength)
-            }),
-        ),
-        // "RXx" => RegisterRef::User(x)
-        preceded(
-            tag_no_case(REG_USER_PREFIX),
-            map_res(digit1, |s: &str| {
-                s.parse::<UserRegisterIdentifier>().map(RegisterRef::User)
-            }),
-        ),
-    ))(input)?;
+fn reg_ident(input: &str) -> IResult<&str, RegisterRef, VerboseError<&str>> {
+    let (input, val) = context(
+        "Register",
+        alt((
+            // "RLI" => RegisterRef::InputLength
+            map(tag_no_case(REG_INPUT_LEN), |_| RegisterRef::InputLength),
+            // "RSx" => RegisterRef::StackLength(x)
+            preceded(
+                tag_no_case(REG_STACK_LEN_PREFIX),
+                cut(map_res(digit1, |s: &str| {
+                    s.parse::<StackIdentifier>().map(RegisterRef::StackLength)
+                })),
+            ),
+            // "RXx" => RegisterRef::User(x)
+            preceded(
+                tag_no_case(REG_USER_PREFIX),
+                cut(map_res(digit1, |s: &str| {
+                    s.parse::<UserRegisterIdentifier>().map(RegisterRef::User)
+                })),
+            ),
+        )),
+    )(input)?;
     Ok((input, val))
 }
 
 /// Parses a stack identifier, like "S1". Does not parse any whitespace around
 /// it.
-fn stack_ident(input: &str) -> IResult<&str, StackIdentifier> {
+fn stack_ident(
+    input: &str,
+) -> IResult<&str, StackIdentifier, VerboseError<&str>> {
     let (input, val) = preceded(
         multispace0,
         preceded(
@@ -74,12 +108,14 @@ fn stack_ident(input: &str) -> IResult<&str, StackIdentifier> {
 
 /// Parses a `LangValue`, like "10" or "-3", not including any surrounding
 /// whitespace. (Negatives don't actually work yet).
-fn lang_value(input: &str) -> IResult<&str, LangValue> {
+fn lang_value(input: &str) -> IResult<&str, LangValue, VerboseError<&str>> {
     map_res(digit1, |s: &str| s.parse::<LangValue>())(input)
 }
 
 /// Parses either a `LangValue` or `Register`.
-fn parse_value_source(input: &str) -> IResult<&str, ValueSource> {
+fn parse_value_source(
+    input: &str,
+) -> IResult<&str, ValueSource, VerboseError<&str>> {
     alt((
         // "1" => ValueSource::Const(1)
         map(lang_value, ValueSource::Const),
@@ -88,123 +124,93 @@ fn parse_value_source(input: &str) -> IResult<&str, ValueSource> {
     ))(input)
 }
 
-fn parse_read(input: &str) -> IResult<&str, Instr> {
+fn parse_read(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
     // input is remaining stuff to parse
-    // tuple is output values, we throw away the first two because that's
-    // "Read" and the whitespace delim
     // >>> Read RX0
-    let (input, (_, _, reg)) =
-        tuple((instr("Read"), arg_delim, reg_ident))(input)?;
+    let (input, reg) = instr("Read", one_arg(reg_ident))(input)?;
     Ok((input, Instr::Operator(Operator::Read(reg))))
 }
 
-fn parse_write(input: &str) -> IResult<&str, Instr> {
+fn parse_write(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
     // >>> Write RX0
-    let (input, (_, _, reg)) =
-        tuple((instr("Write"), arg_delim, reg_ident))(input)?;
+    let (input, reg) = instr("Write", one_arg(reg_ident))(input)?;
     Ok((input, Instr::Operator(Operator::Write(reg))))
 }
 
-fn parse_set(input: &str) -> IResult<&str, Instr> {
+fn parse_set(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
     // >>> Set RX0 10
-    let (input, (_, _, reg, _, src)) = tuple((
-        instr("Set"),
-        arg_delim,
-        reg_ident,
-        arg_delim,
-        parse_value_source,
-    ))(input)?;
+    let (input, (reg, src)) =
+        instr("Set", two_args(reg_ident, parse_value_source))(input)?;
     Ok((input, Instr::Operator(Operator::Set(reg, src))))
 }
 
-fn parse_add(input: &str) -> IResult<&str, Instr> {
+fn parse_add(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
     // >>> Add RX0 RX1
-    let (input, (_, _, dst, _, src)) = tuple((
-        instr("Add"),
-        arg_delim,
-        reg_ident,
-        arg_delim,
-        parse_value_source,
-    ))(input)?;
+    let (input, (dst, src)) =
+        instr("Add", two_args(reg_ident, parse_value_source))(input)?;
     Ok((input, Instr::Operator(Operator::Add(dst, src))))
 }
 
-fn parse_sub(input: &str) -> IResult<&str, Instr> {
+fn parse_sub(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
     // >>> Sub RX0 RX1
-    let (input, (_, _, dst, _, src)) = tuple((
-        instr("Sub"),
-        arg_delim,
-        reg_ident,
-        arg_delim,
-        parse_value_source,
-    ))(input)?;
+    let (input, (dst, src)) =
+        instr("Sub", two_args(reg_ident, parse_value_source))(input)?;
     Ok((input, Instr::Operator(Operator::Sub(dst, src))))
 }
 
-fn parse_mul(input: &str) -> IResult<&str, Instr> {
+fn parse_mul(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
     // >>> Mul RX0 RX1
-    let (input, (_, _, dst, _, src)) = tuple((
-        instr("Mul"),
-        arg_delim,
-        reg_ident,
-        arg_delim,
-        parse_value_source,
-    ))(input)?;
+    let (input, (dst, src)) =
+        instr("Mul", two_args(reg_ident, parse_value_source))(input)?;
     Ok((input, Instr::Operator(Operator::Mul(dst, src))))
 }
 
-fn parse_push(input: &str) -> IResult<&str, Instr> {
+fn parse_push(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
     // >>> Push RX0 S1
-    let (input, (_, _, src, _, stack)) = tuple((
-        instr("Push"),
-        arg_delim,
-        parse_value_source,
-        arg_delim,
-        stack_ident,
-    ))(input)?;
+    let (input, (src, stack)) =
+        instr("Push", two_args(parse_value_source, stack_ident))(input)?;
     Ok((input, Instr::Operator(Operator::Push(src, stack))))
 }
 
-fn parse_pop(input: &str) -> IResult<&str, Instr> {
+fn parse_pop(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
     // >>> Pop S1 RX0
-    let (input, (_, _, stack, _, reg)) =
-        tuple((instr("Pop"), arg_delim, stack_ident, arg_delim, reg_ident))(
-            input,
-        )?;
+    let (input, (stack, reg)) =
+        instr("POP", two_args(stack_ident, reg_ident))(input)?;
     Ok((input, Instr::Operator(Operator::Pop(stack, reg))))
 }
 
-fn parse_if(input: &str) -> IResult<&str, Instr> {
+fn parse_if(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
     // >>> If RX0 { ... }
-    let (input, (_, _, reg)) =
-        tuple((instr("If"), arg_delim, reg_ident))(input)?;
+    let (input, reg) = instr("If", one_arg(reg_ident))(input)?;
     let (input, body) = parse_body(input)?;
     Ok((input, Instr::If(reg, body)))
 }
 
-fn parse_while(input: &str) -> IResult<&str, Instr> {
+fn parse_while(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
     // >>> While RX0 { ... }
-    let (input, (_, _, reg)) =
-        tuple((instr("While"), arg_delim, reg_ident))(input)?;
+    let (input, reg) = instr("While", one_arg(reg_ident))(input)?;
     let (input, body) = parse_body(input)?;
     Ok((input, Instr::While(reg, body)))
 }
 
-fn try_each(input: &str) -> IResult<&str, Instr> {
+fn try_each(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
     let (input, (_, res, _)) = tuple((
         multispace0,
-        alt((
-            parse_read,
-            parse_write,
-            parse_set,
-            parse_add,
-            parse_sub,
-            parse_mul,
-            parse_push,
-            parse_pop,
-            parse_if,
-            parse_while,
-        )),
+        context(
+            "Instruction",
+            alt((
+                parse_read,
+                parse_write,
+                parse_set,
+                parse_add,
+                parse_sub,
+                parse_mul,
+                parse_push,
+                parse_pop,
+                parse_if,
+                parse_while,
+            )),
+        ),
         multispace0,
     ))(input)?;
     Ok((input, res))
@@ -213,46 +219,61 @@ fn try_each(input: &str) -> IResult<&str, Instr> {
 // Parse the body of an if or while statement
 //
 // something like (\s*{<BODY>\s*})
-fn parse_body(input: &str) -> IResult<&str, Vec<Instr>> {
+fn parse_body(input: &str) -> IResult<&str, Vec<Instr>, VerboseError<&str>> {
     // multispace0 matches 0 or more whitespace chars (including new lines)
-    let (input, res) = delimited(
+    let (input, res) = cut(delimited(
         preceded(multispace0, char('{')),
-        many0(try_each), // many0 will match 0 more, so the body could be empty
+        many0(try_each), /* many0 will match 0 more, so the body could
+                          * be empty */
         preceded(multispace0, char('}')),
-    )(input)?;
+    ))(input)?;
     Ok((input, res))
 }
 
-fn parse_gdlk(input: &str) -> IResult<&str, Vec<Instr>> {
+fn parse_gdlk(input: &str) -> IResult<&str, Vec<Instr>, VerboseError<&str>> {
     // parses the whole program followed by 0 or more whitespace chars
-    // using many1 so the program needs at least one instr
+
+    // consume starting whitespace
+    let (input, _) = multispace0(input)?;
+    // make sure something is there but don't consume the input
+    // TODO: make this error message nicer
+    peek(alpha1)(input)?;
     let (input, res) = all_consuming(many0(try_each))(input)?;
     Ok((input, res))
 }
 
 impl Compiler<String> {
     /// Parses source code from the given input, into an abstract syntax tree.
-    pub fn parse(self) -> Result<Compiler<Program>, CompileErrors> {
-        match parse_gdlk(&self.0) {
-            // TODO: can probably refactor the parser funcs to use
-            // Verbose error to make the errors nicer
-            // example: https://github.com/Geal/nom/blob/master/examples/s_expression.rs
+    pub fn parse(self) -> Result<Compiler<Program>, CompileError> {
+        let input_str = &self.0;
+        match parse_gdlk(input_str) {
             Ok((_, body)) => {
                 let prog = Program { body };
                 Ok(Compiler(prog))
             }
-            Err(nom::Err::Error((_input, e))) => {
-                Err(CompileError::ParseError(e.description().to_string()))
+            Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
+                match e.errors.as_slice() {
+                    [(substring, VerboseErrorKind::Nom(ErrorKind::Eof)), ..] => {
+                        // If the error is EOF that means there was remaining
+                        // input that was not parsed
+                        // so they put in a bad keyword
+                        // TODO: need to make this custom error look more like
+                        // how convert_error outputs
+                        Err(CompileError::ParseError(format!(
+                            "Invalid keyword: {}",
+                            substring
+                        )))
+                    }
+                    _ => Err(CompileError::ParseError(convert_error(
+                        &input_str, e,
+                    ))),
+                }
             }
             Err(nom::Err::Incomplete(_needed)) => {
                 // TODO: better ass
                 Err(CompileError::ParseError("ass".to_string()))
             }
-            Err(nom::Err::Failure((_input, e))) => {
-                Err(CompileError::ParseError(e.description().to_string()))
-            }
         }
-        .map_err(|err| err.into())
     }
 }
 

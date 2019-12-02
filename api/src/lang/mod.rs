@@ -356,4 +356,13 @@ mod tests {
             ],
         );
     }
+
+    #[test]
+    fn test_parse_empty_file() {
+        expect_compile_errors(
+            Environment::default(),
+            "",
+            &["Parse error: 0: in Alpha, got empty input\n\n"],
+        );
+    }
 }
