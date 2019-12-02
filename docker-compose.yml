@@ -17,7 +17,7 @@ services:
 
   api:
     build: ./api/
-    command: cargo watch -x run
+    command: cargo watch -x "run -- server"
     tty: true # Colorize output
     volumes:
       - ./api:/app/api:rw

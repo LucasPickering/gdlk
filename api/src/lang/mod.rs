@@ -83,17 +83,15 @@ mod tests {
         let mut machine = compile(&env, src.into()).unwrap();
 
         // Execute to completion
-        while !machine.is_complete() {
-            machine.execute_next().unwrap();
-        }
+        let success = machine.execute_all().unwrap();
 
         // Make sure program terminated successfully
         // Check each bit of state individually to make debugging easier
         let state = machine.get_state();
         assert_eq!(state.input, Vec::new() as Vec<LangValue>);
         assert_eq!(state.output, env.expected_output);
-        // Final sanity check, in case we change the criteria for is_successful
-        assert!(machine.is_successful());
+        // Final sanity check, in case we change the criteria for success
+        assert!(success);
     }
 
     #[test]

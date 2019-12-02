@@ -217,6 +217,16 @@ impl Machine {
         Ok(())
     }
 
+    /// Executes this machine until termination (or error). All instructions are
+    /// executed until [is_complete](Self::is_complete) returns true. Returns
+    /// the value of [is_successful](Self::is_successful) upon termination.
+    pub fn execute_all(&mut self) -> Result<bool, RuntimeError> {
+        while !self.is_complete() {
+            self.execute_next()?;
+        }
+        Ok(self.is_successful())
+    }
+
     /// Checks if this machine has finished executing.
     pub fn is_complete(&self) -> bool {
         self.program_counter >= self.program.len()
