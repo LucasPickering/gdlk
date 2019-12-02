@@ -4,7 +4,6 @@ use crate::{
 use std::fmt::Debug;
 
 mod ast;
-mod delabel;
 mod desugar;
 mod machine;
 mod parse;
@@ -68,8 +67,6 @@ pub fn compile(
         .parse()?
         .debug()
         .desugar()
-        .debug()
-        .delabel()
         .debug()
         .compile(env))
 }
