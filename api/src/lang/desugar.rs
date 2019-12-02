@@ -10,9 +10,15 @@ fn desugar_instr(instr: Instr) -> Vec<MachineInstr> {
     match instr {
         Instr::Read => vec![MachineInstr::Read],
         Instr::Write => vec![MachineInstr::Write],
+
         Instr::Set(value) => vec![MachineInstr::Set(value)],
+        Instr::Add(value) => vec![MachineInstr::Add(value)],
+        Instr::Sub(value) => vec![MachineInstr::Sub(value)],
+        Instr::Mul(value) => vec![MachineInstr::Mul(value)],
+
         Instr::Push(stack_id) => vec![MachineInstr::Push(stack_id)],
         Instr::Pop(stack_id) => vec![MachineInstr::Pop(stack_id)],
+
         Instr::If(body) => {
             // This conversion looks like:
             //

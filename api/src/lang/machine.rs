@@ -5,7 +5,7 @@ use crate::{
     models::Environment,
 };
 use serde::Serialize;
-use std::{convert::TryFrom, iter};
+use std::{convert::TryFrom, iter, num::Wrapping};
 
 /// Wrapper around a vec of stacks, to make it a bit easier to initialize/use.
 ///
@@ -183,10 +183,27 @@ impl Machine {
                 self.state.output.push(self.state.workspace);
                 None
             }
+
             MachineInstr::Set(val) => {
                 self.state.workspace = *val;
                 None
             }
+            MachineInstr::Add(val) => {
+                self.state.workspace =
+                    (Wrapping(self.state.workspace) + Wrapping(*val)).0;
+                None
+            }
+            MachineInstr::Sub(val) => {
+                self.state.workspace =
+                    (Wrapping(self.state.workspace) - Wrapping(*val)).0;
+                None
+            }
+            MachineInstr::Mul(val) => {
+                self.state.workspace =
+                    (Wrapping(self.state.workspace) * Wrapping(*val)).0;
+                None
+            }
+
             MachineInstr::Push(stack_id) => {
                 self.state.stacks.push(*stack_id, self.state.workspace)?;
                 None

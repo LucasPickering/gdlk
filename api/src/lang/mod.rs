@@ -175,4 +175,23 @@ mod tests {
             ",
         );
     }
+
+    #[test]
+    fn test_arithmetic() {
+        execute_expect_success(
+            Environment {
+                id: 0,
+                num_stacks: 0,
+                max_stack_size: None,
+                input: vec![],
+                expected_output: vec![-3],
+            },
+            "
+            ADD 1
+            SUB 2
+            MUL 3
+            WRITE
+            ",
+        );
+    }
 }
