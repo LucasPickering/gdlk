@@ -37,6 +37,33 @@ fn parse_set(input: &str) -> IResult<&str, Instr> {
     Ok((input, Instr::Set(val)))
 }
 
+fn parse_add(input: &str) -> IResult<&str, Instr> {
+    let (input, _) = tag_no_case("Add")(input)?;
+    let (input, val) = preceded(
+        multispace0,
+        map_res(digit1, |s: &str| s.parse::<LangValue>()),
+    )(input)?;
+    Ok((input, Instr::Add(val)))
+}
+
+fn parse_sub(input: &str) -> IResult<&str, Instr> {
+    let (input, _) = tag_no_case("Sub")(input)?;
+    let (input, val) = preceded(
+        multispace0,
+        map_res(digit1, |s: &str| s.parse::<LangValue>()),
+    )(input)?;
+    Ok((input, Instr::Sub(val)))
+}
+
+fn parse_mul(input: &str) -> IResult<&str, Instr> {
+    let (input, _) = tag_no_case("Mul")(input)?;
+    let (input, val) = preceded(
+        multispace0,
+        map_res(digit1, |s: &str| s.parse::<LangValue>()),
+    )(input)?;
+    Ok((input, Instr::Mul(val)))
+}
+
 fn parse_push(input: &str) -> IResult<&str, Instr> {
     let (input, _) = tag_no_case("Push")(input)?;
     let (input, val) = preceded(
@@ -74,6 +101,9 @@ fn try_each(input: &str) -> IResult<&str, Instr> {
             parse_read,
             parse_write,
             parse_set,
+            parse_add,
+            parse_sub,
+            parse_mul,
             parse_push,
             parse_pop,
             parse_if,

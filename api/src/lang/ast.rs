@@ -10,16 +10,29 @@ pub type StackIdentifier = usize;
 
 #[derive(Debug, PartialEq, Deserialize)]
 pub enum Instr {
+    // I/O
     /// Reads one value from the input buffer to the workspace
     Read,
     /// Writes the workspace to the output buffer
     Write,
+
+    // Value manipulation
     /// Sets the workspace to the given value
     Set(LangValue),
+    /// Adds a constant value to the workspace
+    Add(LangValue),
+    /// Substracts a constant value from the workspace
+    Sub(LangValue),
+    /// Multiplies the workspace by a constant value
+    Mul(LangValue),
+
+    // Stack manipulation
     /// Pushes the workspace onto the given stack
     Push(StackIdentifier),
     /// Pops the top value off the given stack into the workspace
     Pop(StackIdentifier),
+
+    // Control flow
     /// Executes the body if the workspace is != 0
     If(Vec<Instr>),
     /// Executes the body while the workspace is != 0
@@ -37,12 +50,23 @@ pub struct Program {
 /// of the runtime.
 #[derive(Debug, PartialEq)]
 pub enum MachineInstr {
+    // I/O
     /// Reads one value from the input buffer to the workspace
     Read,
     /// Writes the workspace to the output buffer
     Write,
+
+    // Value manipulation
     /// Sets the workspace to the given value
     Set(LangValue),
+    /// Adds the given value to the workspace
+    Add(LangValue),
+    /// Substracts the given value from the workspace
+    Sub(LangValue),
+    /// Multiplies the workspace by the given value
+    Mul(LangValue),
+
+    // Stack manipulation
     /// Pushes the workspace onto the given stack
     Push(StackIdentifier),
     /// Pops the top value off the given stack into the workspace
