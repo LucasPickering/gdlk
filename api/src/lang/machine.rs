@@ -168,10 +168,10 @@ impl Machine {
             .get(self.program_counter)
             .ok_or(RuntimeError::ProgramTerminated)?;
 
-        // Execute the instruction. For more instructions, the next pc is just
-        // the next line, for those, return None and we'll populate the next
-        // pc later. For jumps though, they need to specify a special next pc.
-        let next_pc: Option<usize> = match instr {
+        // Execute the instruction. For most instructions, the number of
+        // instructions to consume is just 1, so for those return None. For
+        // jumps though, it can vary so they'll return Some(n).
+        let instrs_to_consume: Option<i32> = match instr {
             MachineInstr::Read => match self.state.input.pop() {
                 Some(val) => {
                     self.state.workspace = val;
@@ -195,24 +195,30 @@ impl Machine {
                 self.state.workspace = self.state.stacks.pop(*stack_id)?;
                 None
             }
-            MachineInstr::Jez(next_pc) => {
+
+            MachineInstr::Jez(num_instrs) => {
                 if self.state.workspace == 0 {
-                    Some(*next_pc)
+                    Some(*num_instrs)
                 } else {
                     None
                 }
             }
-            MachineInstr::Jnz(next_pc) => {
+            MachineInstr::Jnz(num_instrs) => {
                 if self.state.workspace != 0 {
-                    Some(*next_pc)
+                    Some(*num_instrs)
                 } else {
                     None
                 }
             }
         };
 
-        // Advance the pc
-        self.program_counter = next_pc.unwrap_or(self.program_counter + 1);
+        // Advance the pc by the specified number of instructions (for jumps)
+        // or by 1 (for all other instructions). Overflow/underflow _shouldn't_
+        // occur here, but if it does, that should panic in debug mode and
+        // cause all kinds of fuckery in release mode.
+        self.program_counter = (self.program_counter as i32
+            + instrs_to_consume.unwrap_or(1))
+            as usize;
         debug!(println!("Executed {:?}; State: {:?}", instr, self.state));
         Ok(())
     }
