@@ -32,7 +32,7 @@ In the repo root:
 ```sh
 docker-compose up
 # Wait for DB to start up
-docker exec gdlk_api_1 diesel migration run
+./initdb.sh
 ```
 
 ### Tests

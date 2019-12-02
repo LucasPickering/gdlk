@@ -8,6 +8,8 @@ volumes:
 services:
   db:
     image: postgres:10-alpine
+    volumes:
+      - ./fixtures:/app/fixtures
     environment:
       - POSTGRES_DB=gdlk
       - POSTGRES_USER=root
