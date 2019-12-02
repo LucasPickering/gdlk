@@ -6,8 +6,8 @@ import json
 import websockets
 
 
-async def ws(host, env_id, program):
-    with open(program) as f:
+async def ws(host, env_id, source):
+    with open(source) as f:
         source = f.read().strip()
 
     async with websockets.connect(
@@ -47,10 +47,10 @@ def main():
         help="The ID for the environment to execute under",
     )
     parser.add_argument(
-        "--program",
-        "-p",
+        "--source",
+        "-s",
         required=True,
-        help="The file to read the program from",
+        help="The file to read the program source from",
     )
     args = parser.parse_args()
 

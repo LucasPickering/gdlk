@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, PartialEq, Serialize, Deserialize, Identifiable, Queryable)]
 pub struct Environment {
     /// Unique ID to refer to this environment
+    #[serde(default)]
     pub id: i32,
 
     // These two need to be i32s because postgres has no unsigned type.

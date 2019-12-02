@@ -17,7 +17,15 @@ rustup component add rustfmt-preview clippy-preview
 
 If you're using VSCode and have the RLS extension installed (you should), it'll ask to install more components, just say yes.
 
-### Running
+### Compiling and Executing Locally
+
+If you just want to compile and run a program without starting up the webserver, you can use the CLI for that. First, you'll need the environment to execute under saved in a JSON file, e.g. `env.json`. Then you need your program source in a file, e.g. `prog.gdlk`. Then run:
+
+```
+cargo run -- execute -e env.json -i prog.gdlk
+```
+
+### Running the Webserver
 
 In the repo root:
 
@@ -35,12 +43,11 @@ You can run tests with:
 cargo test
 ```
 
-#### Debugging
+### Debugging
 
-If you have a test failing, you can run just that test with:
+If you have a program or test failing, you can run with additional debug output by setting `DEBUG=true`, like so:
 
 ```sh
-cargo test test_name # Run just one test
-cargo test -- --nocapture  # Print stdout from the program
-DEBUG=true cargo test -- --nocapture # Run in debug mode (includes more useful output)
+DEBUG=true cargo run -- execute -e env.json -i prog.gdlk
+DEBUG=true cargo test -- --nocapture # --nocapture needed to make stdout visible
 ```
