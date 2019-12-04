@@ -1,7 +1,10 @@
 use crate::{
     error::CompileError,
     lang::{
-        ast::{Instr, LangValue, Program, StackIdentifier},
+        ast::{
+            Instr, LangValue, NullaryOp, Program, StackIdentifier, StackOp,
+            ValueOp,
+        },
         Compiler,
     },
 };
@@ -15,71 +18,50 @@ use nom::{
     IResult,
 };
 
-fn parse_read(input: &str) -> IResult<&str, Instr> {
-    // tag_no_case returns a (str, str) tuple
-    // first element is whats left to parse
-    // second is what matched
-    let (input, _) = tag_no_case("Read")(input)?;
-    Ok((input, Instr::Read))
+trait InstrParser<'a> = Fn(&'a str) -> IResult<&'a str, Instr>;
+
+fn make_nullary_op_parser<'a>(
+    op_name: &'static str,
+    op: NullaryOp,
+) -> impl InstrParser<'a> {
+    // Return a function that parses the given string into the given operator
+    move |input| {
+        // tag_no_case returns a (str, str) tuple
+        // first element is whats left to parse
+        // second is what matched
+        let (input, _) = tag_no_case(op_name)(input)?;
+        Ok((input, Instr::NullaryOp(op)))
+    }
 }
 
-fn parse_write(input: &str) -> IResult<&str, Instr> {
-    let (input, _) = tag_no_case("Write")(input)?;
-    Ok((input, Instr::Write))
+fn make_value_op_parser<'a>(
+    op_name: &'static str,
+    op: ValueOp,
+) -> impl InstrParser<'a> {
+    // Return a function that parses the given string into the given operator
+    move |input| {
+        let (input, _) = tag_no_case(op_name)(input)?;
+        let (input, val) = preceded(
+            multispace0,
+            map_res(digit1, |s: &str| s.parse::<LangValue>()),
+        )(input)?;
+        Ok((input, Instr::ValueOp(op, val)))
+    }
 }
 
-fn parse_set(input: &str) -> IResult<&str, Instr> {
-    let (input, _) = tag_no_case("Set")(input)?;
-    let (input, val) = preceded(
-        multispace0,
-        map_res(digit1, |s: &str| s.parse::<LangValue>()),
-    )(input)?;
-    Ok((input, Instr::Set(val)))
-}
-
-fn parse_add(input: &str) -> IResult<&str, Instr> {
-    let (input, _) = tag_no_case("Add")(input)?;
-    let (input, val) = preceded(
-        multispace0,
-        map_res(digit1, |s: &str| s.parse::<LangValue>()),
-    )(input)?;
-    Ok((input, Instr::Add(val)))
-}
-
-fn parse_sub(input: &str) -> IResult<&str, Instr> {
-    let (input, _) = tag_no_case("Sub")(input)?;
-    let (input, val) = preceded(
-        multispace0,
-        map_res(digit1, |s: &str| s.parse::<LangValue>()),
-    )(input)?;
-    Ok((input, Instr::Sub(val)))
-}
-
-fn parse_mul(input: &str) -> IResult<&str, Instr> {
-    let (input, _) = tag_no_case("Mul")(input)?;
-    let (input, val) = preceded(
-        multispace0,
-        map_res(digit1, |s: &str| s.parse::<LangValue>()),
-    )(input)?;
-    Ok((input, Instr::Mul(val)))
-}
-
-fn parse_push(input: &str) -> IResult<&str, Instr> {
-    let (input, _) = tag_no_case("Push")(input)?;
-    let (input, val) = preceded(
-        multispace0,
-        map_res(digit1, |s: &str| s.parse::<StackIdentifier>()),
-    )(input)?;
-    Ok((input, Instr::Push(val)))
-}
-
-fn parse_pop(input: &str) -> IResult<&str, Instr> {
-    let (input, _) = tag_no_case("Pop")(input)?;
-    let (input, val) = preceded(
-        multispace0,
-        map_res(digit1, |s: &str| s.parse::<StackIdentifier>()),
-    )(input)?;
-    Ok((input, Instr::Pop(val)))
+fn make_stack_op_parser<'a>(
+    op_name: &'static str,
+    op: StackOp,
+) -> impl InstrParser<'a> {
+    // Return a function that parses the given string into the given operator
+    move |input| {
+        let (input, _) = tag_no_case(op_name)(input)?;
+        let (input, val) = preceded(
+            multispace0,
+            map_res(digit1, |s: &str| s.parse::<StackIdentifier>()),
+        )(input)?;
+        Ok((input, Instr::StackOp(op, val)))
+    }
 }
 
 fn parse_if(input: &str) -> IResult<&str, Instr> {
@@ -98,14 +80,14 @@ fn try_each(input: &str) -> IResult<&str, Instr> {
     let (input, res) = preceded(
         multispace0,
         alt((
-            parse_read,
-            parse_write,
-            parse_set,
-            parse_add,
-            parse_sub,
-            parse_mul,
-            parse_push,
-            parse_pop,
+            make_nullary_op_parser("Read", NullaryOp::Read),
+            make_nullary_op_parser("Write", NullaryOp::Write),
+            make_value_op_parser("Set", ValueOp::Set),
+            make_value_op_parser("Add", ValueOp::Add),
+            make_value_op_parser("Sub", ValueOp::Sub),
+            make_value_op_parser("Mul", ValueOp::Mul),
+            make_stack_op_parser("Push", StackOp::Push),
+            make_stack_op_parser("Pop", StackOp::Pop),
             parse_if,
             parse_while,
         )),
@@ -170,22 +152,37 @@ mod tests {
             WrItE
         "
             ),
-            Ok(("", vec![Instr::Read, Instr::Write]))
+            Ok((
+                "",
+                vec![
+                    Instr::NullaryOp(NullaryOp::Read),
+                    Instr::NullaryOp(NullaryOp::Write)
+                ]
+            ))
         )
     }
     #[test]
     fn test_set() {
-        assert_eq!(parse_gdlk("Set 4"), Ok(("", vec![Instr::Set(4),])))
+        assert_eq!(
+            parse_gdlk("Set 4"),
+            Ok(("", vec![Instr::ValueOp(ValueOp::Set, 4)]))
+        )
     }
 
     #[test]
     fn test_push() {
-        assert_eq!(parse_gdlk("Push 4"), Ok(("", vec![Instr::Push(4),])))
+        assert_eq!(
+            parse_gdlk("Push 4"),
+            Ok(("", vec![Instr::StackOp(StackOp::Push, 4)]))
+        )
     }
 
     #[test]
     fn test_pop() {
-        assert_eq!(parse_gdlk("Pop 4"), Ok(("", vec![Instr::Pop(4),])))
+        assert_eq!(
+            parse_gdlk("Pop 4"),
+            Ok(("", vec![Instr::StackOp(StackOp::Pop, 4)]))
+        )
     }
 
     #[test]
@@ -197,7 +194,13 @@ mod tests {
             write
         }"
             ),
-            Ok(("", vec![Instr::If(vec![Instr::Read, Instr::Write,])]))
+            Ok((
+                "",
+                vec![Instr::If(vec![
+                    Instr::NullaryOp(NullaryOp::Read),
+                    Instr::NullaryOp(NullaryOp::Write),
+                ])]
+            ))
         )
     }
 
@@ -210,7 +213,13 @@ mod tests {
             Write
         }"
             ),
-            Ok(("", vec![Instr::While(vec![Instr::Read, Instr::Write,])]))
+            Ok((
+                "",
+                vec![Instr::While(vec![
+                    Instr::NullaryOp(NullaryOp::Read),
+                    Instr::NullaryOp(NullaryOp::Write),
+                ])]
+            ))
         )
     }
 
@@ -241,15 +250,15 @@ mod tests {
             Ok((
                 "",
                 vec![
-                    Instr::Read,
-                    Instr::Set(2),
-                    Instr::Write,
-                    Instr::Read,
-                    Instr::Set(3),
-                    Instr::Write,
-                    Instr::Read,
-                    Instr::Set(4),
-                    Instr::Write
+                    Instr::NullaryOp(NullaryOp::Read),
+                    Instr::ValueOp(ValueOp::Set, 2),
+                    Instr::NullaryOp(NullaryOp::Write),
+                    Instr::NullaryOp(NullaryOp::Read),
+                    Instr::ValueOp(ValueOp::Set, 3),
+                    Instr::NullaryOp(NullaryOp::Write),
+                    Instr::NullaryOp(NullaryOp::Read),
+                    Instr::ValueOp(ValueOp::Set, 4),
+                    Instr::NullaryOp(NullaryOp::Write)
                 ]
             ))
         )

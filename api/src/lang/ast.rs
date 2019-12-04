@@ -1,5 +1,3 @@
-use serde::Deserialize;
-
 /// The type of every value in our language
 pub type LangValue = i32;
 
@@ -8,29 +6,48 @@ pub type StackIdentifier = usize;
 
 // ===== AST types =====
 
-#[derive(Debug, PartialEq, Deserialize)]
-pub enum Instr {
-    // I/O
+/// An operator that takes no arguments. All operators that fit that description
+/// should be grouped into this type.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum NullaryOp {
     /// Reads one value from the input buffer to the workspace
     Read,
     /// Writes the workspace to the output buffer
     Write,
+}
 
-    // Value manipulation
+/// An operator whose arguments are (`LangValue`). All operators that fit
+/// that description should be grouped into this type.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum ValueOp {
     /// Sets the workspace to the given value
-    Set(LangValue),
+    Set,
     /// Adds a constant value to the workspace
-    Add(LangValue),
+    Add,
     /// Substracts a constant value from the workspace
-    Sub(LangValue),
+    Sub,
     /// Multiplies the workspace by a constant value
-    Mul(LangValue),
+    Mul,
+}
 
-    // Stack manipulation
+/// An operator whose arguments are (`StackIdentifier`). All operators that fit
+/// that description should be grouped into this type.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum StackOp {
     /// Pushes the workspace onto the given stack
-    Push(StackIdentifier),
+    Push,
     /// Pops the top value off the given stack into the workspace
-    Pop(StackIdentifier),
+    Pop,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Instr {
+    /// An operator takes no arguments
+    NullaryOp(NullaryOp),
+    /// An operator that consumes one `LangValue`
+    ValueOp(ValueOp, LangValue),
+    /// An operator that consumes one `StackIdentifier`
+    StackOp(StackOp, StackIdentifier),
 
     // Control flow
     /// Executes the body if the workspace is != 0
@@ -40,7 +57,7 @@ pub enum Instr {
 }
 
 /// A parsed program, i.e. an Abstract Syntax Tree.
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq)]
 pub struct Program {
     pub body: Vec<Instr>,
 }
@@ -50,27 +67,12 @@ pub struct Program {
 /// of the runtime.
 #[derive(Debug, PartialEq)]
 pub enum MachineInstr {
-    // I/O
-    /// Reads one value from the input buffer to the workspace
-    Read,
-    /// Writes the workspace to the output buffer
-    Write,
-
-    // Value manipulation
-    /// Sets the workspace to the given value
-    Set(LangValue),
-    /// Adds the given value to the workspace
-    Add(LangValue),
-    /// Substracts the given value from the workspace
-    Sub(LangValue),
-    /// Multiplies the workspace by the given value
-    Mul(LangValue),
-
-    // Stack manipulation
-    /// Pushes the workspace onto the given stack
-    Push(StackIdentifier),
-    /// Pops the top value off the given stack into the workspace
-    Pop(StackIdentifier),
+    /// An operator takes no arguments
+    NullaryOp(NullaryOp),
+    /// An operator that consumes one `LangValue`
+    ValueOp(ValueOp, LangValue),
+    /// An operator that consumes one `StackIdentifier`
+    StackOp(StackOp, StackIdentifier),
 
     // Jumps are relative: In `Jmp(n)`, `n` is relative to the current program
     // counter.

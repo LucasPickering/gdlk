@@ -1,7 +1,9 @@
 use crate::{
     debug,
     error::RuntimeError,
-    lang::ast::{LangValue, MachineInstr, StackIdentifier},
+    lang::ast::{
+        LangValue, MachineInstr, NullaryOp, StackIdentifier, StackOp, ValueOp,
+    },
     models::Environment,
 };
 use serde::Serialize;
@@ -172,44 +174,52 @@ impl Machine {
         // instructions to consume is just 1, so for those return None. For
         // jumps though, it can vary so they'll return Some(n).
         let instrs_to_consume: Option<i32> = match instr {
-            MachineInstr::Read => match self.state.input.pop() {
-                Some(val) => {
-                    self.state.workspace = val;
-                    None
+            MachineInstr::NullaryOp(op) => {
+                match op {
+                    NullaryOp::Read => match self.state.input.pop() {
+                        Some(val) => {
+                            self.state.workspace = val;
+                        }
+                        None => return Err(RuntimeError::EmptyInput),
+                    },
+                    NullaryOp::Write => {
+                        self.state.output.push(self.state.workspace);
+                    }
                 }
-                None => return Err(RuntimeError::EmptyInput),
-            },
-            MachineInstr::Write => {
-                self.state.output.push(self.state.workspace);
                 None
             }
-
-            MachineInstr::Set(val) => {
-                self.state.workspace = *val;
+            MachineInstr::ValueOp(op, val) => {
+                match op {
+                    ValueOp::Set => {
+                        self.state.workspace = *val;
+                    }
+                    ValueOp::Add => {
+                        self.state.workspace =
+                            (Wrapping(self.state.workspace) + Wrapping(*val)).0;
+                    }
+                    ValueOp::Sub => {
+                        self.state.workspace =
+                            (Wrapping(self.state.workspace) - Wrapping(*val)).0;
+                    }
+                    ValueOp::Mul => {
+                        self.state.workspace =
+                            (Wrapping(self.state.workspace) * Wrapping(*val)).0;
+                    }
+                }
                 None
             }
-            MachineInstr::Add(val) => {
-                self.state.workspace =
-                    (Wrapping(self.state.workspace) + Wrapping(*val)).0;
-                None
-            }
-            MachineInstr::Sub(val) => {
-                self.state.workspace =
-                    (Wrapping(self.state.workspace) - Wrapping(*val)).0;
-                None
-            }
-            MachineInstr::Mul(val) => {
-                self.state.workspace =
-                    (Wrapping(self.state.workspace) * Wrapping(*val)).0;
-                None
-            }
-
-            MachineInstr::Push(stack_id) => {
-                self.state.stacks.push(*stack_id, self.state.workspace)?;
-                None
-            }
-            MachineInstr::Pop(stack_id) => {
-                self.state.workspace = self.state.stacks.pop(*stack_id)?;
+            MachineInstr::StackOp(op, stack_id) => {
+                match op {
+                    StackOp::Push => {
+                        self.state
+                            .stacks
+                            .push(*stack_id, self.state.workspace)?;
+                    }
+                    StackOp::Pop => {
+                        self.state.workspace =
+                            self.state.stacks.pop(*stack_id)?;
+                    }
+                }
                 None
             }
 
@@ -281,7 +291,10 @@ mod tests {
             input: vec![1],
             expected_output: vec![1],
         };
-        let program = vec![MachineInstr::Read, MachineInstr::Write];
+        let program = vec![
+            MachineInstr::NullaryOp(NullaryOp::Read),
+            MachineInstr::NullaryOp(NullaryOp::Write),
+        ];
         let mut machine = Machine::new(&env, program);
 
         // Initial state

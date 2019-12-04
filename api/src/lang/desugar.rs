@@ -8,16 +8,11 @@ use std::convert::TryInto;
 /// instruction, so that unique labels can be generated where necessary.
 fn desugar_instr(instr: Instr) -> Vec<MachineInstr> {
     match instr {
-        Instr::Read => vec![MachineInstr::Read],
-        Instr::Write => vec![MachineInstr::Write],
-
-        Instr::Set(value) => vec![MachineInstr::Set(value)],
-        Instr::Add(value) => vec![MachineInstr::Add(value)],
-        Instr::Sub(value) => vec![MachineInstr::Sub(value)],
-        Instr::Mul(value) => vec![MachineInstr::Mul(value)],
-
-        Instr::Push(stack_id) => vec![MachineInstr::Push(stack_id)],
-        Instr::Pop(stack_id) => vec![MachineInstr::Pop(stack_id)],
+        Instr::NullaryOp(op) => vec![MachineInstr::NullaryOp(op)],
+        Instr::ValueOp(op, value) => vec![MachineInstr::ValueOp(op, value)],
+        Instr::StackOp(op, stack_id) => {
+            vec![MachineInstr::StackOp(op, stack_id)]
+        }
 
         Instr::If(body) => {
             // This conversion looks like:
@@ -93,23 +88,24 @@ impl Compiler<Program> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::lang::ast::ValueOp;
 
     #[test]
     fn test_if() {
         let compiler = Compiler(Program {
             body: vec![
-                Instr::Set(0),
-                Instr::If(vec![Instr::Set(1)]),
-                Instr::Set(2),
+                Instr::ValueOp(ValueOp::Set, 0),
+                Instr::If(vec![Instr::ValueOp(ValueOp::Set, 1)]),
+                Instr::ValueOp(ValueOp::Set, 2),
             ],
         });
         assert_eq!(
             compiler.desugar().0,
             vec![
-                MachineInstr::Set(0),
+                MachineInstr::ValueOp(ValueOp::Set, 0),
                 MachineInstr::Jez(2),
-                MachineInstr::Set(1),
-                MachineInstr::Set(2),
+                MachineInstr::ValueOp(ValueOp::Set, 1),
+                MachineInstr::ValueOp(ValueOp::Set, 2),
             ]
         )
     }
@@ -118,19 +114,19 @@ mod tests {
     fn test_while() {
         let compiler = Compiler(Program {
             body: vec![
-                Instr::Set(0),
-                Instr::While(vec![Instr::Set(1)]),
-                Instr::Set(2),
+                Instr::ValueOp(ValueOp::Set, 0),
+                Instr::While(vec![Instr::ValueOp(ValueOp::Set, 1)]),
+                Instr::ValueOp(ValueOp::Set, 2),
             ],
         });
         assert_eq!(
             compiler.desugar().0,
             vec![
-                MachineInstr::Set(0),
+                MachineInstr::ValueOp(ValueOp::Set, 0),
                 MachineInstr::Jez(3),
-                MachineInstr::Set(1),
+                MachineInstr::ValueOp(ValueOp::Set, 1),
                 MachineInstr::Jnz(-1),
-                MachineInstr::Set(2),
+                MachineInstr::ValueOp(ValueOp::Set, 2),
             ]
         )
     }
