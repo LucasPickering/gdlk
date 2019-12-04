@@ -1,101 +1,154 @@
 use crate::{
     error::CompileError,
     lang::{
-        ast::{Instr, LangValue, Program, StackIdentifier},
+        ast::{Instr, LangValue, Operator, Program, Register, StackIdentifier},
         Compiler,
     },
 };
 use nom::{
     branch::alt,
     bytes::complete::tag_no_case,
-    character::complete::{char, digit1, multispace0},
-    combinator::map_res,
-    multi::{many0, many1},
-    sequence::{delimited, preceded, terminated},
-    IResult,
+    character::complete::{char, digit1, multispace0, one_of},
+    combinator::{all_consuming, map_res},
+    multi::many0,
+    sequence::{delimited, preceded, tuple},
+    Compare, IResult, InputLength, InputTake,
 };
 
+fn arg_delim(input: &str) -> IResult<&str, char> {
+    one_of(" \t")(input)
+}
+
+/// Parses one instruction keyword, not including its arguments. This type
+/// signature was stolen from tag_no_case. This is just a wrapper around
+/// tag_no_case, in case we want to make parsing case senstitive or something
+/// in the future.
+fn instr<T, Input>(instr: T) -> impl Fn(Input) -> IResult<Input, Input>
+where
+    Input: InputTake + Compare<T>,
+    T: InputLength + Clone,
+{
+    tag_no_case(instr)
+}
+
+/// Parses a register identifer, something like "R0". Does not parse any
+/// whitespace around it.
+fn reg_ident(input: &str) -> IResult<&str, Register> {
+    let (input, val) = preceded(
+        tag_no_case("R"),
+        map_res(digit1, |s: &str| s.parse::<Register>()),
+    )(input)?;
+    Ok((input, val))
+}
+
+/// Parses a stack identifier, like "S1". Does not parse any whitespace around
+/// it.
+fn stack_ident(input: &str) -> IResult<&str, StackIdentifier> {
+    let (input, val) = preceded(
+        multispace0,
+        preceded(
+            tag_no_case("S"),
+            map_res(digit1, |s: &str| s.parse::<StackIdentifier>()),
+        ),
+    )(input)?;
+    Ok((input, val))
+}
+
+/// Parses a `LangValue`, like "10" or "-3", not including any surrounding
+/// whitespace. (Negatives don't actually work yet).
+fn lang_value(input: &str) -> IResult<&str, LangValue> {
+    map_res(digit1, |s: &str| s.parse::<LangValue>())(input)
+}
+
 fn parse_read(input: &str) -> IResult<&str, Instr> {
-    // tag_no_case returns a (str, str) tuple
-    // first element is whats left to parse
-    // second is what matched
-    let (input, _) = tag_no_case("Read")(input)?;
-    Ok((input, Instr::Read))
+    // input is remaining stuff to parse
+    // tuple is output values, we throw away the first two because that's
+    // "Read" and the whitespace delim
+    // >>> Read R0
+    let (input, (_, _, reg)) =
+        tuple((instr("Read"), arg_delim, reg_ident))(input)?;
+    Ok((input, Instr::Operator(Operator::Read(reg))))
 }
 
 fn parse_write(input: &str) -> IResult<&str, Instr> {
-    let (input, _) = tag_no_case("Write")(input)?;
-    Ok((input, Instr::Write))
+    // >>> Write R0
+    let (input, (_, _, reg)) =
+        tuple((instr("Write"), arg_delim, reg_ident))(input)?;
+    Ok((input, Instr::Operator(Operator::Write(reg))))
 }
 
 fn parse_set(input: &str) -> IResult<&str, Instr> {
-    let (input, _) = tag_no_case("Set")(input)?;
-    let (input, val) = preceded(
-        multispace0,
-        map_res(digit1, |s: &str| s.parse::<LangValue>()),
-    )(input)?;
-    Ok((input, Instr::Set(val)))
+    // >>> Set R0 10
+    let (input, (_, _, reg, _, val)) =
+        tuple((instr("Set"), arg_delim, reg_ident, arg_delim, lang_value))(
+            input,
+        )?;
+    Ok((input, Instr::Operator(Operator::Set(reg, val))))
 }
 
 fn parse_add(input: &str) -> IResult<&str, Instr> {
-    let (input, _) = tag_no_case("Add")(input)?;
-    let (input, val) = preceded(
-        multispace0,
-        map_res(digit1, |s: &str| s.parse::<LangValue>()),
-    )(input)?;
-    Ok((input, Instr::Add(val)))
+    // >>> Add R0 R1
+    let (input, (_, _, reg0, _, reg1)) =
+        tuple((instr("Add"), arg_delim, reg_ident, arg_delim, reg_ident))(
+            input,
+        )?;
+    Ok((input, Instr::Operator(Operator::Add(reg0, reg1))))
 }
 
 fn parse_sub(input: &str) -> IResult<&str, Instr> {
-    let (input, _) = tag_no_case("Sub")(input)?;
-    let (input, val) = preceded(
-        multispace0,
-        map_res(digit1, |s: &str| s.parse::<LangValue>()),
-    )(input)?;
-    Ok((input, Instr::Sub(val)))
+    // >>> Sub R0 R1
+    let (input, (_, _, reg0, _, reg1)) =
+        tuple((instr("Sub"), arg_delim, reg_ident, arg_delim, reg_ident))(
+            input,
+        )?;
+    Ok((input, Instr::Operator(Operator::Sub(reg0, reg1))))
 }
 
 fn parse_mul(input: &str) -> IResult<&str, Instr> {
-    let (input, _) = tag_no_case("Mul")(input)?;
-    let (input, val) = preceded(
-        multispace0,
-        map_res(digit1, |s: &str| s.parse::<LangValue>()),
-    )(input)?;
-    Ok((input, Instr::Mul(val)))
+    // >>> Mul R0 R1
+    let (input, (_, _, reg0, _, reg1)) =
+        tuple((instr("Mul"), arg_delim, reg_ident, arg_delim, reg_ident))(
+            input,
+        )?;
+    Ok((input, Instr::Operator(Operator::Mul(reg0, reg1))))
 }
 
 fn parse_push(input: &str) -> IResult<&str, Instr> {
-    let (input, _) = tag_no_case("Push")(input)?;
-    let (input, val) = preceded(
-        multispace0,
-        map_res(digit1, |s: &str| s.parse::<StackIdentifier>()),
-    )(input)?;
-    Ok((input, Instr::Push(val)))
+    // >>> Push R0 S1
+    let (input, (_, _, reg, _, stack)) =
+        tuple((instr("Push"), arg_delim, reg_ident, arg_delim, stack_ident))(
+            input,
+        )?;
+    Ok((input, Instr::Operator(Operator::Push(reg, stack))))
 }
 
 fn parse_pop(input: &str) -> IResult<&str, Instr> {
-    let (input, _) = tag_no_case("Pop")(input)?;
-    let (input, val) = preceded(
-        multispace0,
-        map_res(digit1, |s: &str| s.parse::<StackIdentifier>()),
-    )(input)?;
-    Ok((input, Instr::Pop(val)))
+    // >>> Pop S1 R0
+    let (input, (_, _, stack, _, reg)) =
+        tuple((instr("Pop"), arg_delim, stack_ident, arg_delim, reg_ident))(
+            input,
+        )?;
+    Ok((input, Instr::Operator(Operator::Pop(stack, reg))))
 }
 
 fn parse_if(input: &str) -> IResult<&str, Instr> {
-    let (input, _) = tag_no_case("If")(input)?;
-    let (input, res) = parse_body(input)?;
-    Ok((input, Instr::If(res)))
+    // >>> If R0 { ... }
+    let (input, (_, _, reg)) =
+        tuple((instr("If"), arg_delim, reg_ident))(input)?;
+    let (input, body) = parse_body(input)?;
+    Ok((input, Instr::If(reg, body)))
 }
 
 fn parse_while(input: &str) -> IResult<&str, Instr> {
-    let (input, _) = tag_no_case("While")(input)?;
-    let (input, res) = parse_body(input)?;
-    Ok((input, Instr::While(res)))
+    // >>> While R0 { ... }
+    let (input, (_, _, reg)) =
+        tuple((instr("While"), arg_delim, reg_ident))(input)?;
+    let (input, body) = parse_body(input)?;
+    Ok((input, Instr::While(reg, body)))
 }
 
 fn try_each(input: &str) -> IResult<&str, Instr> {
-    let (input, res) = preceded(
+    let (input, (_, res, _)) = tuple((
         multispace0,
         alt((
             parse_read,
@@ -109,7 +162,8 @@ fn try_each(input: &str) -> IResult<&str, Instr> {
             parse_if,
             parse_while,
         )),
-    )(input)?;
+        multispace0,
+    ))(input)?;
     Ok((input, res))
 }
 
@@ -129,7 +183,7 @@ fn parse_body(input: &str) -> IResult<&str, Vec<Instr>> {
 fn parse_gdlk(input: &str) -> IResult<&str, Vec<Instr>> {
     // parses the whole program followed by 0 or more whitespace chars
     // using many1 so the program needs at least one instr
-    let (input, res) = terminated(many1(try_each), multispace0)(input)?;
+    let (input, res) = all_consuming(many0(try_each))(input)?;
     Ok((input, res))
 }
 
@@ -166,38 +220,87 @@ mod tests {
         assert_eq!(
             parse_gdlk(
                 "
-            ReAd
-            WrItE
+            ReAd R0
+            WrItE R0
         "
             ),
-            Ok(("", vec![Instr::Read, Instr::Write]))
+            Ok((
+                "",
+                vec![
+                    Instr::Operator(Operator::Read(0)),
+                    Instr::Operator(Operator::Write(0))
+                ]
+            ))
         )
     }
+
     #[test]
     fn test_set() {
-        assert_eq!(parse_gdlk("Set 4"), Ok(("", vec![Instr::Set(4),])))
+        assert_eq!(
+            parse_gdlk("Set R1 4"),
+            Ok(("", vec![Instr::Operator(Operator::Set(1, 4))]))
+        )
+    }
+
+    #[test]
+    fn test_add() {
+        assert_eq!(
+            parse_gdlk("Add R1 R4"),
+            Ok(("", vec![Instr::Operator(Operator::Add(1, 4))]))
+        )
+    }
+
+    #[test]
+    fn test_sub() {
+        assert_eq!(
+            parse_gdlk("Sub R1 R4"),
+            Ok(("", vec![Instr::Operator(Operator::Sub(1, 4))]))
+        )
+    }
+
+    #[test]
+    fn test_mul() {
+        assert_eq!(
+            parse_gdlk("Mul r1 r0"),
+            Ok(("", vec![Instr::Operator(Operator::Mul(1, 0))]))
+        )
     }
 
     #[test]
     fn test_push() {
-        assert_eq!(parse_gdlk("Push 4"), Ok(("", vec![Instr::Push(4),])))
+        assert_eq!(
+            parse_gdlk("Push R2 S4"),
+            Ok(("", vec![Instr::Operator(Operator::Push(2, 4))]))
+        )
     }
 
     #[test]
     fn test_pop() {
-        assert_eq!(parse_gdlk("Pop 4"), Ok(("", vec![Instr::Pop(4),])))
+        assert_eq!(
+            parse_gdlk("Pop S4 R2"),
+            Ok(("", vec![Instr::Operator(Operator::Pop(4, 2))]))
+        )
     }
 
     #[test]
     fn test_parse_if() {
         assert_eq!(
             parse_gdlk(
-                "IF {
-            Read
-            write
+                "IF R10 {
+            Read R10
+            write R10
         }"
             ),
-            Ok(("", vec![Instr::If(vec![Instr::Read, Instr::Write,])]))
+            Ok((
+                "",
+                vec![Instr::If(
+                    10,
+                    vec![
+                        Instr::Operator(Operator::Read(10)),
+                        Instr::Operator(Operator::Write(10)),
+                    ]
+                )]
+            ))
         )
     }
 
@@ -205,20 +308,29 @@ mod tests {
     fn test_parse_while() {
         assert_eq!(
             parse_gdlk(
-                "WHiLE {
-            READ
-            Write
+                "WHiLE R0 {
+            READ R0
+            Write R0
         }"
             ),
-            Ok(("", vec![Instr::While(vec![Instr::Read, Instr::Write,])]))
+            Ok((
+                "",
+                vec![Instr::While(
+                    0,
+                    vec![
+                        Instr::Operator(Operator::Read(0)),
+                        Instr::Operator(Operator::Write(0)),
+                    ]
+                )]
+            ))
         )
     }
 
     #[test]
     fn test_parse_empty_if_and_while() {
         assert_eq!(
-            parse_gdlk("while {}if{}"),
-            Ok(("", vec![Instr::While(vec![]), Instr::If(vec![])]))
+            parse_gdlk("while R0 {}if R1{}"),
+            Ok(("", vec![Instr::While(0, vec![]), Instr::If(1, vec![])]))
         )
     }
 
@@ -227,29 +339,29 @@ mod tests {
         assert_eq!(
             parse_gdlk(
                 "
-            Read
-            Set 2
-            Write
-            Read
-            Set 3
-            Write
-            Read
-            Set 4
-            Write
+            Read R0
+            Set R0 2
+            Write R0
+            Read R1
+            Set R1 3
+            Write R1
+            Read R2
+            Set R2 4
+            Write R2
         "
             ),
             Ok((
                 "",
                 vec![
-                    Instr::Read,
-                    Instr::Set(2),
-                    Instr::Write,
-                    Instr::Read,
-                    Instr::Set(3),
-                    Instr::Write,
-                    Instr::Read,
-                    Instr::Set(4),
-                    Instr::Write
+                    Instr::Operator(Operator::Read(0)),
+                    Instr::Operator(Operator::Set(0, 2)),
+                    Instr::Operator(Operator::Write(0)),
+                    Instr::Operator(Operator::Read(1)),
+                    Instr::Operator(Operator::Set(1, 3)),
+                    Instr::Operator(Operator::Write(1)),
+                    Instr::Operator(Operator::Read(2)),
+                    Instr::Operator(Operator::Set(2, 4)),
+                    Instr::Operator(Operator::Write(2))
                 ]
             ))
         )

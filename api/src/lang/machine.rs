@@ -1,7 +1,7 @@
 use crate::{
     debug,
     error::RuntimeError,
-    lang::ast::{LangValue, MachineInstr, StackIdentifier},
+    lang::ast::{LangValue, MachineInstr, Operator, Register, StackIdentifier},
     models::Environment,
 };
 use serde::Serialize;
@@ -105,8 +105,8 @@ pub struct MachineState {
     /// The current output buffer. This can be pushed into, but never popped
     /// out of.
     pub output: Vec<LangValue>,
-    /// The mutable variable that the programmer has direct control over.
-    pub workspace: LangValue,
+    /// TODO
+    pub registers: Vec<LangValue>,
     /// The series of stacks that act as the programs RAM. The number of stacks
     /// and their capacity is determined by the initialization environment.
     pub stacks: Stacks,
@@ -117,10 +117,32 @@ impl MachineState {
         let mut input = env.input.clone();
         input.reverse(); // Reverse the vec so we can pop off the values in order
         Self {
-            stacks: Stacks::new(&env),
             input,
             output: Vec::new(),
-            workspace: 0,
+            registers: iter::repeat(0)
+                .take(usize::try_from(env.num_registers).unwrap())
+                .collect(),
+            stacks: Stacks::new(&env),
+        }
+    }
+
+    fn get_reg(&self, reg_id: Register) -> Result<LangValue, RuntimeError> {
+        self.registers
+            .get(reg_id)
+            .copied()
+            .ok_or_else(|| RuntimeError::InvalidRegister(reg_id))
+    }
+
+    fn set_reg(
+        &mut self,
+        reg_id: Register,
+        value: LangValue,
+    ) -> Result<(), RuntimeError> {
+        if reg_id < self.registers.len() {
+            self.registers[reg_id] = value;
+            Ok(())
+        } else {
+            Err(RuntimeError::InvalidRegister(reg_id))
         }
     }
 }
@@ -172,56 +194,66 @@ impl Machine {
         // instructions to consume is just 1, so for those return None. For
         // jumps though, it can vary so they'll return Some(n).
         let instrs_to_consume: Option<i32> = match instr {
-            MachineInstr::Read => match self.state.input.pop() {
-                Some(val) => {
-                    self.state.workspace = val;
-                    None
+            MachineInstr::Operator(op) => {
+                match op {
+                    Operator::Read(reg_id) => match self.state.input.pop() {
+                        Some(val) => {
+                            self.state.set_reg(*reg_id, val)?;
+                        }
+                        None => return Err(RuntimeError::EmptyInput),
+                    },
+                    Operator::Write(reg_id) => {
+                        self.state.output.push(self.state.get_reg(*reg_id)?);
+                    }
+                    Operator::Add(src, dst) => {
+                        self.state.set_reg(
+                            *dst,
+                            (Wrapping(self.state.get_reg(*dst)?)
+                                + Wrapping(self.state.get_reg(*src)?))
+                            .0,
+                        )?;
+                    }
+                    Operator::Sub(src, dst) => {
+                        self.state.set_reg(
+                            *dst,
+                            (Wrapping(self.state.get_reg(*dst)?)
+                                - Wrapping(self.state.get_reg(*src)?))
+                            .0,
+                        )?;
+                    }
+                    Operator::Mul(src, dst) => {
+                        self.state.set_reg(
+                            *dst,
+                            (Wrapping(self.state.get_reg(*dst)?)
+                                * Wrapping(self.state.get_reg(*src)?))
+                            .0,
+                        )?;
+                    }
+                    Operator::Set(reg_id, val) => {
+                        self.state.set_reg(*reg_id, *val)?;
+                    }
+                    Operator::Push(reg_id, stack_id) => {
+                        self.state
+                            .stacks
+                            .push(*stack_id, self.state.get_reg(*reg_id)?)?;
+                    }
+                    Operator::Pop(reg_id, stack_id) => {
+                        let popped = self.state.stacks.pop(*stack_id)?;
+                        self.state.set_reg(*reg_id, popped)?;
+                    }
                 }
-                None => return Err(RuntimeError::EmptyInput),
-            },
-            MachineInstr::Write => {
-                self.state.output.push(self.state.workspace);
                 None
             }
 
-            MachineInstr::Set(val) => {
-                self.state.workspace = *val;
-                None
-            }
-            MachineInstr::Add(val) => {
-                self.state.workspace =
-                    (Wrapping(self.state.workspace) + Wrapping(*val)).0;
-                None
-            }
-            MachineInstr::Sub(val) => {
-                self.state.workspace =
-                    (Wrapping(self.state.workspace) - Wrapping(*val)).0;
-                None
-            }
-            MachineInstr::Mul(val) => {
-                self.state.workspace =
-                    (Wrapping(self.state.workspace) * Wrapping(*val)).0;
-                None
-            }
-
-            MachineInstr::Push(stack_id) => {
-                self.state.stacks.push(*stack_id, self.state.workspace)?;
-                None
-            }
-            MachineInstr::Pop(stack_id) => {
-                self.state.workspace = self.state.stacks.pop(*stack_id)?;
-                None
-            }
-
-            MachineInstr::Jez(num_instrs) => {
-                if self.state.workspace == 0 {
+            MachineInstr::Jez(num_instrs, reg_id) => {
+                if self.state.get_reg(*reg_id)? == 0 {
                     Some(*num_instrs)
                 } else {
                     None
                 }
             }
-            MachineInstr::Jnz(num_instrs) => {
-                if self.state.workspace != 0 {
+            MachineInstr::Jnz(num_instrs, reg_id) => {
+                if self.state.get_reg(*reg_id)? != 0 {
                     Some(*num_instrs)
                 } else {
                     None
@@ -276,12 +308,16 @@ mod tests {
         // Just a simple sanity check test
         let env = Environment {
             id: 0,
+            num_registers: 1,
             num_stacks: 0,
             max_stack_size: None,
             input: vec![1],
             expected_output: vec![1],
         };
-        let program = vec![MachineInstr::Read, MachineInstr::Write];
+        let program = vec![
+            MachineInstr::Operator(Operator::Read(0)),
+            MachineInstr::Operator(Operator::Write(0)),
+        ];
         let mut machine = Machine::new(&env, program);
 
         // Initial state
@@ -290,7 +326,7 @@ mod tests {
             MachineState {
                 input: vec![1],
                 output: vec![],
-                workspace: 0,
+                registers: vec![0],
                 stacks: Stacks::new(&env)
             }
         );
@@ -303,7 +339,7 @@ mod tests {
             MachineState {
                 input: vec![],
                 output: vec![],
-                workspace: 1,
+                registers: vec![1],
                 stacks: Stacks::new(&env)
             }
         );
@@ -316,7 +352,7 @@ mod tests {
             MachineState {
                 input: vec![],
                 output: vec![1],
-                workspace: 1,
+                registers: vec![1],
                 stacks: Stacks::new(&env)
             }
         );
