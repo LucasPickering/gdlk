@@ -27,7 +27,7 @@ ALL text messages send over the websocket must have those two top-level keys, an
       "input": [],
       "output": [],
       "stacks": [],
-      "workspace": 0
+      "registers": [0]
     },
     "is_complete": false,
     "is_successful": false

@@ -8,18 +8,9 @@ use std::convert::TryInto;
 /// instruction, so that unique labels can be generated where necessary.
 fn desugar_instr(instr: Instr) -> Vec<MachineInstr> {
     match instr {
-        Instr::Read => vec![MachineInstr::Read],
-        Instr::Write => vec![MachineInstr::Write],
+        Instr::Operator(op) => vec![MachineInstr::Operator(op)],
 
-        Instr::Set(value) => vec![MachineInstr::Set(value)],
-        Instr::Add(value) => vec![MachineInstr::Add(value)],
-        Instr::Sub(value) => vec![MachineInstr::Sub(value)],
-        Instr::Mul(value) => vec![MachineInstr::Mul(value)],
-
-        Instr::Push(stack_id) => vec![MachineInstr::Push(stack_id)],
-        Instr::Pop(stack_id) => vec![MachineInstr::Pop(stack_id)],
-
-        Instr::If(body) => {
+        Instr::If(reg_id, body) => {
             // This conversion looks like:
             //
             // IF {
@@ -37,12 +28,12 @@ fn desugar_instr(instr: Instr) -> Vec<MachineInstr> {
             let mut desugared_body = desugar_instrs(body);
             // TODO make this unwrap safe
             let body_len: i32 = desugared_body.len().try_into().unwrap();
-            // If workspace == 0, jump over all the instructions inside the IF
-            let jump = MachineInstr::Jez(body_len + 1);
+            // If register == 0, jump over all the instructions inside the IF
+            let jump = MachineInstr::Jez(body_len + 1, reg_id);
             desugared_body.insert(0, jump); // Add the jump before the IF
             desugared_body
         }
-        Instr::While(body) => {
+        Instr::While(reg_id, body) => {
             // This conversion looks like:
             //
             // WHILE {
@@ -62,10 +53,10 @@ fn desugar_instr(instr: Instr) -> Vec<MachineInstr> {
             // TODO make this unwrap safe
             let body_len: i32 = desugared_body.len().try_into().unwrap();
 
-            // Used to skip the initial loop iteration when workspace == 0
-            let prejump = MachineInstr::Jez(body_len + 2);
-            // Used to go back to the top of the loop when workspace != 0
-            let postjump = MachineInstr::Jnz(-body_len);
+            // Used to skip the initial loop iteration when register == 0
+            let prejump = MachineInstr::Jez(body_len + 2, reg_id);
+            // Used to go back to the top of the loop when register != 0
+            let postjump = MachineInstr::Jnz(-body_len, reg_id);
 
             desugared_body.insert(0, prejump);
             desugared_body.push(postjump);
@@ -93,23 +84,24 @@ impl Compiler<Program> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::lang::ast::Operator;
 
     #[test]
     fn test_if() {
         let compiler = Compiler(Program {
             body: vec![
-                Instr::Set(0),
-                Instr::If(vec![Instr::Set(1)]),
-                Instr::Set(2),
+                Instr::Operator(Operator::Set(0, 0)),
+                Instr::If(0, vec![Instr::Operator(Operator::Set(0, 1))]),
+                Instr::Operator(Operator::Set(0, 2)),
             ],
         });
         assert_eq!(
             compiler.desugar().0,
             vec![
-                MachineInstr::Set(0),
-                MachineInstr::Jez(2),
-                MachineInstr::Set(1),
-                MachineInstr::Set(2),
+                MachineInstr::Operator(Operator::Set(0, 0)),
+                MachineInstr::Jez(2, 0),
+                MachineInstr::Operator(Operator::Set(0, 1)),
+                MachineInstr::Operator(Operator::Set(0, 2)),
             ]
         )
     }
@@ -118,19 +110,19 @@ mod tests {
     fn test_while() {
         let compiler = Compiler(Program {
             body: vec![
-                Instr::Set(0),
-                Instr::While(vec![Instr::Set(1)]),
-                Instr::Set(2),
+                Instr::Operator(Operator::Set(0, 0)),
+                Instr::While(0, vec![Instr::Operator(Operator::Set(0, 1))]),
+                Instr::Operator(Operator::Set(0, 2)),
             ],
         });
         assert_eq!(
             compiler.desugar().0,
             vec![
-                MachineInstr::Set(0),
-                MachineInstr::Jez(3),
-                MachineInstr::Set(1),
-                MachineInstr::Jnz(-1),
-                MachineInstr::Set(2),
+                MachineInstr::Operator(Operator::Set(0, 0)),
+                MachineInstr::Jez(3, 0),
+                MachineInstr::Operator(Operator::Set(0, 1)),
+                MachineInstr::Jnz(-1, 0),
+                MachineInstr::Operator(Operator::Set(0, 2)),
             ]
         )
     }

@@ -10,8 +10,10 @@ pub struct Environment {
     #[serde(default)]
     pub id: i32,
 
-    // These two need to be i32s because postgres has no unsigned type.
+    // These three need to be i32s because postgres has no unsigned type.
     // The insertion code and DB should both enforce that they are >= 0.
+    /// Number of registers available
+    pub num_registers: i32,
     /// Maximum number of stacks permitted
     pub num_stacks: i32,
     /// Maximum size of each stack. If None, the capacity is unlimited.

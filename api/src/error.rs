@@ -1,4 +1,4 @@
-use crate::lang::StackIdentifier;
+use crate::lang::{Register, StackIdentifier};
 use actix_web::{HttpResponse, ResponseError};
 use failure::Fail;
 use serde::Serialize;
@@ -12,6 +12,10 @@ pub enum CompileError {
 
 #[derive(Debug, Fail, Serialize)]
 pub enum RuntimeError {
+    /// Referenced a register with an invalid identifier
+    #[fail(display = "Invalid reference to register {}", 0)]
+    InvalidRegister(Register),
+
     /// Referenced a stack with an invalid identifier
     #[fail(display = "Invalid reference to stack {}", 0)]
     InvalidStackReference(StackIdentifier),

@@ -1,6 +1,7 @@
 table! {
     environments (id) {
         id -> Int4,
+        num_registers -> Int4,
         num_stacks -> Int4,
         max_stack_size -> Nullable<Int4>,
         input -> Array<Int4>,

@@ -1,4 +1,5 @@
 #![deny(clippy::all, unused_must_use)]
+#![feature(map_entry_replace, trait_alias)]
 
 // Diesel hasn't fully moved to Rust 2018 yet so we need this
 #[macro_use]

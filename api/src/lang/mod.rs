@@ -9,7 +9,7 @@ mod machine;
 mod parse;
 
 pub use crate::lang::{
-    ast::{LangValue, StackIdentifier},
+    ast::{LangValue, Register, StackIdentifier},
     machine::{Machine, MachineState},
 };
 
@@ -96,16 +96,17 @@ mod tests {
         execute_expect_success(
             Environment {
                 id: 0,
+                num_registers: 1,
                 num_stacks: 0,
                 max_stack_size: None,
                 input: vec![1, 2],
                 expected_output: vec![1, 2],
             },
             "
-            READ
-            WRITE
-            READ
-            WRITE
+            READ R0
+            WRITE R0
+            READ R0
+            WRITE R0
             ",
         );
     }
@@ -115,17 +116,18 @@ mod tests {
         execute_expect_success(
             Environment {
                 id: 0,
+                num_registers: 1,
                 num_stacks: 1,
                 max_stack_size: None,
                 input: vec![],
                 expected_output: vec![10],
             },
             "
-            SET 10
-            PUSH 0
-            SET 0
-            POP 0
-            WRITE
+            SET R0 10
+            PUSH R0 S0
+            SET R0 0
+            POP S0 R0
+            WRITE R0
             ",
         );
     }
@@ -135,18 +137,19 @@ mod tests {
         execute_expect_success(
             Environment {
                 id: 0,
+                num_registers: 1,
                 num_stacks: 0,
                 max_stack_size: None,
                 input: vec![],
                 expected_output: vec![1],
             },
             "
-            IF {
-                WRITE
+            IF R0 {
+                WRITE R0
             }
-            SET 1
-            IF {
-                WRITE
+            SET R0 1
+            IF R0 {
+                WRITE R0
             }
             ",
         );
@@ -157,20 +160,21 @@ mod tests {
         execute_expect_success(
             Environment {
                 id: 0,
+                num_registers: 1,
                 num_stacks: 1,
                 max_stack_size: None,
                 input: vec![],
                 expected_output: vec![2, 1, 0],
             },
             "
-            PUSH 0
-            SET 1
-            PUSH 0
-            SET 2
-            PUSH 0
-            WHILE {
-                POP 0
-                WRITE
+            PUSH R0 S0
+            SET R0 1
+            PUSH R0 S0
+            SET R0 2
+            PUSH R0 S0
+            WHILE R0 {
+                POP S0 R0
+                WRITE R0
             }
             ",
         );
@@ -181,16 +185,19 @@ mod tests {
         execute_expect_success(
             Environment {
                 id: 0,
+                num_registers: 2,
                 num_stacks: 0,
                 max_stack_size: None,
                 input: vec![],
                 expected_output: vec![-3],
             },
             "
-            ADD 1
-            SUB 2
-            MUL 3
-            WRITE
+            SET R0 1
+            SET R1 3
+            ADD R0 R0
+            SUB R1 R0
+            MUL R1 R0
+            WRITE R0
             ",
         );
     }
