@@ -1,7 +1,10 @@
 use crate::{
     error::CompileError,
     lang::{
-        ast::{Instr, LangValue, Operator, Program, Register, StackIdentifier},
+        ast::{
+            Instr, LangValue, Operator, Program, Register, StackIdentifier,
+            ValueSource,
+        },
         Compiler,
     },
 };
@@ -60,6 +63,20 @@ fn lang_value(input: &str) -> IResult<&str, LangValue> {
     map_res(digit1, |s: &str| s.parse::<LangValue>())(input)
 }
 
+/// Parses either a `LangValue` or `Register`.
+fn parse_value_source(input: &str) -> IResult<&str, ValueSource> {
+    alt((
+        // "1" => ValueSource::Const(1)
+        map_res(lang_value, |val: LangValue| -> Result<ValueSource, ()> {
+            Ok(ValueSource::Const(val))
+        }),
+        // R1 => ValueSource::Register(1)
+        map_res(reg_ident, |reg: Register| -> Result<ValueSource, ()> {
+            Ok(ValueSource::Register(reg))
+        }),
+    ))(input)
+}
+
 fn parse_read(input: &str) -> IResult<&str, Instr> {
     // input is remaining stuff to parse
     // tuple is output values, we throw away the first two because that's
@@ -79,47 +96,62 @@ fn parse_write(input: &str) -> IResult<&str, Instr> {
 
 fn parse_set(input: &str) -> IResult<&str, Instr> {
     // >>> Set R0 10
-    let (input, (_, _, reg, _, val)) =
-        tuple((instr("Set"), arg_delim, reg_ident, arg_delim, lang_value))(
-            input,
-        )?;
-    Ok((input, Instr::Operator(Operator::Set(reg, val))))
+    let (input, (_, _, reg, _, src)) = tuple((
+        instr("Set"),
+        arg_delim,
+        reg_ident,
+        arg_delim,
+        parse_value_source,
+    ))(input)?;
+    Ok((input, Instr::Operator(Operator::Set(reg, src))))
 }
 
 fn parse_add(input: &str) -> IResult<&str, Instr> {
     // >>> Add R0 R1
-    let (input, (_, _, reg0, _, reg1)) =
-        tuple((instr("Add"), arg_delim, reg_ident, arg_delim, reg_ident))(
-            input,
-        )?;
-    Ok((input, Instr::Operator(Operator::Add(reg0, reg1))))
+    let (input, (_, _, dst, _, src)) = tuple((
+        instr("Add"),
+        arg_delim,
+        reg_ident,
+        arg_delim,
+        parse_value_source,
+    ))(input)?;
+    Ok((input, Instr::Operator(Operator::Add(dst, src))))
 }
 
 fn parse_sub(input: &str) -> IResult<&str, Instr> {
     // >>> Sub R0 R1
-    let (input, (_, _, reg0, _, reg1)) =
-        tuple((instr("Sub"), arg_delim, reg_ident, arg_delim, reg_ident))(
-            input,
-        )?;
-    Ok((input, Instr::Operator(Operator::Sub(reg0, reg1))))
+    let (input, (_, _, dst, _, src)) = tuple((
+        instr("Sub"),
+        arg_delim,
+        reg_ident,
+        arg_delim,
+        parse_value_source,
+    ))(input)?;
+    Ok((input, Instr::Operator(Operator::Sub(dst, src))))
 }
 
 fn parse_mul(input: &str) -> IResult<&str, Instr> {
     // >>> Mul R0 R1
-    let (input, (_, _, reg0, _, reg1)) =
-        tuple((instr("Mul"), arg_delim, reg_ident, arg_delim, reg_ident))(
-            input,
-        )?;
-    Ok((input, Instr::Operator(Operator::Mul(reg0, reg1))))
+    let (input, (_, _, dst, _, src)) = tuple((
+        instr("Mul"),
+        arg_delim,
+        reg_ident,
+        arg_delim,
+        parse_value_source,
+    ))(input)?;
+    Ok((input, Instr::Operator(Operator::Mul(dst, src))))
 }
 
 fn parse_push(input: &str) -> IResult<&str, Instr> {
     // >>> Push R0 S1
-    let (input, (_, _, reg, _, stack)) =
-        tuple((instr("Push"), arg_delim, reg_ident, arg_delim, stack_ident))(
-            input,
-        )?;
-    Ok((input, Instr::Operator(Operator::Push(reg, stack))))
+    let (input, (_, _, src, _, stack)) = tuple((
+        instr("Push"),
+        arg_delim,
+        parse_value_source,
+        arg_delim,
+        stack_ident,
+    ))(input)?;
+    Ok((input, Instr::Operator(Operator::Push(src, stack))))
 }
 
 fn parse_pop(input: &str) -> IResult<&str, Instr> {
@@ -238,7 +270,10 @@ mod tests {
     fn test_set() {
         assert_eq!(
             parse_gdlk("Set R1 4"),
-            Ok(("", vec![Instr::Operator(Operator::Set(1, 4))]))
+            Ok((
+                "",
+                vec![Instr::Operator(Operator::Set(1, ValueSource::Const(4)))]
+            ))
         )
     }
 
@@ -246,7 +281,13 @@ mod tests {
     fn test_add() {
         assert_eq!(
             parse_gdlk("Add R1 R4"),
-            Ok(("", vec![Instr::Operator(Operator::Add(1, 4))]))
+            Ok((
+                "",
+                vec![Instr::Operator(Operator::Add(
+                    1,
+                    ValueSource::Register(4)
+                ))]
+            ))
         )
     }
 
@@ -254,7 +295,13 @@ mod tests {
     fn test_sub() {
         assert_eq!(
             parse_gdlk("Sub R1 R4"),
-            Ok(("", vec![Instr::Operator(Operator::Sub(1, 4))]))
+            Ok((
+                "",
+                vec![Instr::Operator(Operator::Sub(
+                    1,
+                    ValueSource::Register(4)
+                ))]
+            ))
         )
     }
 
@@ -262,7 +309,13 @@ mod tests {
     fn test_mul() {
         assert_eq!(
             parse_gdlk("Mul r1 r0"),
-            Ok(("", vec![Instr::Operator(Operator::Mul(1, 0))]))
+            Ok((
+                "",
+                vec![Instr::Operator(Operator::Mul(
+                    1,
+                    ValueSource::Register(0)
+                ))]
+            ))
         )
     }
 
@@ -270,7 +323,13 @@ mod tests {
     fn test_push() {
         assert_eq!(
             parse_gdlk("Push R2 S4"),
-            Ok(("", vec![Instr::Operator(Operator::Push(2, 4))]))
+            Ok((
+                "",
+                vec![Instr::Operator(Operator::Push(
+                    ValueSource::Register(2),
+                    4
+                ))]
+            ))
         )
     }
 
@@ -354,13 +413,13 @@ mod tests {
                 "",
                 vec![
                     Instr::Operator(Operator::Read(0)),
-                    Instr::Operator(Operator::Set(0, 2)),
+                    Instr::Operator(Operator::Set(0, ValueSource::Const(2))),
                     Instr::Operator(Operator::Write(0)),
                     Instr::Operator(Operator::Read(1)),
-                    Instr::Operator(Operator::Set(1, 3)),
+                    Instr::Operator(Operator::Set(1, ValueSource::Const(3))),
                     Instr::Operator(Operator::Write(1)),
                     Instr::Operator(Operator::Read(2)),
-                    Instr::Operator(Operator::Set(2, 4)),
+                    Instr::Operator(Operator::Set(2, ValueSource::Const(4))),
                     Instr::Operator(Operator::Write(2))
                 ]
             ))
