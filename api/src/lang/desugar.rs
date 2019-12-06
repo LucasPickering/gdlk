@@ -84,24 +84,30 @@ impl Compiler<Program> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lang::ast::Operator;
+    use crate::lang::ast::{Operator, ValueSource};
 
     #[test]
     fn test_if() {
         let compiler = Compiler(Program {
             body: vec![
-                Instr::Operator(Operator::Set(0, 0)),
-                Instr::If(0, vec![Instr::Operator(Operator::Set(0, 1))]),
-                Instr::Operator(Operator::Set(0, 2)),
+                Instr::Operator(Operator::Set(0, ValueSource::Const(0))),
+                Instr::If(
+                    0,
+                    vec![Instr::Operator(Operator::Set(
+                        0,
+                        ValueSource::Const(1),
+                    ))],
+                ),
+                Instr::Operator(Operator::Set(0, ValueSource::Const(2))),
             ],
         });
         assert_eq!(
             compiler.desugar().0,
             vec![
-                MachineInstr::Operator(Operator::Set(0, 0)),
+                MachineInstr::Operator(Operator::Set(0, ValueSource::Const(0))),
                 MachineInstr::Jez(2, 0),
-                MachineInstr::Operator(Operator::Set(0, 1)),
-                MachineInstr::Operator(Operator::Set(0, 2)),
+                MachineInstr::Operator(Operator::Set(0, ValueSource::Const(1))),
+                MachineInstr::Operator(Operator::Set(0, ValueSource::Const(2))),
             ]
         )
     }
@@ -110,19 +116,25 @@ mod tests {
     fn test_while() {
         let compiler = Compiler(Program {
             body: vec![
-                Instr::Operator(Operator::Set(0, 0)),
-                Instr::While(0, vec![Instr::Operator(Operator::Set(0, 1))]),
-                Instr::Operator(Operator::Set(0, 2)),
+                Instr::Operator(Operator::Set(0, ValueSource::Const(0))),
+                Instr::While(
+                    0,
+                    vec![Instr::Operator(Operator::Set(
+                        0,
+                        ValueSource::Const(1),
+                    ))],
+                ),
+                Instr::Operator(Operator::Set(0, ValueSource::Const(2))),
             ],
         });
         assert_eq!(
             compiler.desugar().0,
             vec![
-                MachineInstr::Operator(Operator::Set(0, 0)),
+                MachineInstr::Operator(Operator::Set(0, ValueSource::Const(0))),
                 MachineInstr::Jez(3, 0),
-                MachineInstr::Operator(Operator::Set(0, 1)),
+                MachineInstr::Operator(Operator::Set(0, ValueSource::Const(1))),
                 MachineInstr::Jnz(-1, 0),
-                MachineInstr::Operator(Operator::Set(0, 2)),
+                MachineInstr::Operator(Operator::Set(0, ValueSource::Const(2))),
             ]
         )
     }

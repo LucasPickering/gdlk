@@ -7,7 +7,15 @@ pub type Register = usize;
 /// A symbol used to identify a certain stack
 pub type StackIdentifier = usize;
 
-// ===== AST types =====
+/// Something that can produce a [LangValue](LangValue) idempotently. The value
+/// can be read (repeatedly if necessary), but cannot be written to.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum ValueSource {
+    /// A static value, fixed at build time
+    Const(LangValue),
+    /// A register, which can be read from to get a value
+    Register(Register),
+}
 
 /// An operator is a special type of instruction that is guaranteed to be the
 /// same in both ASTs. These are pulled into a separate subtype, so that they
@@ -23,16 +31,17 @@ pub enum Operator {
     Read(Register),
     /// Writes the value in a register to the output buffer
     Write(Register),
-    /// Adds the value in the first register to the second register
-    Add(Register, Register),
-    /// Subtracts the value in the first register from the second register
-    Sub(Register, Register),
-    /// Multiplies the second register by the value in the first register
-    Mul(Register, Register),
     /// Sets a register to a constant value
-    Set(Register, LangValue),
+    Set(Register, ValueSource),
+    /// Adds the two registers. Puts the result in the first register.
+    Add(Register, ValueSource),
+    /// Subtracts the second register from the first. Puts the result in the
+    /// first register.
+    Sub(Register, ValueSource),
+    /// Multiplies the two registers. Puts the result in the first register.
+    Mul(Register, ValueSource),
     /// Pushes the value in a register onto the given stack
-    Push(Register, StackIdentifier),
+    Push(ValueSource, StackIdentifier),
     /// Pops the top value off the given stack into a register
     Pop(StackIdentifier, Register),
 }

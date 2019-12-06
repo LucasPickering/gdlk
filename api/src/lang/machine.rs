@@ -1,7 +1,10 @@
 use crate::{
     debug,
     error::RuntimeError,
-    lang::ast::{LangValue, MachineInstr, Operator, Register, StackIdentifier},
+    lang::ast::{
+        LangValue, MachineInstr, Operator, Register, StackIdentifier,
+        ValueSource,
+    },
     models::Environment,
 };
 use serde::Serialize;
@@ -105,7 +108,7 @@ pub struct MachineState {
     /// The current output buffer. This can be pushed into, but never popped
     /// out of.
     pub output: Vec<LangValue>,
-    /// TODO
+    /// The registers that the user can read and write. Indexed by Register ID.
     pub registers: Vec<LangValue>,
     /// The series of stacks that act as the programs RAM. The number of stacks
     /// and their capacity is determined by the initialization environment.
@@ -126,6 +129,19 @@ impl MachineState {
         }
     }
 
+    /// Gets a source value, which could either be a constant or a register.
+    /// If the value is a constant, just return that. If it's a register,
+    /// return the value from that register. Returns `RuntimeError` if it
+    /// is an invalid register reference.
+    fn get_value(&self, src: &ValueSource) -> Result<LangValue, RuntimeError> {
+        match src {
+            ValueSource::Const(val) => Ok(*val),
+            ValueSource::Register(reg_id) => self.get_reg(*reg_id),
+        }
+    }
+
+    /// Gets the value from the given register. Returns `RuntimeError` if the
+    /// register reference is not valid.
     fn get_reg(&self, reg_id: Register) -> Result<LangValue, RuntimeError> {
         self.registers
             .get(reg_id)
@@ -133,6 +149,8 @@ impl MachineState {
             .ok_or_else(|| RuntimeError::InvalidRegister(reg_id))
     }
 
+    /// Sets the register to the given value. Returns `RuntimeError` if the
+    /// register reference is not valid.
     fn set_reg(
         &mut self,
         reg_id: Register,
@@ -205,41 +223,41 @@ impl Machine {
                     Operator::Write(reg_id) => {
                         self.state.output.push(self.state.get_reg(*reg_id)?);
                     }
-                    Operator::Add(src, dst) => {
+                    Operator::Set(dst, src) => {
+                        self.state.set_reg(*dst, self.state.get_value(src)?)?;
+                    }
+                    Operator::Add(dst, src) => {
                         self.state.set_reg(
                             *dst,
                             (Wrapping(self.state.get_reg(*dst)?)
-                                + Wrapping(self.state.get_reg(*src)?))
+                                + Wrapping(self.state.get_value(src)?))
                             .0,
                         )?;
                     }
-                    Operator::Sub(src, dst) => {
+                    Operator::Sub(dst, src) => {
                         self.state.set_reg(
                             *dst,
                             (Wrapping(self.state.get_reg(*dst)?)
-                                - Wrapping(self.state.get_reg(*src)?))
+                                - Wrapping(self.state.get_value(src)?))
                             .0,
                         )?;
                     }
-                    Operator::Mul(src, dst) => {
+                    Operator::Mul(dst, src) => {
                         self.state.set_reg(
                             *dst,
                             (Wrapping(self.state.get_reg(*dst)?)
-                                * Wrapping(self.state.get_reg(*src)?))
+                                * Wrapping(self.state.get_value(src)?))
                             .0,
                         )?;
                     }
-                    Operator::Set(reg_id, val) => {
-                        self.state.set_reg(*reg_id, *val)?;
-                    }
-                    Operator::Push(reg_id, stack_id) => {
+                    Operator::Push(src, stack_id) => {
                         self.state
                             .stacks
-                            .push(*stack_id, self.state.get_reg(*reg_id)?)?;
+                            .push(*stack_id, self.state.get_value(src)?)?;
                     }
-                    Operator::Pop(reg_id, stack_id) => {
+                    Operator::Pop(dst, stack_id) => {
                         let popped = self.state.stacks.pop(*stack_id)?;
-                        self.state.set_reg(*reg_id, popped)?;
+                        self.state.set_reg(*dst, popped)?;
                     }
                 }
                 None

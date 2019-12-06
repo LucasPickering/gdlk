@@ -116,17 +116,20 @@ mod tests {
         execute_expect_success(
             Environment {
                 id: 0,
-                num_registers: 1,
+                num_registers: 2,
                 num_stacks: 1,
                 max_stack_size: None,
                 input: vec![],
-                expected_output: vec![10],
+                expected_output: vec![10, 5],
             },
             "
             SET R0 10
             PUSH R0 S0
             SET R0 0
             POP S0 R0
+            WRITE R0
+            SET R1 5
+            SET R0 R1
             WRITE R0
             ",
         );
@@ -189,15 +192,46 @@ mod tests {
                 num_stacks: 0,
                 max_stack_size: None,
                 input: vec![],
-                expected_output: vec![-3],
+                expected_output: vec![-3, 140],
             },
             "
-            SET R0 1
-            SET R1 3
-            ADD R0 R0
-            SUB R1 R0
-            MUL R1 R0
+            ADD R0 1
+            SUB R0 2
+            MUL R0 3
             WRITE R0
+
+            SET R0 5
+            SET R1 10
+            ADD R0 R1
+            MUL R0 R1
+            SUB R0 R1
+            WRITE R0
+            ",
+        );
+    }
+
+    #[test]
+    fn test_fibonacci() {
+        execute_expect_success(
+            Environment {
+                id: 0,
+                num_registers: 4,
+                num_stacks: 0,
+                max_stack_size: None,
+                input: vec![10],
+                expected_output: vec![0, 1, 1, 2, 3, 5, 8, 13, 21, 34],
+            },
+            "
+            READ R0
+            SET R1 0
+            SET R2 1
+            WHILE R0 {
+                WRITE R1
+                SET R3 R2
+                ADD R2 R1
+                SET R1 R3
+                SUB R0 1
+            }
             ",
         );
     }
