@@ -1,11 +1,45 @@
+use crate::lang::consts::{
+    REG_INPUT_LEN, REG_STACK_LEN_PREFIX, REG_USER_PREFIX,
+};
+use serde::Serialize;
+use std::fmt::{self, Display, Formatter};
+
 /// The type of every value in our language
 pub type LangValue = i32;
 
-/// A name used to identify a certain register
-pub type Register = usize;
+/// A symbol used to identify a certain user register
+pub type UserRegisterIdentifier = usize;
 
 /// A symbol used to identify a certain stack
 pub type StackIdentifier = usize;
+
+/// A reference to a register. Registers can be readonly (in which case the
+/// value is a reflection of some other part of state), or read-write, which
+/// means the user can read and write freely from/to it.
+#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
+pub enum RegisterRef {
+    /// Read-only register that provides the number of elements remaining
+    /// in the input buffer
+    InputLength,
+    /// Read-only register that provides the current length of (i.e. the number
+    /// of elements stored in) the referenced stack
+    StackLength(StackIdentifier),
+    /// User-writable register to be used for arbitrary computations
+    User(UserRegisterIdentifier),
+}
+
+// Need this impl so we can embed this type in error
+impl Display for RegisterRef {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InputLength => write!(f, "{}", REG_INPUT_LEN),
+            Self::StackLength(stack_id) => {
+                write!(f, "{}{}", REG_STACK_LEN_PREFIX, stack_id)
+            }
+            Self::User(reg_id) => write!(f, "{}{}", REG_USER_PREFIX, reg_id),
+        }
+    }
+}
 
 /// Something that can produce a [LangValue](LangValue) idempotently. The value
 /// can be read (repeatedly if necessary), but cannot be written to.
@@ -14,7 +48,7 @@ pub enum ValueSource {
     /// A static value, fixed at build time
     Const(LangValue),
     /// A register, which can be read from to get a value
-    Register(Register),
+    Register(RegisterRef),
 }
 
 /// An operator is a special type of instruction that is guaranteed to be the
@@ -28,22 +62,22 @@ pub enum ValueSource {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Operator {
     /// Reads one value from the input buffer to a register
-    Read(Register),
+    Read(RegisterRef),
     /// Writes the value in a register to the output buffer
-    Write(Register),
+    Write(RegisterRef),
     /// Sets a register to a constant value
-    Set(Register, ValueSource),
+    Set(RegisterRef, ValueSource),
     /// Adds the two registers. Puts the result in the first register.
-    Add(Register, ValueSource),
+    Add(RegisterRef, ValueSource),
     /// Subtracts the second register from the first. Puts the result in the
     /// first register.
-    Sub(Register, ValueSource),
+    Sub(RegisterRef, ValueSource),
     /// Multiplies the two registers. Puts the result in the first register.
-    Mul(Register, ValueSource),
+    Mul(RegisterRef, ValueSource),
     /// Pushes the value in a register onto the given stack
     Push(ValueSource, StackIdentifier),
     /// Pops the top value off the given stack into a register
-    Pop(StackIdentifier, Register),
+    Pop(StackIdentifier, RegisterRef),
 }
 
 #[derive(Debug, PartialEq)]
@@ -51,9 +85,9 @@ pub enum Instr {
     /// A simple operator (see [Operator](Operator))
     Operator(Operator),
     /// Executes the body if the register is != 0
-    If(Register, Vec<Instr>),
+    If(RegisterRef, Vec<Instr>),
     /// Executes the body while the register is != 0
-    While(Register, Vec<Instr>),
+    While(RegisterRef, Vec<Instr>),
 }
 
 /// A parsed program, i.e. an Abstract Syntax Tree.
@@ -78,7 +112,7 @@ pub enum MachineInstr {
     // - `Jmp(2)` skips the next instruction
     // - etc...
     /// Jumps `n` relative instructions if the register == 0
-    Jez(i32, Register),
+    Jez(i32, RegisterRef),
     /// Jumps `n` relative instructions if the register != 0
-    Jnz(i32, Register),
+    Jnz(i32, RegisterRef),
 }

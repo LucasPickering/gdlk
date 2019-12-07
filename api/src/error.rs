@@ -1,4 +1,4 @@
-use crate::lang::{Register, StackIdentifier};
+use crate::lang::{RegisterRef, StackIdentifier, UserRegisterIdentifier};
 use actix_web::{HttpResponse, ResponseError};
 use failure::Fail;
 use serde::Serialize;
@@ -12,13 +12,17 @@ pub enum CompileError {
 
 #[derive(Debug, Fail, Serialize)]
 pub enum RuntimeError {
-    /// Referenced a register with an invalid identifier
+    /// Referenced a user register with an invalid identifier
     #[fail(display = "Invalid reference to register {}", 0)]
-    InvalidRegister(Register),
+    InvalidUserRegisterRef(UserRegisterIdentifier),
 
     /// Referenced a stack with an invalid identifier
     #[fail(display = "Invalid reference to stack {}", 0)]
-    InvalidStackReference(StackIdentifier),
+    InvalidStackRef(StackIdentifier),
+
+    /// Tried to write to a read-only register
+    #[fail(display = "Cannot write to read-only register {}", 0)]
+    UnwritableRegister(RegisterRef),
 
     /// Tried to push onto stack that is at capacity
     #[fail(display = "Overflow on stack {}", 0)]

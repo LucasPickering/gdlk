@@ -4,12 +4,13 @@ use crate::{
 use std::fmt::Debug;
 
 mod ast;
+mod consts;
 mod desugar;
 mod machine;
 mod parse;
 
 pub use crate::lang::{
-    ast::{LangValue, Register, StackIdentifier},
+    ast::{LangValue, RegisterRef, StackIdentifier, UserRegisterIdentifier},
     machine::{Machine, MachineState},
 };
 
@@ -103,10 +104,10 @@ mod tests {
                 expected_output: vec![1, 2],
             },
             "
-            READ R0
-            WRITE R0
-            READ R0
-            WRITE R0
+            READ RX0
+            WRITE RX0
+            READ RX0
+            WRITE RX0
             ",
         );
     }
@@ -123,14 +124,14 @@ mod tests {
                 expected_output: vec![10, 5],
             },
             "
-            SET R0 10
-            PUSH R0 S0
-            SET R0 0
-            POP S0 R0
-            WRITE R0
-            SET R1 5
-            SET R0 R1
-            WRITE R0
+            SET RX0 10
+            PUSH RX0 S0
+            SET RX0 0
+            POP S0 RX0
+            WRITE RX0
+            SET RX1 5
+            SET RX0 RX1
+            WRITE RX0
             ",
         );
     }
@@ -147,12 +148,12 @@ mod tests {
                 expected_output: vec![1],
             },
             "
-            IF R0 {
-                WRITE R0
+            IF RX0 {
+                WRITE RX0
             }
-            SET R0 1
-            IF R0 {
-                WRITE R0
+            SET RX0 1
+            IF RX0 {
+                WRITE RX0
             }
             ",
         );
@@ -170,14 +171,14 @@ mod tests {
                 expected_output: vec![2, 1, 0],
             },
             "
-            PUSH R0 S0
-            SET R0 1
-            PUSH R0 S0
-            SET R0 2
-            PUSH R0 S0
-            WHILE R0 {
-                POP S0 R0
-                WRITE R0
+            PUSH RX0 S0
+            SET RX0 1
+            PUSH RX0 S0
+            SET RX0 2
+            PUSH RX0 S0
+            WHILE RX0 {
+                POP S0 RX0
+                WRITE RX0
             }
             ",
         );
@@ -195,17 +196,38 @@ mod tests {
                 expected_output: vec![-3, 140],
             },
             "
-            ADD R0 1
-            SUB R0 2
-            MUL R0 3
-            WRITE R0
+            ADD RX0 1
+            SUB RX0 2
+            MUL RX0 3
+            WRITE RX0
 
-            SET R0 5
-            SET R1 10
-            ADD R0 R1
-            MUL R0 R1
-            SUB R0 R1
-            WRITE R0
+            SET RX0 5
+            SET RX1 10
+            ADD RX0 RX1
+            MUL RX0 RX1
+            SUB RX0 RX1
+            WRITE RX0
+            ",
+        );
+    }
+
+    #[test]
+    fn test_square_all() {
+        execute_expect_success(
+            Environment {
+                id: 0,
+                num_registers: 1,
+                num_stacks: 0,
+                max_stack_size: None,
+                input: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                expected_output: vec![1, 4, 9, 16, 25, 36, 49, 64, 81, 100],
+            },
+            "
+            WHILE RLI {
+                READ RX0
+                MUL RX0 RX0
+                WRITE RX0
+            }
             ",
         );
     }
@@ -222,15 +244,15 @@ mod tests {
                 expected_output: vec![0, 1, 1, 2, 3, 5, 8, 13, 21, 34],
             },
             "
-            READ R0
-            SET R1 0
-            SET R2 1
-            WHILE R0 {
-                WRITE R1
-                SET R3 R2
-                ADD R2 R1
-                SET R1 R3
-                SUB R0 1
+            READ RX0
+            SET RX1 0
+            SET RX2 1
+            WHILE RX0 {
+                WRITE RX1
+                SET RX3 RX2
+                ADD RX2 RX1
+                SET RX1 RX3
+                SUB RX0 1
             }
             ",
         );

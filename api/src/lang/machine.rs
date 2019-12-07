@@ -2,95 +2,13 @@ use crate::{
     debug,
     error::RuntimeError,
     lang::ast::{
-        LangValue, MachineInstr, Operator, Register, StackIdentifier,
+        LangValue, MachineInstr, Operator, RegisterRef, StackIdentifier,
         ValueSource,
     },
     models::Environment,
 };
 use serde::Serialize;
 use std::{convert::TryFrom, iter, num::Wrapping};
-
-/// Wrapper around a vec of stacks, to make it a bit easier to initialize/use.
-///
-/// All stack manipulation logic should be implemented here, to keep it
-/// contained and scalable.
-#[derive(Debug, PartialEq, Serialize)]
-pub struct Stacks {
-    stacks: Vec<Vec<LangValue>>,
-    max_stack_size: Option<usize>,
-}
-
-impl Stacks {
-    fn new(env: &Environment) -> Self {
-        // We need to do unsafe numeric conversions because the DB can only
-        // store signed values. The values should be validated before getting
-        // passed here.
-        Self {
-            // Initialize `env.num_stacks` new stacks
-            stacks: iter::repeat_with(Vec::new)
-                .take(usize::try_from(env.num_stacks).unwrap())
-                .collect(),
-            max_stack_size: env
-                .max_stack_size
-                .map(|n| usize::try_from(n).unwrap()),
-        }
-    }
-
-    /// Gets a read-only view of the current set of stacks. Useful for
-    /// visualizations and the like.
-    pub fn _get_all_stacks(&self) -> &[Vec<LangValue>] {
-        &self.stacks
-    }
-
-    /// Gets the stack with the given ID. If the stack doesn't exist, returns an
-    /// InvalidStackReference error.
-    fn get_stack(
-        stacks: &mut Vec<Vec<LangValue>>,
-        stack_id: StackIdentifier,
-    ) -> Result<&mut Vec<LangValue>, RuntimeError> {
-        stacks
-            .get_mut(stack_id)
-            .ok_or_else(|| RuntimeError::InvalidStackReference(stack_id))
-    }
-
-    /// Pushes the given value onto the given stack. The environment is needed
-    /// to compare the stack against a possible stack capacity rule. If the
-    /// stack reference is invalid or the stack is at capacity, an error is
-    /// returned.
-    fn push(
-        &mut self,
-        stack_id: StackIdentifier,
-        value: LangValue,
-    ) -> Result<(), RuntimeError> {
-        let stack = Self::get_stack(&mut self.stacks, stack_id)?;
-
-        // If the stack is capacity, make sure we're not over it
-        if let Some(max_stack_size) = self.max_stack_size {
-            if stack.len() == max_stack_size {
-                return Err(RuntimeError::StackOverflow(stack_id));
-            }
-        }
-
-        stack.push(value);
-        Ok(())
-    }
-
-    /// Pops an element off the given stack. If the pop is successful, the
-    /// popped value is returned. If the stack doesn't exist or is empty, an
-    /// error is returned.
-    fn pop(
-        &mut self,
-        stack_id: StackIdentifier,
-    ) -> Result<LangValue, RuntimeError> {
-        let stack = Self::get_stack(&mut self.stacks, stack_id)?;
-
-        if let Some(val) = stack.pop() {
-            Ok(val)
-        } else {
-            Err(RuntimeError::EmptyStack(stack_id))
-        }
-    }
-}
 
 /// The current state of a machine. This encompasses the entire state of a
 /// program that is currently being executed.
@@ -100,6 +18,11 @@ impl Stacks {
 /// and stack parameters.
 #[derive(Debug, PartialEq, Serialize)]
 pub struct MachineState {
+    /// The maximum number of elements allowed in a stack. This is copied from
+    /// the environment so we don't have to maintain a reference to the env.
+    #[serde(skip)] // We don't want to include this field in serialization
+    max_stack_size: Option<i32>,
+
     /// The current input buffer. This can be popped from as the program is
     /// executed. This will be initialized as the reverse of the input from the
     /// environment, so that elements at the beginning can be popped off first.
@@ -112,7 +35,7 @@ pub struct MachineState {
     pub registers: Vec<LangValue>,
     /// The series of stacks that act as the programs RAM. The number of stacks
     /// and their capacity is determined by the initialization environment.
-    pub stacks: Stacks,
+    pub stacks: Vec<Vec<LangValue>>,
 }
 
 impl MachineState {
@@ -120,12 +43,15 @@ impl MachineState {
         let mut input = env.input.clone();
         input.reverse(); // Reverse the vec so we can pop off the values in order
         Self {
+            max_stack_size: env.max_stack_size,
             input,
             output: Vec::new(),
             registers: iter::repeat(0)
                 .take(usize::try_from(env.num_registers).unwrap())
                 .collect(),
-            stacks: Stacks::new(&env),
+            stacks: iter::repeat_with(Vec::new)
+                .take(usize::try_from(env.num_stacks).unwrap())
+                .collect(),
         }
     }
 
@@ -136,31 +62,104 @@ impl MachineState {
     fn get_value(&self, src: &ValueSource) -> Result<LangValue, RuntimeError> {
         match src {
             ValueSource::Const(val) => Ok(*val),
-            ValueSource::Register(reg_id) => self.get_reg(*reg_id),
+            ValueSource::Register(reg) => self.get_reg(reg),
         }
     }
 
     /// Gets the value from the given register. Returns `RuntimeError` if the
     /// register reference is not valid.
-    fn get_reg(&self, reg_id: Register) -> Result<LangValue, RuntimeError> {
-        self.registers
-            .get(reg_id)
-            .copied()
-            .ok_or_else(|| RuntimeError::InvalidRegister(reg_id))
+    fn get_reg(&self, reg: &RegisterRef) -> Result<LangValue, RuntimeError> {
+        match reg {
+            RegisterRef::InputLength => Ok(self.input.len() as LangValue),
+            RegisterRef::StackLength(stack_id) => {
+                // TODO safe num conversion here
+                Ok(self.get_stack(*stack_id)?.len() as LangValue)
+            }
+            RegisterRef::User(reg_id) => {
+                self.registers.get(*reg_id).copied().ok_or_else(|| {
+                    RuntimeError::InvalidUserRegisterRef(*reg_id)
+                })
+            }
+        }
     }
 
     /// Sets the register to the given value. Returns `RuntimeError` if the
     /// register reference is not valid.
     fn set_reg(
         &mut self,
-        reg_id: Register,
+        reg: &RegisterRef,
         value: LangValue,
     ) -> Result<(), RuntimeError> {
-        if reg_id < self.registers.len() {
-            self.registers[reg_id] = value;
-            Ok(())
+        match reg {
+            RegisterRef::User(reg_id) => {
+                if *reg_id < self.registers.len() {
+                    self.registers[*reg_id] = value;
+                    Ok(())
+                } else {
+                    Err(RuntimeError::InvalidUserRegisterRef(*reg_id))
+                }
+            }
+            _ => Err(RuntimeError::UnwritableRegister(*reg)),
+        }
+    }
+
+    /// Gets a reference to the stack with the given ID. If the stack doesn't
+    /// exist, returns an InvalidStackRef error.
+    fn get_stack(
+        &self,
+        stack_id: StackIdentifier,
+    ) -> Result<&Vec<LangValue>, RuntimeError> {
+        self.stacks
+            .get(stack_id)
+            .ok_or_else(|| RuntimeError::InvalidStackRef(stack_id))
+    }
+
+    /// Gets a mutable reference to the stack with the given ID. If the stack
+    /// doesn't exist, returns an InvalidStackRef error.
+    fn get_stack_mut(
+        &mut self,
+        stack_id: StackIdentifier,
+    ) -> Result<&mut Vec<LangValue>, RuntimeError> {
+        self.stacks
+            .get_mut(stack_id)
+            .ok_or_else(|| RuntimeError::InvalidStackRef(stack_id))
+    }
+
+    /// Pushes the given value onto the given stack. If the stack reference is
+    /// invalid or the stack is at capacity, an error is returned.
+    fn push_stack(
+        &mut self,
+        stack_id: StackIdentifier,
+        value: LangValue,
+    ) -> Result<(), RuntimeError> {
+        // Have to access this first cause borrow checker
+        let max_stack_size_opt = self.max_stack_size;
+        let stack = self.get_stack_mut(stack_id)?;
+
+        // If the stack is capacity, make sure we're not over it
+        if let Some(max_stack_size) = max_stack_size_opt {
+            if stack.len() >= (max_stack_size as usize) {
+                return Err(RuntimeError::StackOverflow(stack_id));
+            }
+        }
+
+        stack.push(value);
+        Ok(())
+    }
+
+    /// Pops an element off the given stack. If the pop is successful, the
+    /// popped value is returned. If the stack doesn't exist or is empty, an
+    /// error is returned.
+    fn pop_stack(
+        &mut self,
+        stack_id: StackIdentifier,
+    ) -> Result<LangValue, RuntimeError> {
+        let stack = self.get_stack_mut(stack_id)?;
+
+        if let Some(val) = stack.pop() {
+            Ok(val)
         } else {
-            Err(RuntimeError::InvalidRegister(reg_id))
+            Err(RuntimeError::EmptyStack(stack_id))
         }
     }
 }
@@ -214,64 +213,65 @@ impl Machine {
         let instrs_to_consume: Option<i32> = match instr {
             MachineInstr::Operator(op) => {
                 match op {
-                    Operator::Read(reg_id) => match self.state.input.pop() {
+                    Operator::Read(reg) => match self.state.input.pop() {
                         Some(val) => {
-                            self.state.set_reg(*reg_id, val)?;
+                            self.state.set_reg(reg, val)?;
                         }
                         None => return Err(RuntimeError::EmptyInput),
                     },
-                    Operator::Write(reg_id) => {
-                        self.state.output.push(self.state.get_reg(*reg_id)?);
+                    Operator::Write(reg) => {
+                        self.state.output.push(self.state.get_reg(reg)?);
                     }
                     Operator::Set(dst, src) => {
-                        self.state.set_reg(*dst, self.state.get_value(src)?)?;
+                        self.state.set_reg(dst, self.state.get_value(src)?)?;
                     }
                     Operator::Add(dst, src) => {
                         self.state.set_reg(
-                            *dst,
-                            (Wrapping(self.state.get_reg(*dst)?)
+                            dst,
+                            (Wrapping(self.state.get_reg(dst)?)
                                 + Wrapping(self.state.get_value(src)?))
                             .0,
                         )?;
                     }
                     Operator::Sub(dst, src) => {
                         self.state.set_reg(
-                            *dst,
-                            (Wrapping(self.state.get_reg(*dst)?)
+                            dst,
+                            (Wrapping(self.state.get_reg(dst)?)
                                 - Wrapping(self.state.get_value(src)?))
                             .0,
                         )?;
                     }
                     Operator::Mul(dst, src) => {
                         self.state.set_reg(
-                            *dst,
-                            (Wrapping(self.state.get_reg(*dst)?)
+                            dst,
+                            (Wrapping(self.state.get_reg(dst)?)
                                 * Wrapping(self.state.get_value(src)?))
                             .0,
                         )?;
                     }
                     Operator::Push(src, stack_id) => {
-                        self.state
-                            .stacks
-                            .push(*stack_id, self.state.get_value(src)?)?;
+                        self.state.push_stack(
+                            *stack_id,
+                            self.state.get_value(src)?,
+                        )?;
                     }
-                    Operator::Pop(dst, stack_id) => {
-                        let popped = self.state.stacks.pop(*stack_id)?;
-                        self.state.set_reg(*dst, popped)?;
+                    Operator::Pop(stack_id, dst) => {
+                        let popped = self.state.pop_stack(*stack_id)?;
+                        self.state.set_reg(dst, popped)?;
                     }
                 }
                 None
             }
 
-            MachineInstr::Jez(num_instrs, reg_id) => {
-                if self.state.get_reg(*reg_id)? == 0 {
+            MachineInstr::Jez(num_instrs, reg) => {
+                if self.state.get_reg(reg)? == 0 {
                     Some(*num_instrs)
                 } else {
                     None
                 }
             }
-            MachineInstr::Jnz(num_instrs, reg_id) => {
-                if self.state.get_reg(*reg_id)? != 0 {
+            MachineInstr::Jnz(num_instrs, reg) => {
+                if self.state.get_reg(reg)? != 0 {
                     Some(*num_instrs)
                 } else {
                     None
@@ -333,8 +333,8 @@ mod tests {
             expected_output: vec![1],
         };
         let program = vec![
-            MachineInstr::Operator(Operator::Read(0)),
-            MachineInstr::Operator(Operator::Write(0)),
+            MachineInstr::Operator(Operator::Read(RegisterRef::User(0))),
+            MachineInstr::Operator(Operator::Write(RegisterRef::User(0))),
         ];
         let mut machine = Machine::new(&env, program);
 
@@ -342,10 +342,11 @@ mod tests {
         assert_eq!(
             *machine.get_state(),
             MachineState {
+                max_stack_size: None,
                 input: vec![1],
                 output: vec![],
                 registers: vec![0],
-                stacks: Stacks::new(&env)
+                stacks: vec![],
             }
         );
         assert!(!machine.is_successful());
@@ -355,10 +356,11 @@ mod tests {
         assert_eq!(
             *machine.get_state(),
             MachineState {
+                max_stack_size: None,
                 input: vec![],
                 output: vec![],
                 registers: vec![1],
-                stacks: Stacks::new(&env)
+                stacks: vec![],
             }
         );
         assert!(!machine.is_successful());
@@ -368,10 +370,11 @@ mod tests {
         assert_eq!(
             *machine.get_state(),
             MachineState {
+                max_stack_size: None,
                 input: vec![],
                 output: vec![1],
                 registers: vec![1],
-                stacks: Stacks::new(&env)
+                stacks: vec![],
             }
         );
         assert!(machine.is_successful()); // Job's done
