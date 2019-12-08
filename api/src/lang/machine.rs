@@ -21,7 +21,7 @@ pub struct MachineState {
     /// The maximum number of elements allowed in a stack. This is copied from
     /// the environment so we don't have to maintain a reference to the env.
     #[serde(skip)] // We don't want to include this field in serialization
-    max_stack_size: Option<i32>,
+    max_stack_length: i32,
 
     /// The current input buffer. This can be popped from as the program is
     /// executed. This will be initialized as the reverse of the input from the
@@ -43,7 +43,7 @@ impl MachineState {
         let mut input = env.input.clone();
         input.reverse(); // Reverse the vec so we can pop off the values in order
         Self {
-            max_stack_size: env.max_stack_size,
+            max_stack_length: env.max_stack_length,
             input,
             output: Vec::new(),
             registers: iter::repeat(0)
@@ -133,14 +133,13 @@ impl MachineState {
         value: LangValue,
     ) -> Result<(), RuntimeError> {
         // Have to access this first cause borrow checker
-        let max_stack_size_opt = self.max_stack_size;
+        let max_stack_length = self.max_stack_length;
         let stack = self.get_stack_mut(stack_id)?;
 
         // If the stack is capacity, make sure we're not over it
-        if let Some(max_stack_size) = max_stack_size_opt {
-            if stack.len() >= (max_stack_size as usize) {
-                return Err(RuntimeError::StackOverflow(stack_id));
-            }
+        // TODO make this num conversion safe
+        if stack.len() >= (max_stack_length as usize) {
+            return Err(RuntimeError::StackOverflow(stack_id));
         }
 
         stack.push(value);
@@ -328,7 +327,7 @@ mod tests {
             id: 0,
             num_registers: 1,
             num_stacks: 0,
-            max_stack_size: None,
+            max_stack_length: 0,
             input: vec![1],
             expected_output: vec![1],
         };
@@ -342,7 +341,7 @@ mod tests {
         assert_eq!(
             *machine.get_state(),
             MachineState {
-                max_stack_size: None,
+                max_stack_length: 0,
                 input: vec![1],
                 output: vec![],
                 registers: vec![0],
@@ -356,7 +355,7 @@ mod tests {
         assert_eq!(
             *machine.get_state(),
             MachineState {
-                max_stack_size: None,
+                max_stack_length: 0,
                 input: vec![],
                 output: vec![],
                 registers: vec![1],
@@ -370,7 +369,7 @@ mod tests {
         assert_eq!(
             *machine.get_state(),
             MachineState {
-                max_stack_size: None,
+                max_stack_length: 0,
                 input: vec![],
                 output: vec![1],
                 registers: vec![1],

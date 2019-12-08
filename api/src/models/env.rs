@@ -16,8 +16,8 @@ pub struct Environment {
     pub num_registers: i32,
     /// Maximum number of stacks permitted
     pub num_stacks: i32,
-    /// Maximum size of each stack. If None, the capacity is unlimited.
-    pub max_stack_size: Option<i32>,
+    /// Maximum size of each stack
+    pub max_stack_length: i32,
 
     /// The input values, where the element at position 0 is the first one that
     /// will be popped off.
