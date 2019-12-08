@@ -26,3 +26,16 @@ pub struct Environment {
     /// first element will be the first one pushed, and so on.
     pub expected_output: Vec<LangValue>,
 }
+
+impl Default for Environment {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            num_registers: 1,
+            num_stacks: 0,
+            max_stack_length: 0,
+            input: vec![],
+            expected_output: vec![],
+        }
+    }
+}
