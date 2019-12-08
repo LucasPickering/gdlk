@@ -59,74 +59,43 @@ impl MachineState {
     /// If the value is a constant, just return that. If it's a register,
     /// return the value from that register. Returns `RuntimeError` if it
     /// is an invalid register reference.
-    fn get_value(&self, src: &ValueSource) -> Result<LangValue, RuntimeError> {
+    fn get_value_from_source(&self, src: &ValueSource) -> LangValue {
         match src {
-            ValueSource::Const(val) => Ok(*val),
+            ValueSource::Const(val) => *val,
             ValueSource::Register(reg) => self.get_reg(reg),
         }
     }
 
-    /// Gets the value from the given register. Returns `RuntimeError` if the
-    /// register reference is not valid.
-    fn get_reg(&self, reg: &RegisterRef) -> Result<LangValue, RuntimeError> {
+    /// Gets the value from the given register. The register reference is
+    /// assumed to be valid (should be validated at build time). Will panic if
+    /// it isn't valid.
+    fn get_reg(&self, reg: &RegisterRef) -> LangValue {
         match reg {
-            RegisterRef::InputLength => Ok(self.input.len() as LangValue),
+            // TODO make this conversion safe
+            RegisterRef::InputLength => self.input.len() as LangValue,
             RegisterRef::StackLength(stack_id) => {
                 // TODO safe num conversion here
-                Ok(self.get_stack(*stack_id)?.len() as LangValue)
+                self.stacks[*stack_id].len() as LangValue
             }
-            RegisterRef::User(reg_id) => {
-                self.registers.get(*reg_id).copied().ok_or_else(|| {
-                    RuntimeError::InvalidUserRegisterRef(*reg_id)
-                })
-            }
+            RegisterRef::User(reg_id) => *self.registers.get(*reg_id).unwrap(),
         }
     }
 
-    /// Sets the register to the given value. Returns `RuntimeError` if the
-    /// register reference is not valid.
-    fn set_reg(
-        &mut self,
-        reg: &RegisterRef,
-        value: LangValue,
-    ) -> Result<(), RuntimeError> {
+    /// Sets the register to the given value. The register reference is
+    /// assumed to be valid (should be validated at build time). Will panic if
+    /// it isn't valid.
+    fn set_reg(&mut self, reg: &RegisterRef, value: LangValue) {
         match reg {
             RegisterRef::User(reg_id) => {
-                if *reg_id < self.registers.len() {
-                    self.registers[*reg_id] = value;
-                    Ok(())
-                } else {
-                    Err(RuntimeError::InvalidUserRegisterRef(*reg_id))
-                }
+                self.registers[*reg_id] = value;
             }
-            _ => Err(RuntimeError::UnwritableRegister(*reg)),
+            _ => panic!("Unwritable register {}", reg),
         }
-    }
-
-    /// Gets a reference to the stack with the given ID. If the stack doesn't
-    /// exist, returns an InvalidStackRef error.
-    fn get_stack(
-        &self,
-        stack_id: StackIdentifier,
-    ) -> Result<&Vec<LangValue>, RuntimeError> {
-        self.stacks
-            .get(stack_id)
-            .ok_or_else(|| RuntimeError::InvalidStackRef(stack_id))
-    }
-
-    /// Gets a mutable reference to the stack with the given ID. If the stack
-    /// doesn't exist, returns an InvalidStackRef error.
-    fn get_stack_mut(
-        &mut self,
-        stack_id: StackIdentifier,
-    ) -> Result<&mut Vec<LangValue>, RuntimeError> {
-        self.stacks
-            .get_mut(stack_id)
-            .ok_or_else(|| RuntimeError::InvalidStackRef(stack_id))
     }
 
     /// Pushes the given value onto the given stack. If the stack reference is
-    /// invalid or the stack is at capacity, an error is returned.
+    /// invalid or the stack is at capacity, an error is returned. If the stack
+    /// reference is invalid, will panic (should be validated at build time).
     fn push_stack(
         &mut self,
         stack_id: StackIdentifier,
@@ -134,7 +103,7 @@ impl MachineState {
     ) -> Result<(), RuntimeError> {
         // Have to access this first cause borrow checker
         let max_stack_length = self.max_stack_length;
-        let stack = self.get_stack_mut(stack_id)?;
+        let stack = &mut self.stacks[stack_id];
 
         // If the stack is capacity, make sure we're not over it
         // TODO make this num conversion safe
@@ -147,13 +116,14 @@ impl MachineState {
     }
 
     /// Pops an element off the given stack. If the pop is successful, the
-    /// popped value is returned. If the stack doesn't exist or is empty, an
-    /// error is returned.
+    /// popped value is returned. If the stack is empty, an error is returned.
+    /// If the stack reference is invalid, will panic (should be validated at
+    /// build time).
     fn pop_stack(
         &mut self,
         stack_id: StackIdentifier,
     ) -> Result<LangValue, RuntimeError> {
-        let stack = self.get_stack_mut(stack_id)?;
+        let stack = &mut self.stacks[stack_id];
 
         if let Some(val) = stack.pop() {
             Ok(val)
@@ -214,63 +184,72 @@ impl Machine {
                 match op {
                     Operator::Read(reg) => match self.state.input.pop() {
                         Some(val) => {
-                            self.state.set_reg(reg, val)?;
+                            self.state.set_reg(reg, val);
                         }
                         None => return Err(RuntimeError::EmptyInput),
                     },
                     Operator::Write(reg) => {
-                        self.state.output.push(self.state.get_reg(reg)?);
+                        self.state.output.push(self.state.get_reg(reg));
                     }
                     Operator::Set(dst, src) => {
-                        self.state.set_reg(dst, self.state.get_value(src)?)?;
+                        self.state.set_reg(
+                            dst,
+                            self.state.get_value_from_source(src),
+                        );
                     }
                     Operator::Add(dst, src) => {
                         self.state.set_reg(
                             dst,
-                            (Wrapping(self.state.get_reg(dst)?)
-                                + Wrapping(self.state.get_value(src)?))
+                            (Wrapping(self.state.get_reg(dst))
+                                + Wrapping(
+                                    self.state.get_value_from_source(src),
+                                ))
                             .0,
-                        )?;
+                        );
                     }
                     Operator::Sub(dst, src) => {
                         self.state.set_reg(
                             dst,
-                            (Wrapping(self.state.get_reg(dst)?)
-                                - Wrapping(self.state.get_value(src)?))
+                            (Wrapping(self.state.get_reg(dst))
+                                - Wrapping(
+                                    self.state.get_value_from_source(src),
+                                ))
                             .0,
-                        )?;
+                        );
                     }
                     Operator::Mul(dst, src) => {
                         self.state.set_reg(
                             dst,
-                            (Wrapping(self.state.get_reg(dst)?)
-                                * Wrapping(self.state.get_value(src)?))
+                            (Wrapping(self.state.get_reg(dst))
+                                * Wrapping(
+                                    self.state.get_value_from_source(src),
+                                ))
                             .0,
-                        )?;
+                        );
                     }
                     Operator::Push(src, stack_id) => {
                         self.state.push_stack(
                             *stack_id,
-                            self.state.get_value(src)?,
+                            self.state.get_value_from_source(src),
                         )?;
                     }
                     Operator::Pop(stack_id, dst) => {
                         let popped = self.state.pop_stack(*stack_id)?;
-                        self.state.set_reg(dst, popped)?;
+                        self.state.set_reg(dst, popped);
                     }
                 }
                 None
             }
 
             MachineInstr::Jez(num_instrs, reg) => {
-                if self.state.get_reg(reg)? == 0 {
+                if self.state.get_reg(reg) == 0 {
                     Some(*num_instrs)
                 } else {
                     None
                 }
             }
             MachineInstr::Jnz(num_instrs, reg) => {
-                if self.state.get_reg(reg)? != 0 {
+                if self.state.get_reg(reg) != 0 {
                     Some(*num_instrs)
                 } else {
                     None

@@ -1,5 +1,5 @@
 use crate::{
-    error::CompileError,
+    error::{CompileError, CompileErrors},
     lang::{
         ast::{
             Instr, LangValue, Operator, Program, RegisterRef, StackIdentifier,
@@ -232,7 +232,7 @@ fn parse_gdlk(input: &str) -> IResult<&str, Vec<Instr>> {
 
 impl Compiler<String> {
     /// Parses source code from the given input, into an abstract syntax tree.
-    pub fn parse(self) -> Result<Compiler<Program>, CompileError> {
+    pub fn parse(self) -> Result<Compiler<Program>, CompileErrors> {
         match parse_gdlk(&self.0) {
             // TODO: can probably refactor the parser funcs to use
             // Verbose error to make the errors nicer
@@ -252,6 +252,7 @@ impl Compiler<String> {
                 Err(CompileError::ParseError(e.description().to_string()))
             }
         }
+        .map_err(|err| err.into())
     }
 }
 

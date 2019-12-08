@@ -1,5 +1,5 @@
 use crate::{
-    debug, error::CompileError, lang::ast::MachineInstr, models::Environment,
+    debug, error::CompileErrors, lang::ast::MachineInstr, models::Environment,
 };
 use std::fmt::Debug;
 
@@ -8,6 +8,7 @@ mod consts;
 mod desugar;
 mod machine;
 mod parse;
+mod validate;
 
 pub use crate::lang::{
     ast::{LangValue, RegisterRef, StackIdentifier, UserRegisterIdentifier},
@@ -62,10 +63,12 @@ impl Compiler<Vec<MachineInstr>> {
 pub fn compile(
     env: &Environment,
     source: String,
-) -> Result<Machine, CompileError> {
+) -> Result<Machine, CompileErrors> {
     Ok(Compiler::new(source)
         .debug()
         .parse()?
+        .debug()
+        .validate(env)?
         .debug()
         .desugar()
         .debug()
@@ -76,6 +79,8 @@ pub fn compile(
 mod tests {
     use super::*;
 
+    /// Compiles and executes the program within the given env. Panics if the
+    /// compile fails or the execution isn't successful.
     fn execute_expect_success(env: Environment, src: &str) {
         // Compile from env+src
         let mut machine = compile(&env, src.into()).unwrap();
@@ -86,10 +91,23 @@ mod tests {
         // Make sure program terminated successfully
         // Check each bit of state individually to make debugging easier
         let state = machine.get_state();
-        assert_eq!(state.input, Vec::new() as Vec<LangValue>);
+        assert_eq!(state.input, Vec::new() as Vec<i32>);
         assert_eq!(state.output, env.expected_output);
         // Final sanity check, in case we change the criteria for success
         assert!(success);
+    }
+
+    /// Compiles the program within the given env, expecting compile error(s).
+    /// Panics if the program compiles successfully, or if the wrong set of
+    /// errors is returned.
+    fn expect_compile_errors(
+        env: Environment,
+        src: &str,
+        expected_errors: &[&str],
+    ) {
+        // Compile from env+src
+        let actual_errors = compile(&env, src.into()).unwrap_err();
+        assert_eq!(format!("{}", actual_errors), expected_errors.join("\n"));
     }
 
     #[test]
@@ -255,6 +273,87 @@ mod tests {
                 SUB RX0 1
             }
             ",
+        );
+    }
+
+    #[test]
+    fn test_invalid_user_reg_ref() {
+        expect_compile_errors(
+            Environment {
+                num_registers: 1,
+                num_stacks: 1,
+                ..Environment::default()
+            },
+            "
+            READ RX1
+            WRITE RX2
+            SET RX3 RX0
+            ADD RX4 RX0
+            SUB RX5 RX0
+            MUL RX6 RX0
+            PUSH RX7 S0
+            POP S0 RX8
+            ",
+            &[
+                "Invalid reference to register RX1",
+                "Invalid reference to register RX2",
+                "Invalid reference to register RX3",
+                "Invalid reference to register RX4",
+                "Invalid reference to register RX5",
+                "Invalid reference to register RX6",
+                "Invalid reference to register RX7",
+                "Invalid reference to register RX8",
+            ],
+        );
+    }
+
+    #[test]
+    fn test_invalid_stack_reg_ref() {
+        expect_compile_errors(
+            Environment {
+                num_stacks: 1,
+                ..Environment::default()
+            },
+            "
+        SET RX0 RS1
+        ",
+            &["Invalid reference to register RS1"],
+        );
+    }
+
+    #[test]
+    fn test_invalid_stack_ref() {
+        expect_compile_errors(
+            Environment {
+                num_stacks: 1,
+                ..Environment::default()
+            },
+            "
+            PUSH 5 S1
+            POP S2 RX0
+            ",
+            &[
+                "Invalid reference to stack S1",
+                "Invalid reference to stack S2",
+            ],
+        );
+    }
+
+    #[test]
+    fn test_unwritable_reg() {
+        expect_compile_errors(
+            Environment {
+                num_stacks: 1,
+                ..Environment::default()
+            },
+            "
+            SET RLI 5
+            SET RS0 5
+            ",
+            &[
+                "Cannot write to read-only register RLI",
+                "Cannot write to read-only register RS0",
+            ],
         );
     }
 }

@@ -1,5 +1,5 @@
 use crate::{
-    error::{CompileError, RuntimeError, ServerError},
+    error::{CompileErrors, RuntimeError, ServerError},
     lang::{compile, Machine, MachineState},
     models::Environment,
     schema::environments,
@@ -62,7 +62,7 @@ enum OutgoingEvent<'a> {
     /// Failed to parse websocket message
     MalformedMessage(String),
     /// Failed to parse the sent program
-    CompileError(CompileError),
+    CompileError(CompileErrors),
     /// Error occurred while running a program
     RuntimeError(RuntimeError),
     /// "Step" message occurred before "Compile" message
@@ -87,15 +87,15 @@ impl<'a> From<serde_json::Error> for OutgoingEvent<'a> {
     }
 }
 
-impl<'a> From<CompileError> for OutgoingEvent<'a> {
-    fn from(other: CompileError) -> Self {
-        OutgoingEvent::CompileError(other)
+impl<'a> From<CompileErrors> for OutgoingEvent<'a> {
+    fn from(errors: CompileErrors) -> Self {
+        OutgoingEvent::CompileError(errors)
     }
 }
 
 impl<'a> From<RuntimeError> for OutgoingEvent<'a> {
-    fn from(other: RuntimeError) -> Self {
-        OutgoingEvent::RuntimeError(other)
+    fn from(error: RuntimeError) -> Self {
+        OutgoingEvent::RuntimeError(error)
     }
 }
 
