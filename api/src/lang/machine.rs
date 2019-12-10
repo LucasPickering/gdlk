@@ -5,7 +5,7 @@ use crate::{
         LangValue, MachineInstr, Operator, RegisterRef, StackIdentifier,
         ValueSource,
     },
-    models::Environment,
+    models::{HardwareSpec, ProgramSpec},
 };
 use serde::Serialize;
 use std::{convert::TryFrom, iter, num::Wrapping};
@@ -19,7 +19,7 @@ use std::{convert::TryFrom, iter, num::Wrapping};
 #[derive(Debug, PartialEq, Serialize)]
 pub struct MachineState {
     /// The maximum number of elements allowed in a stack. This is copied from
-    /// the environment so we don't have to maintain a reference to the env.
+    /// the hardware spec so we don't have to maintain a reference to the hw.
     #[serde(skip)] // We don't want to include this field in serialization
     max_stack_length: i32,
 
@@ -39,18 +39,18 @@ pub struct MachineState {
 }
 
 impl MachineState {
-    fn new(env: &Environment) -> Self {
-        let mut input = env.input.clone();
+    fn new(hardware_spec: &HardwareSpec, program_spec: &ProgramSpec) -> Self {
+        let mut input = program_spec.input.clone();
         input.reverse(); // Reverse the vec so we can pop off the values in order
         Self {
-            max_stack_length: env.max_stack_length,
+            max_stack_length: hardware_spec.max_stack_length,
             input,
             output: Vec::new(),
             registers: iter::repeat(0)
-                .take(usize::try_from(env.num_registers).unwrap())
+                .take(usize::try_from(hardware_spec.num_registers).unwrap())
                 .collect(),
             stacks: iter::repeat_with(Vec::new)
-                .take(usize::try_from(env.num_stacks).unwrap())
+                .take(usize::try_from(hardware_spec.num_stacks).unwrap())
                 .collect(),
         }
     }
@@ -152,12 +152,16 @@ pub struct Machine {
 
 impl Machine {
     /// Creates a new machine, ready to be executed.
-    pub fn new(env: &Environment, program: Vec<MachineInstr>) -> Self {
-        let state = MachineState::new(env);
+    pub fn new(
+        hardware_spec: &HardwareSpec,
+        program_spec: &ProgramSpec,
+        program: Vec<MachineInstr>,
+    ) -> Self {
+        let state = MachineState::new(hardware_spec, program_spec);
         Self {
             program,
             // This is a punt but w/e
-            expected_output: env.expected_output.clone(),
+            expected_output: program_spec.expected_output.clone(),
             state,
             program_counter: 0,
         }
@@ -302,19 +306,17 @@ mod tests {
     #[test]
     fn test_simple_program() {
         // Just a simple sanity check test
-        let env = Environment {
-            id: 0,
-            num_registers: 1,
-            num_stacks: 0,
-            max_stack_length: 0,
+        let hardware_spec = HardwareSpec::default();
+        let program_spec = ProgramSpec {
             input: vec![1],
             expected_output: vec![1],
+            ..ProgramSpec::default()
         };
         let program = vec![
             MachineInstr::Operator(Operator::Read(RegisterRef::User(0))),
             MachineInstr::Operator(Operator::Write(RegisterRef::User(0))),
         ];
-        let mut machine = Machine::new(&env, program);
+        let mut machine = Machine::new(&hardware_spec, &program_spec, program);
 
         // Initial state
         assert_eq!(

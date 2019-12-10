@@ -1,3 +1,4 @@
 mod websocket;
 
-pub use websocket::ws_environments_by_id;
+// Everything exported from here should be a route handler
+pub use websocket::*;

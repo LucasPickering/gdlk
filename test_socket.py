@@ -6,12 +6,12 @@ import json
 import websockets
 
 
-async def ws(host, env_id, source):
+async def ws(host, program_spec_id, source):
     with open(source) as f:
         source = f.read().strip()
 
     async with websockets.connect(
-        f"{host}/ws/environments/{env_id}/"
+        f"{host}/ws/programs/{program_spec_id}/"
     ) as websocket:
 
         async def send_and_recv(event_type, content=None):
@@ -43,10 +43,10 @@ def main():
         "--host", default="ws://localhost:8000", help="The server host address"
     )
     parser.add_argument(
-        "--env-id",
-        "-e",
+        "--program-spec-id",
+        "-p",
         default=1,
-        help="The ID for the environment to execute under",
+        help="The ID for the program spec to execute under",
     )
     parser.add_argument(
         "--source",
