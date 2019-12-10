@@ -31,7 +31,8 @@ In the repo root:
 
 ```sh
 docker-compose up
-# Wait for DB to start up
+# Wait for DB to start up, then in another shell:
+cd api
 ./initdb.sh
 ```
 
@@ -50,4 +51,13 @@ If you have a program or test failing, you can run with additional debug output 
 ```sh
 DEBUG=true cargo run -- execute -e env.json -i prog.gdlk
 DEBUG=true cargo test -- --nocapture # --nocapture needed to make stdout visible
+```
+
+### Updating Fixtures
+
+The fixture system is kinda ass right now, but for now you can update the fixture by dumping your local DB:
+
+```sh
+cd api
+./dump.sh
 ```

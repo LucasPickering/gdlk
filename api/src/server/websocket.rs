@@ -1,8 +1,8 @@
 use crate::{
     error::{CompileErrors, RuntimeError, ServerError},
     lang::{compile, Machine, MachineState},
-    models::Environment,
-    schema::environments,
+    models::{HardwareSpec, ProgramSpec},
+    schema::{hardware_specs::dsl::*, program_specs::dsl::*},
 };
 use actix::{Actor, ActorContext, AsyncContext, StreamHandler};
 use actix_web::{web, HttpRequest, HttpResponse};
@@ -101,8 +101,10 @@ impl<'a> From<RuntimeError> for OutgoingEvent<'a> {
 
 /// The controlling struct for a single websocket instance
 struct ProgramWebsocket {
-    /// Environment to build/execute the progrma under, pulled from the DB
-    env: Environment,
+    /// "Hardware" to build/execute the program under, pulled from the DB
+    hardware_spec: HardwareSpec,
+    /// Specs for the program execution
+    program_spec: ProgramSpec,
     /// Track the last time we pinged/ponged the client, if this exceeds
     /// CLIENT_TIMEOUT, drop the connection
     heartbeat: Instant,
@@ -114,9 +116,10 @@ struct ProgramWebsocket {
 }
 
 impl ProgramWebsocket {
-    fn new(env: Environment) -> Self {
+    fn new(hardware_spec: HardwareSpec, program_spec: ProgramSpec) -> Self {
         ProgramWebsocket {
-            env,
+            hardware_spec,
+            program_spec,
             heartbeat: Instant::now(),
             source_code: String::new(),
             machine: None,
@@ -147,8 +150,11 @@ impl ProgramWebsocket {
             }
             IncomingEvent::Compile => {
                 // Compile the program into a machine
-                self.machine =
-                    Some(compile(&self.env, self.source_code.clone())?);
+                self.machine = Some(compile(
+                    &self.hardware_spec,
+                    &self.program_spec,
+                    self.source_code.clone(),
+                )?);
 
                 // we need this fuckery cause lol borrow checker
                 self.machine.as_ref().unwrap().into()
@@ -215,18 +221,25 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ProgramWebsocket {
     }
 }
 
-/// Do websocket handshake, look up the request Environment by ID, then (if it
+/// Do websocket handshake, look up the request ProgramSpec by ID, then (if it
 /// exists), start a handler for it.
-pub fn ws_environments_by_id(
+pub fn ws_program_specs_by_id(
     r: HttpRequest,
     pool: web::Data<Pool>,
-    env_id: web::Path<i32>,
+    program_spec_id: web::Path<i32>,
     stream: web::Payload,
 ) -> Result<HttpResponse, actix_web::Error> {
     let conn: &PgConnection = &pool.get().unwrap();
-    let env = environments::dsl::environments
-        .find(env_id.into_inner())
-        .get_result(conn)
-        .map_err(ServerError::from)?;
-    ws::start(ProgramWebsocket::new(env), &r, stream)
+    // Look up the program spec by ID, get the associated hardware spec too
+    let (program_spec, hardware_spec): (ProgramSpec, HardwareSpec) =
+        program_specs
+            .find(program_spec_id.into_inner())
+            .inner_join(hardware_specs)
+            .get_result(conn)
+            .map_err(ServerError::from)?;
+    ws::start(
+        ProgramWebsocket::new(hardware_spec, program_spec),
+        &r,
+        stream,
+    )
 }

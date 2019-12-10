@@ -1,5 +1,8 @@
 use crate::{
-    debug, error::CompileErrors, lang::ast::MachineInstr, models::Environment,
+    debug,
+    error::CompileErrors,
+    lang::ast::MachineInstr,
+    models::{HardwareSpec, ProgramSpec},
 };
 use std::fmt::Debug;
 
@@ -50,40 +53,53 @@ impl Compiler<String> {
 }
 
 impl Compiler<Vec<MachineInstr>> {
-    /// Compiles a program into a [Machine](Machine). This takes an environment,
-    /// which the program will executing in, and builds a machine around it so
-    /// that it can be executed.
-    pub fn compile(self, env: &Environment) -> Machine {
-        Machine::new(env, self.0)
+    /// Compiles a program into a [Machine](Machine). This takes an hardware
+    /// spec, which the program will execute on, and a program spec, which the
+    /// program will try to match, and builds a machine around it so that it can
+    /// be executed.
+    pub fn compile(
+        self,
+        hardware_spec: &HardwareSpec,
+        program_spec: &ProgramSpec,
+    ) -> Machine {
+        Machine::new(hardware_spec, program_spec, self.0)
     }
 }
 
 /// Compiles the given source program, with the given environment, into a
 /// [Machine](Machine). The returned machine can then be executed.
 pub fn compile(
-    env: &Environment,
+    hardware_spec: &HardwareSpec,
+    program_spec: &ProgramSpec,
     source: String,
 ) -> Result<Machine, CompileErrors> {
     Ok(Compiler::new(source)
         .debug()
         .parse()?
         .debug()
-        .validate(env)?
+        .validate(hardware_spec)?
         .debug()
         .desugar()
         .debug()
-        .compile(env))
+        .compile(hardware_spec, program_spec))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::ProgramSpec;
 
-    /// Compiles and executes the program within the given env. Panics if the
-    /// compile fails or the execution isn't successful.
-    fn execute_expect_success(env: Environment, src: &str) {
-        // Compile from env+src
-        let mut machine = compile(&env, src.into()).unwrap();
+    /// Compiles the program for the given hardware, and executes it against the
+    /// program spec.. Panics if the compile fails or the execution isn't
+    /// successful.
+    fn execute_expect_success(
+        hardware_spec: HardwareSpec,
+        program_spec: ProgramSpec,
+        src: &str,
+    ) {
+        // Compile from hardware+src
+        let mut machine =
+            compile(&hardware_spec, &program_spec, src.into()).unwrap();
 
         // Execute to completion
         let success = machine.execute_all().unwrap();
@@ -92,34 +108,34 @@ mod tests {
         // Check each bit of state individually to make debugging easier
         let state = machine.get_state();
         assert_eq!(state.input, Vec::new() as Vec<i32>);
-        assert_eq!(state.output, env.expected_output);
+        assert_eq!(state.output, program_spec.expected_output);
         // Final sanity check, in case we change the criteria for success
         assert!(success);
     }
 
-    /// Compiles the program within the given env, expecting compile error(s).
+    /// Compiles the program for the given hardware, expecting compile error(s).
     /// Panics if the program compiles successfully, or if the wrong set of
     /// errors is returned.
     fn expect_compile_errors(
-        env: Environment,
+        env: HardwareSpec,
         src: &str,
         expected_errors: &[&str],
     ) {
-        // Compile from env+src
-        let actual_errors = compile(&env, src.into()).unwrap_err();
+        // Compile from hardware+src, use a default program spec because we
+        // won't be executing this
+        let actual_errors =
+            compile(&env, &ProgramSpec::default(), src.into()).unwrap_err();
         assert_eq!(format!("{}", actual_errors), expected_errors.join("\n"));
     }
 
     #[test]
     fn test_read_write() {
         execute_expect_success(
-            Environment {
-                id: 0,
-                num_registers: 1,
-                num_stacks: 0,
-                max_stack_length: 0,
+            HardwareSpec::default(),
+            ProgramSpec {
                 input: vec![1, 2],
                 expected_output: vec![1, 2],
+                ..ProgramSpec::default()
             },
             "
             READ RX0
@@ -133,13 +149,16 @@ mod tests {
     #[test]
     fn test_set_push_pop() {
         execute_expect_success(
-            Environment {
-                id: 0,
+            HardwareSpec {
                 num_registers: 2,
                 num_stacks: 1,
                 max_stack_length: 5,
+                ..HardwareSpec::default()
+            },
+            ProgramSpec {
                 input: vec![],
                 expected_output: vec![10, 5],
+                ..ProgramSpec::default()
             },
             "
             SET RX0 10
@@ -157,13 +176,11 @@ mod tests {
     #[test]
     fn test_if() {
         execute_expect_success(
-            Environment {
-                id: 0,
-                num_registers: 1,
-                num_stacks: 0,
-                max_stack_length: 0,
+            HardwareSpec::default(),
+            ProgramSpec {
                 input: vec![],
                 expected_output: vec![1],
+                ..ProgramSpec::default()
             },
             "
             IF RX0 {
@@ -180,13 +197,15 @@ mod tests {
     #[test]
     fn test_while() {
         execute_expect_success(
-            Environment {
-                id: 0,
-                num_registers: 1,
+            HardwareSpec {
                 num_stacks: 1,
                 max_stack_length: 5,
+                ..HardwareSpec::default()
+            },
+            ProgramSpec {
                 input: vec![],
                 expected_output: vec![2, 1, 0],
+                ..ProgramSpec::default()
             },
             "
             PUSH RX0 S0
@@ -205,13 +224,14 @@ mod tests {
     #[test]
     fn test_arithmetic() {
         execute_expect_success(
-            Environment {
-                id: 0,
+            HardwareSpec {
                 num_registers: 2,
-                num_stacks: 0,
-                max_stack_length: 0,
+                ..HardwareSpec::default()
+            },
+            ProgramSpec {
                 input: vec![],
                 expected_output: vec![-3, 140],
+                ..ProgramSpec::default()
             },
             "
             ADD RX0 1
@@ -232,13 +252,11 @@ mod tests {
     #[test]
     fn test_square_all() {
         execute_expect_success(
-            Environment {
-                id: 0,
-                num_registers: 1,
-                num_stacks: 0,
-                max_stack_length: 0,
+            HardwareSpec::default(),
+            ProgramSpec {
                 input: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
                 expected_output: vec![1, 4, 9, 16, 25, 36, 49, 64, 81, 100],
+                ..ProgramSpec::default()
             },
             "
             WHILE RLI {
@@ -253,13 +271,14 @@ mod tests {
     #[test]
     fn test_fibonacci() {
         execute_expect_success(
-            Environment {
-                id: 0,
+            HardwareSpec {
                 num_registers: 4,
-                num_stacks: 0,
-                max_stack_length: 0,
+                ..HardwareSpec::default()
+            },
+            ProgramSpec {
                 input: vec![10],
                 expected_output: vec![0, 1, 1, 2, 3, 5, 8, 13, 21, 34],
+                ..ProgramSpec::default()
             },
             "
             READ RX0
@@ -277,12 +296,21 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_empty_file() {
+        expect_compile_errors(
+            HardwareSpec::default(),
+            "",
+            &["Parse error: 0: in Alpha, got empty input\n\n"],
+        );
+    }
+
+    #[test]
     fn test_invalid_user_reg_ref() {
         expect_compile_errors(
-            Environment {
+            HardwareSpec {
                 num_registers: 1,
                 num_stacks: 1,
-                ..Environment::default()
+                ..HardwareSpec::default()
             },
             "
             READ RX1
@@ -310,9 +338,9 @@ mod tests {
     #[test]
     fn test_invalid_stack_reg_ref() {
         expect_compile_errors(
-            Environment {
+            HardwareSpec {
                 num_stacks: 1,
-                ..Environment::default()
+                ..HardwareSpec::default()
             },
             "
         SET RX0 RS1
@@ -324,9 +352,9 @@ mod tests {
     #[test]
     fn test_invalid_stack_ref() {
         expect_compile_errors(
-            Environment {
+            HardwareSpec {
                 num_stacks: 1,
-                ..Environment::default()
+                ..HardwareSpec::default()
             },
             "
             PUSH 5 S1
@@ -342,9 +370,9 @@ mod tests {
     #[test]
     fn test_unwritable_reg() {
         expect_compile_errors(
-            Environment {
+            HardwareSpec {
                 num_stacks: 1,
-                ..Environment::default()
+                ..HardwareSpec::default()
             },
             "
             SET RLI 5
@@ -354,15 +382,6 @@ mod tests {
                 "Cannot write to read-only register RLI",
                 "Cannot write to read-only register RS0",
             ],
-        );
-    }
-
-    #[test]
-    fn test_parse_empty_file() {
-        expect_compile_errors(
-            Environment::default(),
-            "",
-            &["Parse error: 0: in Alpha, got empty input\n\n"],
         );
     }
 }

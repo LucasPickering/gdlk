@@ -5,7 +5,10 @@
 #[macro_use]
 extern crate diesel;
 
-use crate::{lang::compile, models::Environment};
+use crate::{
+    lang::compile,
+    models::{HardwareSpec, ProgramSpec},
+};
 use actix_web::{middleware, web, App, HttpServer};
 use diesel::{
     r2d2::{self, ConnectionManager},
@@ -28,9 +31,12 @@ enum Command {
     /// returns 0 for a successful execution and 1 for unsuccessful.
     #[structopt(name = "execute")]
     Execute {
-        /// Path to the environment file, in JSON format
-        #[structopt(parse(from_os_str), long = "env", short = "e")]
-        env_path: PathBuf,
+        /// Path to the hardware spec file, in JSON format
+        #[structopt(parse(from_os_str), long = "hardware")]
+        hardware_spec_path: PathBuf,
+        /// Path to the program spec file, in JSON format
+        #[structopt(parse(from_os_str), long = "program", short = "p")]
+        program_spec_path: PathBuf,
         /// Path to the source code file
         #[structopt(parse(from_os_str), long = "source", short = "s")]
         source_path: PathBuf,
@@ -64,18 +70,24 @@ fn run(opt: Opt) -> Fallible<()> {
     match opt.cmd {
         // Compile and build the given program
         Command::Execute {
-            env_path,
+            hardware_spec_path,
+            program_spec_path,
             source_path,
         } => {
-            // Read and parse the environment from a JSON file
-            let env_str = fs::read_to_string(env_path)?;
-            let env: Environment = serde_json::from_str(&env_str)?;
+            // Read and parse the hw spec and program spec from JSON files
+            let hardware_spec_str = fs::read_to_string(hardware_spec_path)?;
+            let hardware_spec: HardwareSpec =
+                serde_json::from_str(&hardware_spec_str)?;
+            // Read and parse the hw spec from a JSON file
+            let program_spec_str = fs::read_to_string(program_spec_path)?;
+            let program_spec: ProgramSpec =
+                serde_json::from_str(&program_spec_str)?;
 
             // Read the source code from the file
             let source = fs::read_to_string(source_path)?;
 
             // Compile and execute
-            let mut machine = compile(&env, source)?;
+            let mut machine = compile(&hardware_spec, &program_spec, source)?;
             let success = machine.execute_all()?;
 
             println!(
@@ -105,8 +117,8 @@ fn run(opt: Opt) -> Fallible<()> {
                     .wrap(middleware::Logger::default())
                     // websocket route
                     .service(
-                        web::resource("/ws/environments/{env_id}/").route(
-                            web::get().to(server::ws_environments_by_id),
+                        web::resource("/ws/programs/{program_spec_id}/").route(
+                            web::get().to(server::ws_program_specs_by_id),
                         ),
                     )
             })
