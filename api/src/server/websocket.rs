@@ -1,13 +1,16 @@
 use crate::{
-    error::{CompileErrors, RuntimeError, ServerError},
-    lang::{compile, Machine, MachineState},
-    models::{HardwareSpec, ProgramSpec},
+    error::ServerError,
+    models::{QueryHardwareSpec, QueryProgramSpec},
     schema::{hardware_specs::dsl::*, program_specs::dsl::*},
 };
 use actix::{Actor, ActorContext, AsyncContext, StreamHandler};
 use actix_web::{web, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
 use diesel::{prelude::*, r2d2::ConnectionManager, PgConnection};
+use gdlk::{
+    compile, CompileErrors, HardwareSpec, Machine, MachineState, ProgramSpec,
+    RuntimeError,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     convert,
@@ -231,14 +234,14 @@ pub fn ws_program_specs_by_id(
 ) -> Result<HttpResponse, actix_web::Error> {
     let conn: &PgConnection = &pool.get().unwrap();
     // Look up the program spec by ID, get the associated hardware spec too
-    let (program_spec, hardware_spec): (ProgramSpec, HardwareSpec) =
+    let (program_spec, hardware_spec): (QueryProgramSpec, QueryHardwareSpec) =
         program_specs
             .find(program_spec_id.into_inner())
             .inner_join(hardware_specs)
             .get_result(conn)
             .map_err(ServerError::from)?;
     ws::start(
-        ProgramWebsocket::new(hardware_spec, program_spec),
+        ProgramWebsocket::new(hardware_spec.into(), program_spec.into()),
         &r,
         stream,
     )

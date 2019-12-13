@@ -1,13 +1,11 @@
 use crate::{
-    error::CompileError,
-    lang::{
-        ast::{
-            Instr, LangValue, Operator, Program, RegisterRef, StackIdentifier,
-            UserRegisterIdentifier, ValueSource,
-        },
-        consts::{REG_INPUT_LEN, REG_STACK_LEN_PREFIX, REG_USER_PREFIX},
-        Compiler,
+    ast::{
+        Instr, LangValue, Operator, Program, RegisterRef, StackIdentifier,
+        UserRegisterIdentifier, ValueSource,
     },
+    consts::{REG_INPUT_LEN, REG_STACK_LEN_PREFIX, REG_USER_PREFIX},
+    error::CompileError,
+    Compiler,
 };
 use nom::{
     branch::alt,

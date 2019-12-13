@@ -1,4 +1,4 @@
-use crate::lang::{
+use crate::{
     ast::{Instr, MachineInstr, Program},
     Compiler,
 };
@@ -84,7 +84,7 @@ impl Compiler<Program> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lang::ast::{Operator, RegisterRef, ValueSource};
+    use crate::ast::{Operator, RegisterRef, ValueSource};
 
     #[test]
     fn test_if() {

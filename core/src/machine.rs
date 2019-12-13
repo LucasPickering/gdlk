@@ -1,10 +1,10 @@
 use crate::{
-    debug,
-    error::RuntimeError,
-    lang::ast::{
+    ast::{
         LangValue, MachineInstr, Operator, RegisterRef, StackIdentifier,
         ValueSource,
     },
+    debug,
+    error::RuntimeError,
     models::{HardwareSpec, ProgramSpec},
 };
 use serde::Serialize;
@@ -14,19 +14,19 @@ use std::{convert::TryFrom, iter, num::Wrapping};
 /// program that is currently being executed.
 ///
 /// The fields are public for read-only purposes. They should never be mutated.
-/// Initialized from an [Environment](Environment), which controls the input
-/// and stack parameters.
+/// Initialized from an [HardwareSpec](HardwareSpec) and
+/// [ProgramSpec](ProgramSpec), which control the input and stack parameters.
 #[derive(Debug, PartialEq, Serialize)]
 pub struct MachineState {
     /// The maximum number of elements allowed in a stack. This is copied from
     /// the hardware spec so we don't have to maintain a reference to the hw.
     #[serde(skip)] // We don't want to include this field in serialization
-    max_stack_length: i32,
+    max_stack_length: usize,
 
     /// The current input buffer. This can be popped from as the program is
     /// executed. This will be initialized as the reverse of the input from the
-    /// environment, so that elements at the beginning can be popped off first.
-    /// Values can never be added to the input, only popped off.
+    /// program spec, so that elements at the beginning can be popped off
+    /// first. Values can never be added to the input, only popped off.
     pub input: Vec<LangValue>,
     /// The current output buffer. This can be pushed into, but never popped
     /// out of.
@@ -34,7 +34,7 @@ pub struct MachineState {
     /// The registers that the user can read and write. Indexed by Register ID.
     pub registers: Vec<LangValue>,
     /// The series of stacks that act as the programs RAM. The number of stacks
-    /// and their capacity is determined by the initialization environment.
+    /// and their capacity is determined by the initializating hardware spec.
     pub stacks: Vec<Vec<LangValue>>,
 }
 
@@ -106,8 +106,7 @@ impl MachineState {
         let stack = &mut self.stacks[stack_id];
 
         // If the stack is capacity, make sure we're not over it
-        // TODO make this num conversion safe
-        if stack.len() >= (max_stack_length as usize) {
+        if stack.len() >= max_stack_length {
             return Err(RuntimeError::StackOverflow(stack_id));
         }
 
@@ -136,9 +135,9 @@ impl MachineState {
 /// A steppable program executor. Maintains the current state of the program,
 /// and execution can be progressed one instruction at a time.
 ///
-/// Created from an [Environment](Environment) and a [Program](Program). The
-/// current machine state can be obtained at any time, which allows for handy
-/// visualizations of execution.
+/// Created from a [HardwareSpec](HardwareSpec), [ProgramSpec](ProgramSpec), and
+/// a program. The current machine state can be obtained at any time, which
+/// allows for handy visualizations of execution.
 #[derive(Debug)]
 pub struct Machine {
     // Static data
@@ -273,8 +272,8 @@ impl Machine {
     }
 
     /// Executes this machine until termination (or error). All instructions are
-    /// executed until [is_complete](Self::is_complete) returns true. Returns
-    /// the value of [is_successful](Self::is_successful) upon termination.
+    /// executed until [is_complete](Machine::is_complete) returns true. Returns
+    /// the value of [is_successful](Machine::is_successful) upon termination.
     pub fn execute_all(&mut self) -> Result<bool, RuntimeError> {
         while !self.is_complete() {
             self.execute_next()?;
@@ -291,7 +290,7 @@ impl Machine {
     /// 1. Program is complete (all instructions have been executed)
     /// 2. Input buffer has been exhausted (all input has been consumed)
     /// 3. Output buffer matches the expected buffer, as defined by the
-    /// [Environment](Environment)
+    /// [ProgramSpec](ProgramSpec)
     pub fn is_successful(&self) -> bool {
         self.is_complete()
             && self.state.input.is_empty()
@@ -310,7 +309,6 @@ mod tests {
         let program_spec = ProgramSpec {
             input: vec![1],
             expected_output: vec![1],
-            ..ProgramSpec::default()
         };
         let program = vec![
             MachineInstr::Operator(Operator::Read(RegisterRef::User(0))),

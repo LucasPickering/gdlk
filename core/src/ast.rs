@@ -1,6 +1,7 @@
-use crate::lang::consts::{
-    REG_INPUT_LEN, REG_STACK_LEN_PREFIX, REG_USER_PREFIX,
-};
+//! This module holds all the different types that can appear in our ASTs. There
+//! should be little to no functionality implemented here, just basic structs.
+
+use crate::consts::{REG_INPUT_LEN, REG_STACK_LEN_PREFIX, REG_USER_PREFIX};
 use serde::Serialize;
 use std::fmt::{self, Display, Formatter};
 
@@ -96,9 +97,9 @@ pub struct Program {
     pub body: Vec<Instr>,
 }
 
-/// An instruction set that is ready to be executed by a [Machine](Machine).
-/// This instruction set is as minimal as possible, to reduce the complexity
-/// of the runtime.
+/// An instruction set that is ready to be executed by a
+/// [Machine](crate::Machine). This instruction set is as minimal as possible,
+/// to reduce the complexity of the runtime.
 #[derive(Debug, PartialEq)]
 pub enum MachineInstr {
     /// A simple operator (see [Operator](Operator))

@@ -736,13 +736,22 @@ checksum = "1b980f2816d6ee8673b6517b52cb0e808a180efc92e5c19d02cdda79066703ef"
 name = "gdlk"
 version = "0.1.0"
 dependencies = [
+ "failure",
+ "nom",
+ "serde",
+]
+
+[[package]]
+name = "gdlk_api"
+version = "0.1.0"
+dependencies = [
  "actix",
  "actix-web",
  "actix-web-actors",
  "diesel",
  "env_logger",
  "failure",
- "nom",
+ "gdlk",
  "r2d2",
  "serde",
  "serde_json",

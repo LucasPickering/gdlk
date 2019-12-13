@@ -5,25 +5,20 @@
 #[macro_use]
 extern crate diesel;
 
-use crate::{
-    lang::compile,
-    models::{HardwareSpec, ProgramSpec},
-};
 use actix_web::{middleware, web, App, HttpServer};
 use diesel::{
     r2d2::{self, ConnectionManager},
     PgConnection,
 };
 use failure::Fallible;
+use gdlk::{compile, HardwareSpec, ProgramSpec};
 use std::{fs, path::PathBuf, process};
 use structopt::StructOpt;
 
 mod error;
-mod lang;
 mod models;
 mod schema;
 mod server;
-mod util;
 
 #[derive(Debug, StructOpt)]
 enum Command {

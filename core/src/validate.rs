@@ -1,12 +1,10 @@
 use crate::{
-    error::{CompileError, CompileErrors},
-    lang::{
-        ast::{
-            Instr, Operator, Program, RegisterRef, StackIdentifier, ValueSource,
-        },
-        Compiler,
+    ast::{
+        Instr, Operator, Program, RegisterRef, StackIdentifier, ValueSource,
     },
+    error::{CompileError, CompileErrors},
     models::HardwareSpec,
+    Compiler,
 };
 
 /// Helper method to change if a stack reference is in range. This is used for
@@ -15,7 +13,7 @@ fn is_stack_ref_valid(
     hardware_spec: &HardwareSpec,
     stack_id: StackIdentifier,
 ) -> bool {
-    stack_id < (hardware_spec.num_stacks as usize)
+    stack_id < hardware_spec.num_stacks
 }
 
 /// Ensures the register reference refers to a real register in the
@@ -37,8 +35,7 @@ fn validate_reg_ref(
             }
         }
         RegisterRef::User(reg_id) => {
-            // TODO clean up this num conversion
-            if *reg_id >= (hardware_spec.num_registers as usize) {
+            if *reg_id >= hardware_spec.num_registers {
                 CompileError::InvalidRegisterRef(RegisterRef::User(*reg_id))
                     .into()
             } else {

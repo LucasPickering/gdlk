@@ -674,13 +674,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "gdlk"
 version = "0.1.0"
 dependencies = [
+ "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nom 5.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.102 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "gdlk_api"
+version = "0.1.0"
+dependencies = [
  "actix 0.8.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "actix-web 1.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "actix-web-actors 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "diesel 1.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "nom 5.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gdlk 0.1.0",
  "r2d2 0.8.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.102 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.41 (registry+https://github.com/rust-lang/crates.io-index)",
