@@ -1,5 +1,5 @@
 [package]
-name = "gdlk_api"
+name = "gdlk"
 version = "0.1.0"
 authors = [
     "John Reilly Murray <johnreillymurray@gmail.com>",
@@ -8,14 +8,6 @@ authors = [
 edition = "2018"
 
 [dependencies]
-actix = "0.8"
-actix-web = "1.0"
-actix-web-actors = "1.0"
-diesel = { version = "1.4", features = ["postgres", "r2d2"] }
-env_logger = "0.7"
 failure = "0.1"
-gdlk = { path = "../core" }
-r2d2 = "0.8"
+nom = "5.0"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-structopt = "0.3"

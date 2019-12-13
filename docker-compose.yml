@@ -3,6 +3,7 @@ version: "3"
 # Use these instead of the local directory for building the projects
 # to prevent the containers from fighting with external build tools
 volumes:
+  core_build:
   api_build:
 
 services:
@@ -23,7 +24,9 @@ services:
     command: cargo watch -x "run -- server"
     tty: true # Colorize output
     volumes:
+      - ./core:/app/core:rw
       - ./api:/app/api:rw
+      - core_build:/app/core/target
       - api_build:/app/api/target
     depends_on:
       - db
