@@ -228,3 +228,52 @@ fn test_fibonacci() {
         ",
     );
 }
+
+#[test]
+fn test_insertion_sort() {
+    execute_expect_success(
+        HardwareSpec {
+            num_registers: 3,
+            num_stacks: 2,
+            max_stack_length: 16,
+        },
+        ProgramSpec {
+            input: vec![9, 3, 8, 4, 5, 1, 3, 8, 9, 5, 2, 10, 4, 1, 8],
+            expected_output: vec![1, 1, 2, 3, 3, 4, 4, 5, 5, 8, 8, 8, 9, 9, 10],
+        },
+        "
+        WHILE RLI {
+            READ RX0
+            SET RX2 RS0
+            WHILE RX2 {
+                POP S0 RX1
+
+                CMP RX2 RX0 RX1
+                SUB RX2 1
+                IF RX2 {
+                    SET RX2 0
+                    SUB RX2 1
+                }
+                IF RX2 {
+                    PUSH RX1 S0
+                }
+                ADD RX2 1
+                IF RX2 {
+                    PUSH RX1 S1
+                }
+                MUL RX2 RS0
+            }
+            PUSH RX0 S0
+            WHILE RS1 {
+                POP S1 RX1
+                PUSH RX1 S0
+            }
+        }
+
+        WHILE RS0 {
+            POP S0 RX0
+            WRITE RX0
+        }
+        ",
+    )
+}
