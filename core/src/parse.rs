@@ -46,6 +46,25 @@ where
     tuple((one_arg(arg_parser_one), one_arg(arg_parser_two)))
 }
 
+fn three_args<I, O1, O2, O3, E: ParseError<I>, F, G, H>(
+    arg_parser_one: F,
+    arg_parser_two: G,
+    arg_parser_three: H,
+) -> impl Fn(I) -> IResult<I, (O1, O2, O3), E>
+where
+    I: InputTakeAtPosition + Clone,
+    <I as InputTakeAtPosition>::Item: AsChar + Clone,
+    F: Fn(I) -> IResult<I, O1, E>,
+    G: Fn(I) -> IResult<I, O2, E>,
+    H: Fn(I) -> IResult<I, O3, E>,
+{
+    tuple((
+        one_arg(arg_parser_one),
+        one_arg(arg_parser_two),
+        one_arg(arg_parser_three),
+    ))
+}
+
 /// Parses one instruction keyword, and uses the passed parser to parse the
 /// arguments
 fn instr<'a, Input: 'a, O, F, Error: ParseError<Input>>(
@@ -111,9 +130,7 @@ fn lang_value(input: &str) -> IResult<&str, LangValue, VerboseError<&str>> {
 }
 
 /// Parses either a `LangValue` or `Register`.
-fn parse_value_source(
-    input: &str,
-) -> IResult<&str, ValueSource, VerboseError<&str>> {
+fn value_source(input: &str) -> IResult<&str, ValueSource, VerboseError<&str>> {
     alt((
         // "1" => ValueSource::Const(1)
         map(lang_value, ValueSource::Const),
@@ -138,35 +155,42 @@ fn parse_write(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
 fn parse_set(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
     // >>> Set RX0 10
     let (input, (reg, src)) =
-        instr("Set", two_args(reg_ident, parse_value_source))(input)?;
+        instr("Set", two_args(reg_ident, value_source))(input)?;
     Ok((input, Instr::Operator(Operator::Set(reg, src))))
 }
 
 fn parse_add(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
     // >>> Add RX0 RX1
     let (input, (dst, src)) =
-        instr("Add", two_args(reg_ident, parse_value_source))(input)?;
+        instr("Add", two_args(reg_ident, value_source))(input)?;
     Ok((input, Instr::Operator(Operator::Add(dst, src))))
 }
 
 fn parse_sub(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
     // >>> Sub RX0 RX1
     let (input, (dst, src)) =
-        instr("Sub", two_args(reg_ident, parse_value_source))(input)?;
+        instr("Sub", two_args(reg_ident, value_source))(input)?;
     Ok((input, Instr::Operator(Operator::Sub(dst, src))))
 }
 
 fn parse_mul(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
     // >>> Mul RX0 RX1
     let (input, (dst, src)) =
-        instr("Mul", two_args(reg_ident, parse_value_source))(input)?;
+        instr("Mul", two_args(reg_ident, value_source))(input)?;
     Ok((input, Instr::Operator(Operator::Mul(dst, src))))
+}
+
+fn parse_cmp(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
+    // >>> Cmp RX0 5 10
+    let (input, (dst, src_1, src_2)) =
+        instr("Cmp", three_args(reg_ident, value_source, value_source))(input)?;
+    Ok((input, Instr::Operator(Operator::Cmp(dst, src_1, src_2))))
 }
 
 fn parse_push(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
     // >>> Push RX0 S1
     let (input, (src, stack)) =
-        instr("Push", two_args(parse_value_source, stack_ident))(input)?;
+        instr("Push", two_args(value_source, stack_ident))(input)?;
     Ok((input, Instr::Operator(Operator::Push(src, stack))))
 }
 
@@ -203,6 +227,7 @@ fn try_each(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
                 parse_add,
                 parse_sub,
                 parse_mul,
+                parse_cmp,
                 parse_push,
                 parse_pop,
                 parse_if,
@@ -364,6 +389,21 @@ mod tests {
                 vec![Instr::Operator(Operator::Mul(
                     RegisterRef::User(1),
                     ValueSource::Register(RegisterRef::User(0))
+                ))]
+            ))
+        )
+    }
+
+    #[test]
+    fn test_cmp() {
+        assert_eq!(
+            parse_gdlk("CMP RX0 5 10"),
+            Ok((
+                "",
+                vec![Instr::Operator(Operator::Cmp(
+                    RegisterRef::User(0),
+                    ValueSource::Const(5),
+                    ValueSource::Const(10),
                 ))]
             ))
         )

@@ -75,6 +75,11 @@ pub enum Operator {
     Sub(RegisterRef, ValueSource),
     /// Multiplies the two registers. Puts the result in the first register.
     Mul(RegisterRef, ValueSource),
+    /// Compares the last two arguments, and stores the comparison result in
+    /// the first register. Result is -1 if the first value is less than the
+    /// second, 0 if they are equal, and 1 if the first value is greater. The
+    /// result will **never** be any value other than -1, 0, or 1.
+    Cmp(RegisterRef, ValueSource, ValueSource),
     /// Pushes the value in a register onto the given stack
     Push(ValueSource, StackIdentifier),
     /// Pops the top value off the given stack into a register

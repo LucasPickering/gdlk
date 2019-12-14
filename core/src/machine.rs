@@ -8,7 +8,7 @@ use crate::{
     models::{HardwareSpec, ProgramSpec},
 };
 use serde::Serialize;
-use std::{convert::TryFrom, iter, num::Wrapping};
+use std::{cmp::Ordering, convert::TryFrom, iter, num::Wrapping};
 
 /// The current state of a machine. This encompasses the entire state of a
 /// program that is currently being executed.
@@ -229,6 +229,16 @@ impl Machine {
                                 ))
                             .0,
                         );
+                    }
+                    Operator::Cmp(dst, src_1, src_2) => {
+                        let val_1 = self.state.get_value_from_source(src_1);
+                        let val_2 = self.state.get_value_from_source(src_2);
+                        let cmp = match val_1.cmp(&val_2) {
+                            Ordering::Less => -1,
+                            Ordering::Equal => 0,
+                            Ordering::Greater => 1,
+                        };
+                        self.state.set_reg(dst, cmp);
                     }
                     Operator::Push(src, stack_id) => {
                         self.state.push_stack(

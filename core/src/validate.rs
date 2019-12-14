@@ -105,9 +105,14 @@ fn validate_instr(
             | Operator::Sub(reg, val_src)
             | Operator::Mul(reg, val_src) => {
                 // Make sure the first reg is valid and writable, and the second
-                // is a valid
+                // is a valid value source
                 validate_writeable_reg_ref(hardware_spec, reg)
                     .chain(validate_val_src(hardware_spec, val_src))
+            }
+            Operator::Cmp(reg, val_src_1, val_src_2) => {
+                validate_writeable_reg_ref(hardware_spec, reg)
+                    .chain(validate_val_src(hardware_spec, val_src_1))
+                    .chain(validate_val_src(hardware_spec, val_src_2))
             }
             Operator::Push(val_src, stack_id) => {
                 validate_val_src(hardware_spec, val_src)
