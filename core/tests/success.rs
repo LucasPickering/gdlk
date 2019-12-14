@@ -153,6 +153,34 @@ fn test_arithmetic() {
 }
 
 #[test]
+fn test_cmp() {
+    execute_expect_success(
+        HardwareSpec {
+            num_registers: 2,
+            num_stacks: 0,
+            max_stack_length: 0,
+        },
+        ProgramSpec {
+            input: vec![],
+            expected_output: vec![-1, 0, 1, 1],
+        },
+        "
+        CMP RX0 1 2
+        WRITE RX0
+        CMP RX0 2 2
+        WRITE RX0
+        CMP RX0 10 0
+        WRITE RX0
+
+        SET RX0 3
+        SET RX1 1
+        CMP RX0 RX0 RX1
+        WRITE RX0
+        ",
+    );
+}
+
+#[test]
 fn test_square_all() {
     execute_expect_success(
         HardwareSpec {
