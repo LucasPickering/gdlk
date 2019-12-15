@@ -8,7 +8,10 @@ use crate::{
     models::{HardwareSpec, ProgramSpec},
 };
 use serde::Serialize;
-use std::{cmp::Ordering, convert::TryFrom, iter, num::Wrapping};
+use std::{
+    cmp::Ordering, collections::VecDeque, iter, iter::FromIterator,
+    num::Wrapping,
+};
 
 /// The current state of a machine. This encompasses the entire state of a
 /// program that is currently being executed.
@@ -24,10 +27,10 @@ pub struct MachineState {
     max_stack_length: usize,
 
     /// The current input buffer. This can be popped from as the program is
-    /// executed. This will be initialized as the reverse of the input from the
-    /// program spec, so that elements at the beginning can be popped off
-    /// first. Values can never be added to the input, only popped off.
-    pub input: Vec<LangValue>,
+    /// executed. The front of the buffer is where we want to pop from first,
+    /// so this is a VecDeque so we get pop_front. Values can never be added to
+    /// the input, only popped off.
+    pub input: VecDeque<LangValue>,
     /// The current output buffer. This can be pushed into, but never popped
     /// out of.
     pub output: Vec<LangValue>,
@@ -44,14 +47,18 @@ impl MachineState {
         input.reverse(); // Reverse the vec so we can pop off the values in order
         Self {
             max_stack_length: hardware_spec.max_stack_length,
-            input,
+            input: VecDeque::from_iter(program_spec.input.iter().copied()),
             output: Vec::new(),
             registers: iter::repeat(0)
-                .take(usize::try_from(hardware_spec.num_registers).unwrap())
+                .take(hardware_spec.num_registers)
                 .collect(),
-            stacks: iter::repeat_with(Vec::new)
-                .take(usize::try_from(hardware_spec.num_stacks).unwrap())
-                .collect(),
+            // Initialize `num_stacks` new stacks. Set an initial capacity
+            // for each one to prevent grows during program operation
+            stacks: iter::repeat_with(|| {
+                Vec::with_capacity(hardware_spec.max_stack_length)
+            })
+            .take(hardware_spec.num_stacks)
+            .collect(),
         }
     }
 
@@ -185,7 +192,7 @@ impl Machine {
         let instrs_to_consume: Option<i32> = match instr {
             MachineInstr::Operator(op) => {
                 match op {
-                    Operator::Read(reg) => match self.state.input.pop() {
+                    Operator::Read(reg) => match self.state.input.pop_front() {
                         Some(val) => {
                             self.state.set_reg(reg, val);
                         }
@@ -277,7 +284,7 @@ impl Machine {
         self.program_counter = (self.program_counter as i32
             + instrs_to_consume.unwrap_or(1))
             as usize;
-        debug!(println!("Executed {:?}; State: {:?}", instr, self.state));
+        debug!(println!("Executed {:?}\n\tState: {:?}", instr, self.state));
         Ok(())
     }
 
@@ -331,7 +338,7 @@ mod tests {
             *machine.get_state(),
             MachineState {
                 max_stack_length: 0,
-                input: vec![1],
+                input: VecDeque::from_iter([1].iter().copied()),
                 output: vec![],
                 registers: vec![0],
                 stacks: vec![],
@@ -345,7 +352,7 @@ mod tests {
             *machine.get_state(),
             MachineState {
                 max_stack_length: 0,
-                input: vec![],
+                input: VecDeque::new(),
                 output: vec![],
                 registers: vec![1],
                 stacks: vec![],
@@ -359,7 +366,7 @@ mod tests {
             *machine.get_state(),
             MachineState {
                 max_stack_length: 0,
-                input: vec![],
+                input: VecDeque::new(),
                 output: vec![1],
                 registers: vec![1],
                 stacks: vec![],
