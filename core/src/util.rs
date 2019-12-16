@@ -16,7 +16,9 @@ macro_rules! debug {
         #[cfg(debug_assertions)]
         {
             if let Ok(debug_val) = std::env::var("DEBUG") {
-                if debug_val.to_lowercase().as_str() == "true" {
+                if ["1", "t", "true"]
+                    .contains(&debug_val.to_lowercase().as_str())
+                {
                     $arg
                 }
             }
