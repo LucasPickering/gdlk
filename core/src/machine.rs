@@ -13,19 +13,28 @@ use std::{
     num::Wrapping,
 };
 
-/// The current state of a machine. This encompasses the entire state of a
-/// program that is currently being executed.
+/// A steppable program executor. Maintains the current state of the program,
+/// and execution can be progressed one instruction at a time.
 ///
-/// The fields are public for read-only purposes. They should never be mutated.
-/// Initialized from an [HardwareSpec](HardwareSpec) and
-/// [ProgramSpec](ProgramSpec), which control the input and stack parameters.
+/// Created from a [HardwareSpec](HardwareSpec), [ProgramSpec](ProgramSpec), and
+/// a program. The current machine state can be obtained at any time, including
+/// execution stats (e.g. # cycles), which allows for handy visualizations of
+/// execution.
 #[derive(Debug, PartialEq, Serialize)]
-pub struct MachineState {
-    /// The maximum number of elements allowed in a stack. This is copied from
-    /// the hardware spec so we don't have to maintain a reference to the hw.
-    #[serde(skip)] // We don't want to include this field in serialization
+pub struct Machine {
+    // Static data - this is copied from the input and shouldn't be included in
+    // serialization. We store these ourselves instead of keeping references
+    // to the originals because it just makes life a lot easier.
+    #[serde(skip)]
+    program: Vec<MachineInstr>,
+    #[serde(skip)]
+    expected_output: Vec<LangValue>,
+    #[serde(skip)]
     max_stack_length: usize,
 
+    // Runtime state
+    /// The index of the next instruction to be executed
+    program_counter: usize,
     /// The current input buffer. This can be popped from as the program is
     /// executed. The front of the buffer is where we want to pop from first,
     /// so this is a VecDeque so we get pop_front. Values can never be added to
@@ -41,12 +50,21 @@ pub struct MachineState {
     pub stacks: Vec<Vec<LangValue>>,
 }
 
-impl MachineState {
-    fn new(hardware_spec: &HardwareSpec, program_spec: &ProgramSpec) -> Self {
-        let mut input = program_spec.input.clone();
-        input.reverse(); // Reverse the vec so we can pop off the values in order
+impl Machine {
+    /// Creates a new machine, ready to be executed.
+    pub fn new(
+        hardware_spec: &HardwareSpec,
+        program_spec: &ProgramSpec,
+        program: Vec<MachineInstr>,
+    ) -> Self {
         Self {
+            // Static data
+            program,
+            expected_output: program_spec.expected_output.clone(),
             max_stack_length: hardware_spec.max_stack_length,
+
+            // Runtime state
+            program_counter: 0,
             input: VecDeque::from_iter(program_spec.input.iter().copied()),
             output: Vec::new(),
             registers: iter::repeat(0)
@@ -61,7 +79,6 @@ impl MachineState {
             .collect(),
         }
     }
-
     /// Gets a source value, which could either be a constant or a register.
     /// If the value is a constant, just return that. If it's a register,
     /// return the value from that register. Returns `RuntimeError` if it
@@ -137,51 +154,11 @@ impl MachineState {
             Err(RuntimeError::EmptyStack(stack_id))
         }
     }
-}
-
-/// A steppable program executor. Maintains the current state of the program,
-/// and execution can be progressed one instruction at a time.
-///
-/// Created from a [HardwareSpec](HardwareSpec), [ProgramSpec](ProgramSpec), and
-/// a program. The current machine state can be obtained at any time, which
-/// allows for handy visualizations of execution.
-#[derive(Debug)]
-pub struct Machine {
-    // Static data
-    program: Vec<MachineInstr>,
-    expected_output: Vec<LangValue>,
-    // Runtime state
-    state: MachineState,
-    /// The index of the next instruction to be executed
-    program_counter: usize,
-}
-
-impl Machine {
-    /// Creates a new machine, ready to be executed.
-    pub fn new(
-        hardware_spec: &HardwareSpec,
-        program_spec: &ProgramSpec,
-        program: Vec<MachineInstr>,
-    ) -> Self {
-        let state = MachineState::new(hardware_spec, program_spec);
-        Self {
-            program,
-            // This is a punt but w/e
-            expected_output: program_spec.expected_output.clone(),
-            state,
-            program_counter: 0,
-        }
-    }
-
-    /// Gets an immutable reference to the current machine state.
-    pub fn get_state(&self) -> &MachineState {
-        &self.state
-    }
 
     /// Executes the next instruction in the program. If there are no
     /// instructions left to execute, this panics.
     pub fn execute_next(&mut self) -> Result<(), RuntimeError> {
-        let instr = self
+        let instr = *self
             .program
             .get(self.program_counter)
             .ok_or(RuntimeError::ProgramTerminated)?;
@@ -192,85 +169,76 @@ impl Machine {
         let instrs_to_consume: Option<i32> = match instr {
             MachineInstr::Operator(op) => {
                 match op {
-                    Operator::Read(reg) => match self.state.input.pop_front() {
+                    Operator::Read(reg) => match self.input.pop_front() {
                         Some(val) => {
-                            self.state.set_reg(reg, val);
+                            self.set_reg(&reg, val);
                         }
                         None => return Err(RuntimeError::EmptyInput),
                     },
                     Operator::Write(reg) => {
-                        self.state.output.push(self.state.get_reg(reg));
+                        self.output.push(self.get_reg(&reg));
                     }
                     Operator::Set(dst, src) => {
-                        self.state.set_reg(
-                            dst,
-                            self.state.get_value_from_source(src),
-                        );
+                        self.set_reg(&dst, self.get_value_from_source(&src));
                     }
                     Operator::Add(dst, src) => {
-                        self.state.set_reg(
-                            dst,
-                            (Wrapping(self.state.get_reg(dst))
-                                + Wrapping(
-                                    self.state.get_value_from_source(src),
-                                ))
+                        self.set_reg(
+                            &dst,
+                            (Wrapping(self.get_reg(&dst))
+                                + Wrapping(self.get_value_from_source(&src)))
                             .0,
                         );
                     }
                     Operator::Sub(dst, src) => {
-                        self.state.set_reg(
-                            dst,
-                            (Wrapping(self.state.get_reg(dst))
-                                - Wrapping(
-                                    self.state.get_value_from_source(src),
-                                ))
+                        self.set_reg(
+                            &dst,
+                            (Wrapping(self.get_reg(&dst))
+                                - Wrapping(self.get_value_from_source(&src)))
                             .0,
                         );
                     }
                     Operator::Mul(dst, src) => {
-                        self.state.set_reg(
-                            dst,
-                            (Wrapping(self.state.get_reg(dst))
-                                * Wrapping(
-                                    self.state.get_value_from_source(src),
-                                ))
+                        self.set_reg(
+                            &dst,
+                            (Wrapping(self.get_reg(&dst))
+                                * Wrapping(self.get_value_from_source(&src)))
                             .0,
                         );
                     }
                     Operator::Cmp(dst, src_1, src_2) => {
-                        let val_1 = self.state.get_value_from_source(src_1);
-                        let val_2 = self.state.get_value_from_source(src_2);
+                        let val_1 = self.get_value_from_source(&src_1);
+                        let val_2 = self.get_value_from_source(&src_2);
                         let cmp = match val_1.cmp(&val_2) {
                             Ordering::Less => -1,
                             Ordering::Equal => 0,
                             Ordering::Greater => 1,
                         };
-                        self.state.set_reg(dst, cmp);
+                        self.set_reg(&dst, cmp);
                     }
                     Operator::Push(src, stack_id) => {
-                        self.state.push_stack(
-                            *stack_id,
-                            self.state.get_value_from_source(src),
+                        self.push_stack(
+                            stack_id,
+                            self.get_value_from_source(&src),
                         )?;
                     }
                     Operator::Pop(stack_id, dst) => {
-                        let popped = self.state.pop_stack(*stack_id)?;
-                        self.state.set_reg(dst, popped);
+                        let popped = self.pop_stack(stack_id)?;
+                        self.set_reg(&dst, popped);
                     }
                 }
                 None
             }
 
             MachineInstr::Jez(num_instrs, reg) => {
-                if self.state.get_reg(reg) == 0 {
-                    Some(*num_instrs)
+                if self.get_reg(&reg) == 0 {
+                    Some(num_instrs)
                 } else {
                     None
                 }
             }
             MachineInstr::Jnz(num_instrs, reg) => {
-                if self.state.get_reg(reg) != 0 {
-                    Some(*num_instrs)
+                if self.get_reg(&reg) != 0 {
+                    Some(num_instrs)
                 } else {
                     None
                 }
@@ -284,7 +252,7 @@ impl Machine {
         self.program_counter = (self.program_counter as i32
             + instrs_to_consume.unwrap_or(1))
             as usize;
-        debug!(println!("Executed {:?}\n\tState: {:?}", instr, self.state));
+        debug!(println!("Executed {:?}\n\tState: {:?}", instr, self));
         Ok(())
     }
 
@@ -306,72 +274,11 @@ impl Machine {
     /// Checks if this machine has completed successfully. The criteria are:
     /// 1. Program is complete (all instructions have been executed)
     /// 2. Input buffer has been exhausted (all input has been consumed)
-    /// 3. Output buffer matches the expected buffer, as defined by the
+    /// 3. Output buffer matches the expected output, as defined by the
     /// [ProgramSpec](ProgramSpec)
     pub fn is_successful(&self) -> bool {
         self.is_complete()
-            && self.state.input.is_empty()
-            && self.state.output == self.expected_output
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_simple_program() {
-        // Just a simple sanity check test
-        let hardware_spec = HardwareSpec::default();
-        let program_spec = ProgramSpec {
-            input: vec![1],
-            expected_output: vec![1],
-        };
-        let program = vec![
-            MachineInstr::Operator(Operator::Read(RegisterRef::User(0))),
-            MachineInstr::Operator(Operator::Write(RegisterRef::User(0))),
-        ];
-        let mut machine = Machine::new(&hardware_spec, &program_spec, program);
-
-        // Initial state
-        assert_eq!(
-            *machine.get_state(),
-            MachineState {
-                max_stack_length: 0,
-                input: VecDeque::from_iter([1].iter().copied()),
-                output: vec![],
-                registers: vec![0],
-                stacks: vec![],
-            }
-        );
-        assert!(!machine.is_successful());
-
-        // Run one instruction
-        machine.execute_next().unwrap();
-        assert_eq!(
-            *machine.get_state(),
-            MachineState {
-                max_stack_length: 0,
-                input: VecDeque::new(),
-                output: vec![],
-                registers: vec![1],
-                stacks: vec![],
-            }
-        );
-        assert!(!machine.is_successful());
-
-        // Run the second instruction
-        machine.execute_next().unwrap();
-        assert_eq!(
-            *machine.get_state(),
-            MachineState {
-                max_stack_length: 0,
-                input: VecDeque::new(),
-                output: vec![1],
-                registers: vec![1],
-                stacks: vec![],
-            }
-        );
-        assert!(machine.is_successful()); // Job's done
+            && self.input.is_empty()
+            && self.output == self.expected_output
     }
 }

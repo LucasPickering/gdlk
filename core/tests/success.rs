@@ -21,9 +21,8 @@ fn execute_expect_success(
 
     // Make sure program terminated successfully
     // Check each bit of state individually to make debugging easier
-    let state = machine.get_state();
-    assert_eq!(state.input, Vec::new() as Vec<LangValue>);
-    assert_eq!(state.output, program_spec.expected_output);
+    assert_eq!(machine.input, Vec::new() as Vec<LangValue>);
+    assert_eq!(machine.output, program_spec.expected_output);
     // Final sanity check, in case we change the criteria for success
     assert!(success);
 }

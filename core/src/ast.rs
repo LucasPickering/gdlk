@@ -105,7 +105,7 @@ pub struct Program {
 /// An instruction set that is ready to be executed by a
 /// [Machine](crate::Machine). This instruction set is as minimal as possible,
 /// to reduce the complexity of the runtime.
-#[derive(Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum MachineInstr {
     /// A simple operator (see [Operator](Operator))
     Operator(Operator),

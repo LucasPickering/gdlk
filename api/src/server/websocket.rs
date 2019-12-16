@@ -8,8 +8,7 @@ use actix_web::{web, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
 use diesel::{prelude::*, r2d2::ConnectionManager, PgConnection};
 use gdlk::{
-    compile, CompileErrors, HardwareSpec, Machine, MachineState, ProgramSpec,
-    RuntimeError,
+    compile, CompileErrors, HardwareSpec, Machine, ProgramSpec, RuntimeError,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -56,7 +55,7 @@ enum OutgoingEvent<'a> {
     },
     /// Send latest version of the machine state
     MachineState {
-        state: &'a MachineState,
+        state: &'a Machine,
         is_complete: bool,
         is_successful: bool,
     },
@@ -75,11 +74,11 @@ enum OutgoingEvent<'a> {
 // Define type conversions to make processing code a bit cleaner
 
 impl<'a> From<&'a Machine> for OutgoingEvent<'a> {
-    fn from(other: &'a Machine) -> Self {
+    fn from(machine: &'a Machine) -> Self {
         OutgoingEvent::MachineState {
-            state: other.get_state(),
-            is_complete: other.is_complete(),
-            is_successful: other.is_successful(),
+            state: machine,
+            is_complete: machine.is_complete(),
+            is_successful: machine.is_successful(),
         }
     }
 }
