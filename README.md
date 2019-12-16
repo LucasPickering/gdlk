@@ -46,11 +46,11 @@ cargo test
 
 ### Debugging
 
-If you have a program or test failing, you can run with additional debug output by setting `DEBUG=true`, like so:
+If you have a program or test failing, you can run with additional debug output by setting `DEBUG=1`, like so:
 
 ```sh
-DEBUG=true cargo run -- execute -e env.json -i prog.gdlk
-DEBUG=true cargo test -- --nocapture # --nocapture needed to make stdout visible
+DEBUG=1 cargo run -- execute -e env.json -i prog.gdlk
+DEBUG=1 cargo test -- --nocapture # --nocapture needed to make stdout visible
 ```
 
 ### Updating Fixtures
