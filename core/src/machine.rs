@@ -48,6 +48,9 @@ pub struct Machine {
     /// The series of stacks that act as the programs RAM. The number of stacks
     /// and their capacity is determined by the initializating hardware spec.
     pub stacks: Vec<Vec<LangValue>>,
+    /// The number of instructions that have been executed so far. This is not
+    /// unique, so repeated instructions are counted multiple times.
+    pub cycle_count: usize,
 }
 
 impl Machine {
@@ -77,8 +80,12 @@ impl Machine {
             })
             .take(hardware_spec.num_stacks)
             .collect(),
+
+            // Performance stats
+            cycle_count: 0,
         }
     }
+
     /// Gets a source value, which could either be a constant or a register.
     /// If the value is a constant, just return that. If it's a register,
     /// return the value from that register. Returns `RuntimeError` if it
@@ -252,6 +259,7 @@ impl Machine {
         self.program_counter = (self.program_counter as i32
             + instrs_to_consume.unwrap_or(1))
             as usize;
+        self.cycle_count += 1;
         debug!(println!("Executed {:?}\n\tState: {:?}", instr, self));
         Ok(())
     }
