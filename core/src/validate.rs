@@ -68,7 +68,6 @@ fn validate_stack_ref(
     hardware_spec: &HardwareSpec,
     stack_id: StackIdentifier,
 ) -> CompileErrors {
-    // TODO clean up this num conversion
     if is_stack_ref_valid(hardware_spec, stack_id) {
         CompileErrors::none()
     } else {

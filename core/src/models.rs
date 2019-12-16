@@ -18,7 +18,6 @@ pub struct HardwareSpec {
 }
 
 // Useful for creating this type in tests
-#[cfg(test)]
 impl Default for HardwareSpec {
     fn default() -> Self {
         Self {

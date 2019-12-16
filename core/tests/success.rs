@@ -1,17 +1,17 @@
 //! Integration tests for GDLK that expect program success. The programs in
-//! these tests should compile successful, and execute with a successful
+//! these tests should compile successfully, and execute with a successful
 //! outcome.
 
-use gdlk::{ast::LangValue, compile, HardwareSpec, ProgramSpec};
+use gdlk::{ast::LangValue, compile, HardwareSpec, Machine, ProgramSpec};
 
 /// Compiles the program for the given hardware, and executes it against the
-/// program spec.. Panics if the compile fails or the execution isn't
+/// program spec. Panics if the compile fails or the execution isn't
 /// successful.
 fn execute_expect_success(
     hardware_spec: HardwareSpec,
     program_spec: ProgramSpec,
     src: &str,
-) {
+) -> Machine {
     // Compile from hardware+src
     let mut machine =
         compile(&hardware_spec, &program_spec, src.into()).unwrap();
@@ -25,6 +25,7 @@ fn execute_expect_success(
     assert_eq!(machine.output, program_spec.expected_output);
     // Final sanity check, in case we change the criteria for success
     assert!(success);
+    machine
 }
 
 #[test]
@@ -274,5 +275,62 @@ fn test_insertion_sort() {
             WRITE RX0
         }
         ",
-    )
+    );
+}
+
+#[test]
+fn test_cycle_count_simple() {
+    let machine = execute_expect_success(
+        HardwareSpec::default(),
+        ProgramSpec {
+            input: vec![1],
+            expected_output: vec![2],
+        },
+        "
+        READ RX0
+        ADD RX0 1
+        WRITE RX0
+        ",
+    );
+    assert_eq!(machine.cycle_count, 3);
+}
+
+#[test]
+fn test_cycle_count_if() {
+    let m1 = execute_expect_success(
+        HardwareSpec::default(),
+        ProgramSpec {
+            input: vec![],
+            expected_output: vec![],
+        },
+        "
+        SET RX0 0
+        IF RX0 {}
+
+        SET RX0 1
+        IF RX0 {}
+        ",
+    );
+    // IF counts as one instruction, regardless of the value of the condition
+    assert_eq!(m1.cycle_count, 4);
+}
+
+#[test]
+fn test_cycle_count_while() {
+    let m1 = execute_expect_success(
+        HardwareSpec::default(),
+        ProgramSpec {
+            input: vec![1, 2, 3],
+            expected_output: vec![1, 2, 3],
+        },
+        "
+        WHILE RLI {
+            READ RX0
+            WRITE RX0
+        }
+        ",
+    );
+    // The initial WHILE check counts as one instruction, plus one more for
+    // each subsequent loop
+    assert_eq!(m1.cycle_count, 10);
 }
