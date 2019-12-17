@@ -39,6 +39,20 @@ fn test_parse_empty_file() {
 }
 
 #[test]
+fn test_parse_no_newline_after_inst() {
+    // TODO: make this error nicer
+    expect_compile_errors(
+        HardwareSpec {
+            num_registers: 1,
+            num_stacks: 0,
+            max_stack_length: 0,
+        },
+        "READ RX1 WRITE RX2",
+        &["Parse error: Invalid keyword:  WRITE RX2"],
+    );
+}
+
+#[test]
 fn test_invalid_user_reg_ref() {
     expect_compile_errors(
         HardwareSpec {
