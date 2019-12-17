@@ -2,7 +2,10 @@
 //! these tests should compile successfully, and execute with a successful
 //! outcome.
 
-use gdlk::{ast::LangValue, compile, HardwareSpec, Machine, ProgramSpec};
+use gdlk::{
+    ast::LangValue, compile, HardwareSpec, Machine, ProgramSpec,
+    MAX_CYCLE_COUNT,
+};
 
 /// Compiles the program for the given hardware, and executes it against the
 /// program spec. Panics if the compile fails or the execution isn't
@@ -333,4 +336,23 @@ fn test_cycle_count_while() {
     // The initial WHILE check counts as one instruction, plus one more for
     // each subsequent loop
     assert_eq!(m1.cycle_count, 10);
+}
+
+#[test]
+fn test_equal_max_cycle_count() {
+    // We can exit successfully with exactly the maximum number of cycles
+    let machine = execute_expect_success(
+        HardwareSpec::default(),
+        ProgramSpec {
+            input: vec![(MAX_CYCLE_COUNT as i32 - 1) / 2],
+            expected_output: vec![],
+        },
+        "
+        READ RX0
+        WHILE RX0 {
+            SUB RX0 1
+        }
+        ",
+    );
+    assert_eq!(machine.cycle_count, MAX_CYCLE_COUNT);
 }

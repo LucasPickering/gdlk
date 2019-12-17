@@ -45,6 +45,10 @@ pub enum RuntimeError {
     #[fail(display = "Cannot pop from empty stack {}", 0)]
     EmptyStack(StackIdentifier),
 
+    /// Too many cycles in the program
+    #[fail(display = "The maximum number of cycles has been reached")]
+    TooManyCycles,
+
     /// Instruction list has been exhausted, program is terminated
     #[fail(display = "Program has terminated, nothing left to execute")]
     ProgramTerminated,
