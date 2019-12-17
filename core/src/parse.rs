@@ -9,19 +9,20 @@ use crate::{
 };
 use nom::{
     branch::alt,
-    bytes::complete::tag_no_case,
-    character::complete::{alpha1, char, digit1, multispace0, space1},
+    bytes::complete::{tag_no_case, take_till},
+    character::complete::{
+        alpha1, char, digit1, line_ending, multispace0, space0, space1,
+    },
     combinator::{all_consuming, cut, map, map_res, peek},
     error::{
         context, convert_error, ErrorKind, ParseError, VerboseError,
         VerboseErrorKind,
     },
     lib::std::ops::RangeTo,
-    multi::many0,
-    sequence::{delimited, preceded, tuple},
+    multi::{many0, many1},
+    sequence::{delimited, preceded, terminated, tuple},
     AsChar, Compare, IResult, InputTake, InputTakeAtPosition, Slice,
 };
-
 fn one_arg<I, O, E: ParseError<I>, F>(
     arg_parser: F,
 ) -> impl Fn(I) -> IResult<I, O, E>
@@ -215,9 +216,33 @@ fn parse_while(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
     Ok((input, Instr::While(reg, body)))
 }
 
-fn try_each(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
+// TODO: for now throwing away spaces and comments
+// probably want too keep them when we do source mapping
+fn comment(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
+    let (input, _) = preceded(
+        space0,
+        context(
+            "Comment",
+            terminated(
+                char(';'),
+                cut(tuple((take_till(|c| c == '\n'), line_ending))),
+            ),
+        ),
+    )(input)?;
+    Ok((input, ""))
+}
+
+fn comment_or_spaces(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
+    let (input, _) =
+        many0(tuple((space0, many1(alt((comment, line_ending))), space0)))(
+            input,
+        )?;
+    Ok((input, ""))
+}
+
+fn try_each_instr(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
     let (input, (_, res, _)) = tuple((
-        multispace0,
+        comment_or_spaces,
         context(
             "Instruction",
             alt((
@@ -234,7 +259,7 @@ fn try_each(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
                 parse_while,
             )),
         ),
-        multispace0,
+        comment_or_spaces,
     ))(input)?;
     Ok((input, res))
 }
@@ -246,8 +271,8 @@ fn parse_body(input: &str) -> IResult<&str, Vec<Instr>, VerboseError<&str>> {
     // multispace0 matches 0 or more whitespace chars (including new lines)
     let (input, res) = cut(delimited(
         preceded(multispace0, char('{')),
-        many0(try_each), /* many0 will match 0 more, so the body could
-                          * be empty */
+        many0(try_each_instr), /* many0 will match 0 more, so the body could
+                                * be empty */
         preceded(multispace0, char('}')),
     ))(input)?;
     Ok((input, res))
@@ -257,11 +282,11 @@ fn parse_gdlk(input: &str) -> IResult<&str, Vec<Instr>, VerboseError<&str>> {
     // parses the whole program followed by 0 or more whitespace chars
 
     // consume starting whitespace
-    let (input, _) = multispace0(input)?;
+    let (input, _) = comment_or_spaces(input)?;
     // make sure something is there but don't consume the input
     // TODO: make this error message nicer
     peek(alpha1)(input)?;
-    let (input, res) = all_consuming(many0(try_each))(input)?;
+    let (input, res) = all_consuming(many0(try_each_instr))(input)?;
     Ok((input, res))
 }
 
@@ -493,12 +518,27 @@ mod tests {
     }
 
     #[test]
+    fn test_comments() {
+        assert_eq!(
+            parse_gdlk("; comment over here\n Add RX1 RX4 ; comment here\n"),
+            Ok((
+                "",
+                vec![Instr::Operator(Operator::Add(
+                    RegisterRef::User(1),
+                    ValueSource::Register(RegisterRef::User(4))
+                ))]
+            ))
+        )
+    }
+
+    #[test]
     fn test_parse_simple_file() {
         assert_eq!(
             parse_gdlk(
-                "
+                ";comment start
             Read RX0
-            Set RX0 2
+            ; comment poop
+            Set RX0 2 ;comment more poop
             Write RX0
             Read RX1
             Set RX1 3
@@ -506,6 +546,7 @@ mod tests {
             Read RX2
             Set RX2 4
             Write RX2
+            ; comment pog
         "
             ),
             Ok((

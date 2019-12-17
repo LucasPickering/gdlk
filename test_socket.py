@@ -19,8 +19,8 @@ async def ws(host, program_spec_id, source):
             print(f"<<< {msg}")
             await websocket.send(msg)
             recv = json.loads(await websocket.recv())
-            if recv["type"] == "compile_error" and "ParseError" in recv["content"]:
-                print(f">>> Parse Error:\n{recv['content']['ParseError'].strip()}\n")
+            if recv["type"] == "compile_error" and "ParseError" in recv["content"][0]:
+                print(f">>> Parse Error:\n{recv['content'][0]['ParseError'].strip()}\n")
             print(f">>> {recv}")
             return recv
 
