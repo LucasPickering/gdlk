@@ -34,11 +34,10 @@ type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
     deny_unknown_fields
 )]
 enum IncomingEvent {
-    Edit {
+    Compile {
         // Saving room for more fields here
         source: String,
     },
-    Compile,
     Step,
 }
 
@@ -49,7 +48,8 @@ enum IncomingEvent {
 enum OutgoingEvent<'a> {
     // OK events
     /// Send latest version of the program source code
-    Source {
+    /// Not using this right now, but we will once we can save source in the DB
+    _Source {
         // Saving room for more fields here
         source: &'a str,
     },
@@ -110,8 +110,6 @@ struct ProgramWebsocket {
     /// Track the last time we pinged/ponged the client, if this exceeds
     /// CLIENT_TIMEOUT, drop the connection
     heartbeat: Instant,
-    /// The current user-entered program source code
-    source_code: String,
     /// The current execution state of the machine. None if the program hasn't
     /// been compiled yet.
     machine: Option<Machine>,
@@ -123,7 +121,6 @@ impl ProgramWebsocket {
             hardware_spec,
             program_spec,
             heartbeat: Instant::now(),
-            source_code: String::new(),
             machine: None,
         }
     }
@@ -141,21 +138,12 @@ impl ProgramWebsocket {
 
         // Process message based on type
         Ok(match socket_msg {
-            IncomingEvent::Edit { source } => {
-                // Update source code
-                self.source_code = source;
-                // source code has changed, machine is no longer valid
-                self.machine = None;
-                OutgoingEvent::Source {
-                    source: &self.source_code,
-                }
-            }
-            IncomingEvent::Compile => {
+            IncomingEvent::Compile { source } => {
                 // Compile the program into a machine
                 self.machine = Some(compile(
                     &self.hardware_spec,
                     &self.program_spec,
-                    self.source_code.clone(),
+                    source,
                 )?);
 
                 // we need this fuckery cause lol borrow checker
