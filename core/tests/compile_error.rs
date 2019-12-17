@@ -7,13 +7,13 @@ use gdlk::{compile, HardwareSpec, ProgramSpec};
 /// Panics if the program compiles successfully, or if the wrong set of
 /// errors is returned.
 fn expect_compile_errors(
-    env: HardwareSpec,
+    hardware_spec: HardwareSpec,
     src: &str,
     expected_errors: &[&str],
 ) {
     // Compile from hardware+src
     let actual_errors = compile(
-        &env,
+        &hardware_spec,
         // This won't be used, just use bullshit values
         &ProgramSpec {
             input: vec![],

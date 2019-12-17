@@ -45,6 +45,7 @@ mod util;
 mod validate;
 
 use ast::MachineInstr;
+pub use consts::MAX_CYCLE_COUNT;
 pub use error::*;
 pub use machine::*;
 pub use models::*;

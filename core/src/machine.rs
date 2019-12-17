@@ -3,6 +3,7 @@ use crate::{
         LangValue, MachineInstr, Operator, RegisterRef, StackIdentifier,
         ValueSource,
     },
+    consts::MAX_CYCLE_COUNT,
     debug,
     error::RuntimeError,
     models::{HardwareSpec, ProgramSpec},
@@ -165,6 +166,11 @@ impl Machine {
     /// Executes the next instruction in the program. If there are no
     /// instructions left to execute, this panics.
     pub fn execute_next(&mut self) -> Result<(), RuntimeError> {
+        // Prevent infinite loops
+        if self.cycle_count >= MAX_CYCLE_COUNT {
+            return Err(RuntimeError::TooManyCycles);
+        }
+
         let instr = *self
             .program
             .get(self.program_counter)
