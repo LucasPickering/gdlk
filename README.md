@@ -1,5 +1,17 @@
 # GDLK
 
+## About
+
+GDLK is a programming language, as well as a game based on solving puzzles with the language.
+
+### What does GDLK stand for?
+
+GDLK Development Language Kit
+
+#### Wait, but, what does GDLK stand for?
+
+GDLK Development Language Kit!
+
 ## Development
 
 ### Setup
