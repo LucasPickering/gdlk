@@ -13,7 +13,7 @@ use nom::{
     character::complete::{
         alpha1, char, digit1, line_ending, multispace0, space0, space1,
     },
-    combinator::{all_consuming, cut, map, map_res, peek},
+    combinator::{all_consuming, cut, map, map_res, opt, peek},
     error::{
         context, convert_error, ErrorKind, ParseError, VerboseError,
         VerboseErrorKind,
@@ -125,9 +125,15 @@ fn stack_ident(
 }
 
 /// Parses a `LangValue`, like "10" or "-3", not including any surrounding
-/// whitespace. (Negatives don't actually work yet).
+/// whitespace.
 fn lang_value(input: &str) -> IResult<&str, LangValue, VerboseError<&str>> {
-    map_res(digit1, |s: &str| s.parse::<LangValue>())(input)
+    let (input, is_neg) = opt(char('-'))(input)?;
+    let (input, val) =
+        map_res(digit1, |s: &str| s.parse::<LangValue>())(input)?;
+    match is_neg {
+        Some(_) => Ok((input, -val)),
+        None => Ok((input, val)),
+    }
 }
 
 /// Parses either a `LangValue` or `Register`.
@@ -225,7 +231,10 @@ fn comment(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
             "Comment",
             terminated(
                 char(';'),
-                cut(tuple((take_till(|c| c == '\n'), line_ending))),
+                cut(tuple((
+                    take_till(|c| c == '\n' || c == '\r'),
+                    line_ending,
+                ))),
             ),
         ),
     )(input)?;
@@ -386,6 +395,20 @@ mod tests {
                 vec![Instr::Operator(Operator::Add(
                     RegisterRef::User(1),
                     ValueSource::Register(RegisterRef::User(4))
+                ))]
+            ))
+        )
+    }
+
+    #[test]
+    fn test_neg_literal() {
+        assert_eq!(
+            parse_gdlk("Add RX1 -10"),
+            Ok((
+                "",
+                vec![Instr::Operator(Operator::Add(
+                    RegisterRef::User(1),
+                    ValueSource::Const(-10)
                 ))]
             ))
         )
