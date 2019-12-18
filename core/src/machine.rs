@@ -10,8 +10,8 @@ use crate::{
 };
 use serde::Serialize;
 use std::{
-    cmp::Ordering, collections::VecDeque, iter, iter::FromIterator,
-    num::Wrapping,
+    cmp::Ordering, collections::VecDeque, convert::TryInto, iter,
+    iter::FromIterator, num::Wrapping,
 };
 
 /// A steppable program executor. Maintains the current state of the program,
@@ -103,19 +103,20 @@ impl Machine {
     /// it isn't valid.
     fn get_reg(&self, reg: &RegisterRef) -> LangValue {
         match reg {
-            // TODO make this conversion safe
-            RegisterRef::InputLength => self.input.len() as LangValue,
+            // These conversion unwraps are safe because we know that input
+            // and stack lengths are bounded by validation rules to fit into an
+            // i32 (max length is 256 at the time of writing this)
+            RegisterRef::InputLength => self.input.len().try_into().unwrap(),
             RegisterRef::StackLength(stack_id) => {
-                // TODO safe num conversion here
-                self.stacks[*stack_id].len() as LangValue
+                self.stacks[*stack_id].len().try_into().unwrap()
             }
             RegisterRef::User(reg_id) => *self.registers.get(*reg_id).unwrap(),
         }
     }
 
     /// Sets the register to the given value. The register reference is
-    /// assumed to be valid (should be validated at build time). Will panic if
-    /// it isn't valid.
+    /// assumed to be valid and writable (should be validated at build time).
+    /// Will panic if it isn't valid/writable.
     fn set_reg(&mut self, reg: &RegisterRef, value: LangValue) {
         match reg {
             RegisterRef::User(reg_id) => {
