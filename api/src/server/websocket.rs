@@ -13,6 +13,7 @@ use gdlk::{
 use serde::{Deserialize, Serialize};
 use std::{
     convert,
+    convert::TryInto,
     time::{Duration, Instant},
 };
 
@@ -228,7 +229,12 @@ pub fn ws_program_specs_by_id(
             .get_result(conn)
             .map_err(ServerError::from)?;
     ws::start(
-        ProgramWebsocket::new(hardware_spec.into(), program_spec.into()),
+        ProgramWebsocket::new(
+            // These unwraps _should_ be safe because our DB constraints
+            // and input validation prevent validation errors here
+            hardware_spec.try_into().unwrap(),
+            program_spec.try_into().unwrap(),
+        ),
         &r,
         stream,
     )

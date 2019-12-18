@@ -34,6 +34,9 @@
 #![deny(clippy::all, unused_must_use, unused_imports)]
 #![feature(try_trait, slice_patterns)]
 
+#[macro_use]
+extern crate validator_derive;
+
 pub mod ast;
 mod consts;
 mod desugar;
@@ -50,6 +53,7 @@ pub use error::*;
 pub use machine::*;
 pub use models::*;
 use std::fmt::Debug;
+use validator::Validate;
 
 /// Compiles the given source program, with the given specs, into a
 /// [Machine](Machine). The returned machine can then be executed.
@@ -58,6 +62,12 @@ pub fn compile(
     program_spec: &ProgramSpec,
     source: String,
 ) -> Result<Machine, CompileErrors> {
+    // Validate the specs, so we know that shit is clean
+    hardware_spec
+        .validate()
+        .map_err(CompileError::InvalidSpec)?;
+    program_spec.validate().map_err(CompileError::InvalidSpec)?;
+
     Ok(Compiler::new(source)
         .debug()
         .parse()?

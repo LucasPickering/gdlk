@@ -5,12 +5,18 @@ use std::{
     fmt::{self, Display, Formatter},
     ops::Try,
 };
+use validator::ValidationErrors;
 
 /// An error that occurs during compilation of a program. The error will be
 /// due to a flaw in the program. This indicates a user error, _not_ an internal
 /// compiler error. Compiler bugs will always cause a panic.
 #[derive(Debug, PartialEq, Fail, Serialize)]
 pub enum CompileError {
+    /// Validation failed on a [HardwareSpec](crate::HardwareSpec) or
+    /// [ProgramSpec](crate::ProgramSpec)
+    #[fail(display = "Invalid spec: {}", 0)]
+    InvalidSpec(ValidationErrors),
+
     /// Failed to parse the program
     #[fail(display = "Parse error: {}", 0)]
     ParseError(String),

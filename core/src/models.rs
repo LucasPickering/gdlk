@@ -4,16 +4,20 @@
 
 use crate::ast::LangValue;
 use serde::{Deserialize, Serialize};
+use validator::Validate;
 
 /// The "hardware" that a program can execute on. This defines computing
 /// constraints. This is needed both at compile time and runtime.
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Validate)]
 pub struct HardwareSpec {
     /// Number of registers available
+    #[validate(range(min = 1, max = 16))]
     pub num_registers: usize,
     /// Maximum number of stacks permitted
+    #[validate(range(min = 0, max = 16))]
     pub num_stacks: usize,
     /// Maximum size of each stack
+    #[validate(range(min = 0, max = 256))]
     pub max_stack_length: usize,
 }
 
@@ -31,12 +35,14 @@ impl Default for HardwareSpec {
 /// Specification that defines a correct program. Provides the input that a
 /// program runs on, and defines the expected output, which is used to determine
 /// if the program is correct. Only needed at runtime.
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Validate)]
 pub struct ProgramSpec {
     /// The input values, where the element at position 0 is the first one that
     /// will be popped off.
+    #[validate(length(max = 256))]
     pub input: Vec<LangValue>,
     /// The correct value to be left in the output when the program exits. The
     /// first element will be the first one pushed, and so on.
+    #[validate(length(max = 256))]
     pub expected_output: Vec<LangValue>,
 }
