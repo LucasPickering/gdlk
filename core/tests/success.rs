@@ -245,26 +245,32 @@ fn test_insertion_sort() {
             expected_output: vec![1, 1, 2, 3, 3, 4, 4, 5, 5, 8, 8, 8, 9, 9, 10],
         },
         "
+        ; RX0:  the last element pulled off the input
+        ; RX1:  the current element in the sorted list we're comparing to
+        ; RX2:  scratch space for comparisons and such
+        ; S0:   the sorted list so far, with greatest at the bottom
+        ; S1:   scratch spaced used during insertion, to hold the chunk of the
+        ;       list that's less than RX0
         WHILE RLI {
             READ RX0
             SET RX2 RS0
             WHILE RX2 {
                 POP S0 RX1
 
+                ; check if
                 CMP RX2 RX0 RX1
                 SUB RX2 1
                 IF RX2 {
-                    SET RX2 0
-                    SUB RX2 1
+                    SET RX2 -1
                 }
-                IF RX2 {
-                    PUSH RX1 S0
+                IF RX2 { ; RX0 <= RX1
+                    PUSH RX1 S0 ; RX1 > RX0, put it back on the stack
                 }
                 ADD RX2 1
-                IF RX2 {
+                IF RX2 { ; RX0 > RX1
                     PUSH RX1 S1
                 }
-                MUL RX2 RS0
+                MUL RX2 RS0 ; iterate if RX0 > RX1 and there's more left in S0
             }
             PUSH RX0 S0
             WHILE RS1 {
@@ -273,6 +279,7 @@ fn test_insertion_sort() {
             }
         }
 
+        ; write the sorted list to output
         WHILE RS0 {
             POP S0 RX0
             WRITE RX0
