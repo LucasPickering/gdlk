@@ -1,12 +1,12 @@
 use crate::{
     error::ServerError,
     models::{FullHardwareSpec, FullProgramSpec},
-    schema::{hardware_specs::dsl::*, program_specs::dsl::*},
+    server::Pool,
 };
 use actix::{Actor, ActorContext, AsyncContext, StreamHandler};
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{get, web, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
-use diesel::{prelude::*, r2d2::ConnectionManager, PgConnection};
+use diesel::{prelude::*, PgConnection};
 use gdlk::{
     compile, CompileErrors, HardwareSpec, Machine, ProgramSpec, RuntimeError,
 };
@@ -21,8 +21,6 @@ use std::{
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 /// How long before lack of client response causes a timeout
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
-
-type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 /// All the different types of events that we can receive over the websocket.
 /// These events are typically triggered by user input, but might not
@@ -214,20 +212,23 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ProgramWebsocket {
 
 /// Do websocket handshake, look up the request ProgramSpec by ID, then (if it
 /// exists), start a handler for it.
+#[get("/ws/hardware/{hw_spec_slug}/programs/{program_spec_slug}/")]
 pub fn ws_program_specs_by_id(
-    r: HttpRequest,
+    req: HttpRequest,
     pool: web::Data<Pool>,
-    program_spec_id: web::Path<i32>,
+    hw_spec_slug: web::Path<String>,
+    program_spec_slug: web::Path<String>,
     stream: web::Payload,
 ) -> Result<HttpResponse, actix_web::Error> {
-    let conn: &PgConnection = &pool.get().unwrap();
+    let conn = &pool.get().map_err(ServerError::from)? as &PgConnection;
     // Look up the program spec by ID, get the associated hardware spec too
     let (program_spec, hardware_spec): (FullProgramSpec, FullHardwareSpec) =
-        program_specs
-            .find(program_spec_id.into_inner())
-            .inner_join(hardware_specs)
-            .get_result(conn)
-            .map_err(ServerError::from)?;
+        FullProgramSpec::filter_by_slugs(
+            &hw_spec_slug.into_inner(),
+            &program_spec_slug.into_inner(),
+        )
+        .get_result(conn)
+        .map_err(ServerError::from)?;
     ws::start(
         ProgramWebsocket::new(
             // These unwraps _should_ be safe because our DB constraints
@@ -235,7 +236,7 @@ pub fn ws_program_specs_by_id(
             hardware_spec.try_into().unwrap(),
             program_spec.try_into().unwrap(),
         ),
-        &r,
+        &req,
         stream,
     )
 }
