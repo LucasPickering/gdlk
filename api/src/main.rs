@@ -1,11 +1,11 @@
 #![deny(clippy::all, unused_must_use, unused_imports)]
-#![feature(try_trait, slice_patterns)]
+#![feature(const_fn, trait_alias, slice_patterns)]
 
 // Diesel hasn't fully moved to Rust 2018 yet so we need this
 #[macro_use]
 extern crate diesel;
 
-use actix_web::{middleware, web, App, HttpServer};
+use actix_web::{middleware, App, HttpServer};
 use diesel::{
     r2d2::{self, ConnectionManager},
     PgConnection,
@@ -20,6 +20,8 @@ mod models;
 mod schema;
 mod seed;
 mod server;
+mod util;
+mod vfs;
 
 #[derive(Debug, StructOpt)]
 enum Command {
@@ -117,12 +119,9 @@ fn run(opt: Opt) -> Fallible<()> {
                     .data(pool.clone())
                     // enable logger
                     .wrap(middleware::Logger::default())
-                    // websocket route
-                    .service(
-                        web::resource("/ws/programs/{program_spec_id}/").route(
-                            web::get().to(server::ws_program_specs_by_id),
-                        ),
-                    )
+                    // routes
+                    .service(server::file_system_get)
+                    .service(server::ws_program_specs_by_id)
             })
             .bind(host)?
             .run()?;

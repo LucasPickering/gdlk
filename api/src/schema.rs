@@ -20,4 +20,4 @@ table! {
 
 joinable!(program_specs -> hardware_specs (hardware_spec_id));
 
-allow_tables_to_appear_in_same_query!(hardware_specs, program_specs,);
+allow_tables_to_appear_in_same_query!(hardware_specs, program_specs);

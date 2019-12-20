@@ -1,10 +1,14 @@
 use crate::schema::hardware_specs;
 use diesel::{
-    prelude::*, query_builder::InsertStatement, Identifiable, Queryable,
+    dsl, expression::bound::Bound, prelude::*, query_builder::InsertStatement,
+    sql_types::Text, Identifiable, Queryable,
 };
 use gdlk::HardwareSpec;
 use std::convert::TryFrom;
 use validator::{Validate, ValidationErrors};
+
+type WithSlug<'a> =
+    dsl::Eq<hardware_specs::columns::slug, Bound<Text, &'a str>>;
 
 /// A derivative of [HardwareSpec](gdlk::HardwareSpec), containing all fields.
 /// that are present on the DB table. This should only ever be constructed from
@@ -25,6 +29,16 @@ pub struct FullHardwareSpec {
     pub num_stacks: i32,
     /// Maximum size of each stack
     pub max_stack_length: i32,
+}
+
+impl FullHardwareSpec {
+    /// Filters hardware specs by their slug.
+    pub fn filter_by_slug<'a>(
+        hw_spec_slug: &'a str,
+    ) -> dsl::Filter<hardware_specs::table, WithSlug<'a>> {
+        hardware_specs::dsl::hardware_specs
+            .filter(hardware_specs::dsl::slug.eq(hw_spec_slug))
+    }
 }
 
 impl TryFrom<FullHardwareSpec> for HardwareSpec {

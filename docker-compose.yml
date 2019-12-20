@@ -20,7 +20,9 @@ services:
       - "5432:5432"
 
   api:
-    build: ./api/
+    build:
+      context: .
+      dockerfile: ./api.Dockerfile
     command: cargo watch -x "run -- server"
     tty: true # Colorize output
     volumes:
