@@ -18,6 +18,7 @@ use structopt::StructOpt;
 mod error;
 mod models;
 mod schema;
+mod seed;
 mod server;
 
 #[derive(Debug, StructOpt)]
@@ -47,10 +48,13 @@ enum Command {
             default_value = "localhost:8000"
         )]
         host: String,
-        /// Database URL
-        #[structopt(long, env = "DATABASE_URL")]
-        database_url: String,
     },
+
+    /// Insert pre-defined seed data into the DB. Useful in development, not
+    /// so much in release.
+    #[structopt(name = "seed")]
+    #[cfg(debug_assertions)]
+    Seed,
 }
 
 /// GDLK executable, for executing GDLK programs or running the GDLK webserver
@@ -59,9 +63,18 @@ enum Command {
 struct Opt {
     #[structopt(subcommand)]
     cmd: Command,
+    /// Database URL
+    #[structopt(long, env = "DATABASE_URL")]
+    database_url: String,
 }
 
 fn run(opt: Opt) -> Fallible<()> {
+    // Initialize the DB connection pool
+    let manager = ConnectionManager::<PgConnection>::new(opt.database_url);
+    let pool = r2d2::Pool::builder()
+        .build(manager)
+        .expect("Failed to create pool.");
+
     match opt.cmd {
         // Compile and build the given program
         Command::Execute {
@@ -92,16 +105,10 @@ fn run(opt: Opt) -> Fallible<()> {
             process::exit(if success { 0 } else { 1 })
         }
         // Start the webserver
-        Command::Server { host, database_url } => {
+        Command::Server { host } => {
             // Set up logging
             std::env::set_var("RUST_LOG", "actix_server=info,actix_web=info");
             env_logger::init();
-
-            // Initialize the DB connection pool
-            let manager = ConnectionManager::<PgConnection>::new(database_url);
-            let pool = r2d2::Pool::builder()
-                .build(manager)
-                .expect("Failed to create pool.");
 
             // Start the HTTP server
             HttpServer::new(move || {
@@ -119,6 +126,10 @@ fn run(opt: Opt) -> Fallible<()> {
             })
             .bind(host)?
             .run()?;
+        }
+        Command::Seed => {
+            let conn = pool.get().unwrap();
+            seed::seed_db(&conn)?;
         }
     }
     Ok(())

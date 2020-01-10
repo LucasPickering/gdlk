@@ -33,7 +33,7 @@ If you're using VSCode and have the RLS extension installed (you should), it'll 
 
 If you just want to compile and run a program without starting up the webserver, you can use the CLI for that. First, you'll need the environment to execute under saved in a JSON file, e.g. `env.json`. Then you need your program source in a file, e.g. `prog.gdlk`. Then run:
 
-```
+```sh
 cargo run -- execute -e env.json -i prog.gdlk
 ```
 
@@ -43,9 +43,20 @@ In the repo root:
 
 ```sh
 docker-compose up
-# Wait for DB to start up, then in another shell:
-cd api
-./initdb.sh
+```
+
+Then, see the next section for initialize the DB.
+
+### Migrations & Seed Data
+
+Migrations are managed by Diesel. Seed data is defined in code, in `seed.rs`.
+
+```sh
+./x.py migrate # Run initial migrations
+./x.py seed # Insert seed data
+
+# If you need to re-run migrations (this will wipe out your DB!)
+./x.py migrate --redo
 ```
 
 ### Tests
@@ -63,13 +74,4 @@ If you have a program or test failing, you can run with additional debug output 
 ```sh
 DEBUG=1 cargo run -- execute -e env.json -i prog.gdlk
 DEBUG=1 cargo test -- --nocapture # --nocapture needed to make stdout visible
-```
-
-### Updating Fixtures
-
-The fixture system is kinda ass right now, but for now you can update the fixture by dumping your local DB:
-
-```sh
-cd api
-./dump.sh
 ```

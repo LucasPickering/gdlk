@@ -1,6 +1,6 @@
 use crate::{
     error::ServerError,
-    models::{QueryHardwareSpec, QueryProgramSpec},
+    models::{FullHardwareSpec, FullProgramSpec},
     schema::{hardware_specs::dsl::*, program_specs::dsl::*},
 };
 use actix::{Actor, ActorContext, AsyncContext, StreamHandler};
@@ -222,7 +222,7 @@ pub fn ws_program_specs_by_id(
 ) -> Result<HttpResponse, actix_web::Error> {
     let conn: &PgConnection = &pool.get().unwrap();
     // Look up the program spec by ID, get the associated hardware spec too
-    let (program_spec, hardware_spec): (QueryProgramSpec, QueryHardwareSpec) =
+    let (program_spec, hardware_spec): (FullProgramSpec, FullHardwareSpec) =
         program_specs
             .find(program_spec_id.into_inner())
             .inner_join(hardware_specs)
