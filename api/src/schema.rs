@@ -1,6 +1,7 @@
 table! {
     hardware_specs (id) {
         id -> Int4,
+        slug -> Varchar,
         num_registers -> Int4,
         num_stacks -> Int4,
         max_stack_length -> Int4,
@@ -10,6 +11,7 @@ table! {
 table! {
     program_specs (id) {
         id -> Int4,
+        slug -> Varchar,
         hardware_spec_id -> Int4,
         input -> Array<Int4>,
         expected_output -> Array<Int4>,
