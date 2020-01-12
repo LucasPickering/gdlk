@@ -9,9 +9,6 @@ volumes:
 services:
   db:
     image: postgres:10-alpine
-    # command: postgres -c log_statement=all
-    volumes:
-      - ./fixtures:/app/fixtures
     environment:
       - POSTGRES_DB=gdlk
       - POSTGRES_USER=root
