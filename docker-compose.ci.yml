@@ -1,0 +1,19 @@
+version: "3"
+
+services:
+  db:
+    image: postgres:10-alpine
+    environment:
+      - POSTGRES_DB=gdlk
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=root
+
+  api:
+    build:
+      context: .
+      dockerfile: ./api.Dockerfile
+    depends_on:
+      - db
+    environment:
+      - RUST_BACKTRACE=1
+      - DATABASE_URL=postgres://root:root@db/gdlk

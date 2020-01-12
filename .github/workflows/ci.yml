@@ -7,8 +7,8 @@ on:
   pull_request:
 
 jobs:
-  test:
-    name: Run Rust tests
+  test-core:
+    name: Run clippy and rustfmt on all crates, and run tests on core crate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
@@ -32,4 +32,14 @@ jobs:
       - name: test gdlk
         uses: actions-rs/cargo@v1
         with:
-          command: test -p gdlk
+          command: test
+          args: -p gdlk
+  test-api:
+    name: Run tests on api crate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: Build API image
+        run: docker-compose -f docker-compose.ci.yml build api
+      - name: Test API
+        run: docker-compose -f docker-compose.ci.yml run api ./docker/run_tests.sh
