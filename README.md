@@ -64,14 +64,14 @@ Migrations are managed by Diesel. Seed data is defined in code, in `seed.rs`.
 You can run tests with:
 
 ```sh
-cargo test
+./x.py test
 ```
 
 ### Debugging
 
-If you have a program or test failing, you can run with additional debug output by setting `DEBUG=1`, like so:
+If you have a program or test failing, you can run with additional debug output by setting `DEBUG=1`. There is also the `--debug` (or `-d`) flag on the `x.py` command that does the same thing.
 
 ```sh
 DEBUG=1 cargo run -- execute -e env.json -i prog.gdlk
-DEBUG=1 cargo test -- --nocapture # --nocapture needed to make stdout visible
+./x.py test --debug core
 ```
