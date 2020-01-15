@@ -206,7 +206,7 @@ impl<'a> VirtualFileSystem<'a> {
 
 /// A function that can be applied to a <VirtualNode>, returning
 /// a result. Examples of operations are <VirtualNode::exists> and
-/// <VirtualNode::metadata>. This is used to make node operations generic
+/// <VirtualNode::get_metadata>. This is used to make node operations generic
 /// so that they can use shared tree-walking code.
 trait NodeOperation<T> = FnOnce(&VirtualNode, &Context, &str) -> Result<T>;
 

@@ -23,6 +23,7 @@ mod server;
 mod util;
 mod vfs;
 
+/// The sub-command to execute.
 #[derive(Debug, StructOpt)]
 enum Command {
     /// Compile and execute source code. If execution terminates without error,

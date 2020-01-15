@@ -2,8 +2,10 @@
 
 import abc
 import argparse
+import http.server
 import itertools
 import os
+import socketserver
 import subprocess
 
 DB_SERVICE = "db"
@@ -152,6 +154,50 @@ class Test(Command):
         for crate in crates:
             print(f"===== Testing {crate} =====")
             self._CRATES[crate](debug)
+
+
+@command("doc", "Watch, build, and (optionally) serve docs for our code")
+class Docs(Command):
+    def configure_parser(self, parser):
+        parser.add_argument(
+            "--serve",
+            "-s",
+            action="store_true",
+            help="If enabled, start an HTTP server to serve the docs",
+        )
+        parser.add_argument(
+            "--host", default="0.0.0.0", help="The address to host the files on"
+        )
+        parser.add_argument(
+            "--port",
+            "-p",
+            default=8080,
+            type=int,
+            help="The port to serve the files on",
+        )
+
+    def run(self, serve, host, port):
+        cargo_process = subprocess.Popen(
+            ["cargo", "watch", "-x", "doc --document-private-items"]
+        )
+
+        try:
+            if serve:
+
+                def Handler(*args,):
+                    http.server.SimpleHTTPRequestHandler(
+                        *args, directory="./target/doc/"
+                    )
+
+                with socketserver.TCPServer((host, port), Handler) as httpd:
+                    print(f"Hosting docs on {host}:{port}")
+                    httpd.serve_forever()
+            else:
+                cargo_process.communicate()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            cargo_process.terminate()
 
 
 def main():

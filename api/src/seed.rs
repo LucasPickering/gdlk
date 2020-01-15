@@ -1,3 +1,6 @@
+//! Development-only module used to seed data into the DB for testing and
+//! development.
+
 use crate::{
     models::{NewHardwareSpec, NewProgramSpec},
     schema::hardware_specs,
