@@ -75,3 +75,18 @@ If you have a program or test failing, you can run with additional debug output 
 DEBUG=1 cargo run -- execute -e env.json -i prog.gdlk
 ./x.py test --debug core
 ```
+
+### Nightly Rust
+
+We use nightly Rust. Here's a list of reasons why. If this list every gets empty, we should switch to stable.
+
+- Rust features
+  - [try_trait](https://github.com/rust-lang/rust/issues/42327)
+  - [slice_patterns](https://github.com/rust-lang/rust/issues/62254)
+  - [const_fn](https://github.com/rust-lang/rust/issues/57563)
+  - [trait_alias](https://github.com/rust-lang/rust/issues/41517)
+- Rustfmt
+  - [merge_imports](https://github.com/rust-lang/rustfmt/issues/3362)
+  - [wrap_comments](https://github.com/rust-lang/rustfmt/issues/3347)
+
+[Here's a helpful site for finding new nightly versions](https://rust-lang.github.io/rustup-components-history/).
