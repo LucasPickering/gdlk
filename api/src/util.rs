@@ -1,3 +1,5 @@
+//! General utility functions and types.
+
 use lazy_static::lazy_static;
 use regex::Regex;
 #[cfg(test)]

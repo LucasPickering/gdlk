@@ -1,3 +1,5 @@
+//! Error types and other error-related code.
+
 use actix_web::{HttpResponse, ResponseError};
 use failure::Fail;
 

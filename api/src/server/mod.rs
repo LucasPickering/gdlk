@@ -1,3 +1,6 @@
+//! All code related to the webserver. Basically anything that calls Actix
+//! lives here.
+
 mod fs;
 mod websocket;
 
