@@ -22,7 +22,6 @@ mod program;
 
 use crate::{
     error::{Result, ServerError},
-    util,
     vfs::{
         hardware::{HardwareSpecFileNodeHandler, HardwareSpecNodeHandler},
         internal::{Context, SegmentSpec, VirtualNode, VirtualNodeHandler},
@@ -163,7 +162,7 @@ impl<'a> VirtualFileSystem<'a> {
             }
         }
 
-        let segments: Vec<&str> = util::resolve_path(path);
+        let segments: Vec<&str> = internal::resolve_path(path);
         let mut context = Context {
             db_conn: self.db_conn,
             variables: HashMap::new(),
@@ -271,6 +270,7 @@ mod tests {
         diesel::RunQueryDsl,
         models::{NewHardwareSpec, NewProgramSpec},
         schema::{hardware_specs, program_specs},
+        util,
     };
 
     // Helper methods to make test data creation a bit cleaner
