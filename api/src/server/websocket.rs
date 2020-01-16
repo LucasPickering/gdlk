@@ -174,25 +174,31 @@ impl Actor for ProgramWebsocket {
                 ctx.stop();
             } else {
                 // Not timed out, send another ping
-                ctx.ping("");
+                ctx.ping(b"");
             }
         });
     }
 }
 
 /// Handler for `ws::Message`
-impl StreamHandler<ws::Message, ws::ProtocolError> for ProgramWebsocket {
-    fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
+impl StreamHandler<Result<ws::Message, ws::ProtocolError>>
+    for ProgramWebsocket
+{
+    fn handle(
+        &mut self,
+        msg: Result<ws::Message, ws::ProtocolError>,
+        ctx: &mut Self::Context,
+    ) {
         // process websocket messages
         match msg {
-            ws::Message::Ping(msg) => {
+            Ok(ws::Message::Ping(msg)) => {
                 self.heartbeat = Instant::now();
                 ctx.pong(&msg);
             }
-            ws::Message::Pong(_) => {
+            Ok(ws::Message::Pong(_)) => {
                 self.heartbeat = Instant::now();
             }
-            ws::Message::Text(text) => {
+            Ok(ws::Message::Text(text)) => {
                 // This is a little funky because both sides of the Result are
                 // the same type
                 let response =
@@ -201,11 +207,15 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ProgramWebsocket {
 
                 ctx.text(response_string);
             }
-            ws::Message::Binary(_) => {}
-            ws::Message::Close(_) => {
+            Ok(ws::Message::Close(_)) => {
                 ctx.stop();
             }
-            ws::Message::Nop => {}
+
+            // Don't do anything with these messages
+            Ok(ws::Message::Binary(_))
+            | Ok(ws::Message::Continuation(_))
+            | Ok(ws::Message::Nop)
+            | Err(_) => {}
         }
     }
 }
@@ -213,7 +223,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ProgramWebsocket {
 /// Do websocket handshake, look up the request ProgramSpec by ID, then (if it
 /// exists), start a handler for it.
 #[get("/ws/hardware/{hw_spec_slug}/programs/{program_spec_slug}/")]
-pub fn ws_program_specs_by_id(
+pub async fn ws_program_specs_by_slugs(
     req: HttpRequest,
     pool: web::Data<Pool>,
     hw_spec_slug: web::Path<String>,
