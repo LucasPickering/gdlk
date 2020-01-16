@@ -5,7 +5,6 @@
 #[macro_use]
 extern crate diesel;
 
-use actix_web::{middleware, App, HttpServer};
 use diesel::{
     r2d2::{self, ConnectionManager},
     PgConnection,
@@ -109,23 +108,7 @@ fn run(opt: Opt) -> Fallible<()> {
         }
         // Start the webserver
         Command::Server { host } => {
-            // Set up logging
-            std::env::set_var("RUST_LOG", "actix_server=info,actix_web=info");
-            env_logger::init();
-
-            // Start the HTTP server
-            HttpServer::new(move || {
-                App::new()
-                    // Need to clone because this init occurs once per thread
-                    .data(pool.clone())
-                    // enable logger
-                    .wrap(middleware::Logger::default())
-                    // routes
-                    .service(server::file_system_get)
-                    .service(server::ws_program_specs_by_id)
-            })
-            .bind(host)?
-            .run()?;
+            server::run_server(pool, host)?;
         }
         Command::Seed => {
             let conn = pool.get().unwrap();

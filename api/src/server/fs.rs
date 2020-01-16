@@ -31,7 +31,7 @@ impl<T: Serialize> Resp<T> {
 
 /// Request handler to serve and GET request for the virtual file system.
 #[get("/files{path:($|/.*$)}")] // path can be empty or start with a slash
-pub fn file_system_get(
+pub async fn file_system_get(
     pool: web::Data<Pool>,
     path: web::Path<String>,
     web::Query(query): web::Query<VfsQuery>,
