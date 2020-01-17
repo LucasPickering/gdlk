@@ -1,5 +1,11 @@
 FROM rustlang/rust:nightly-slim
 
+ENV DOCKERIZE_VERSION v0.6.1
+
+# Need to do this first so we pick up the rust-toolchain file
+COPY . /app
+WORKDIR /app
+
 RUN apt-get update && \
     apt-get install -y \
     libpq-dev \
@@ -9,13 +15,9 @@ RUN apt-get update && \
     && \
     rm -rf /var/lib/apt/lists/* && \
     cargo install cargo-watch && \
-    cargo install diesel_cli --no-default-features --features=postgres
+    cargo install diesel_cli --no-default-features --features=postgres && \
+    wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz && \
+    tar -C /usr/local/bin -xzvf dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz && \
+    rm dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz
 
-ENV DOCKERIZE_VERSION v0.6.1
-RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
-    && tar -C /usr/local/bin -xzvf dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
-    && rm dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz
-
-COPY ./core /app/core
-COPY ./api /app/api
 WORKDIR /app/api
