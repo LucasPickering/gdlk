@@ -2,7 +2,7 @@
 
 ## About
 
-GDLK is a programming language, as well as a game based on solving puzzles with the language.
+GDLK is a programming language, as well as a game based on solving puzzles with the language. There is no usable product _yet_, but it's coming soon™!
 
 ### What does GDLK stand for?
 
