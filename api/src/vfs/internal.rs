@@ -3,13 +3,14 @@
 //! readability.
 
 use crate::{
-    error::{Result, ServerError},
-    vfs::{NodeMetadata, NodePermissions, NodeType},
+    error::Result,
+    util::PooledConnection,
+    vfs::{NodePermissions, NodeType},
 };
 use diesel::PgConnection;
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::{collections::HashMap, fmt::Debug};
+use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
 /// A definition for a path segment in the virtual tree. The definition should
 /// be associated with a singular virtual node.
@@ -41,12 +42,30 @@ impl SegmentSpec {
 }
 
 /// The context needed in order to serve an fs node. This context is available
-/// to any fs operation. The variables are populated by the contents of the
-/// path. For any particular node handler, the entries in this map are fixed.
+/// to any fs operation, and are constant for every node in the tree.
+#[derive(Clone)]
+pub struct Context {
+    db_conn: Arc<PooledConnection>,
+}
+
+impl Context {
+    pub fn new(db_conn: Arc<PooledConnection>) -> Self {
+        Self { db_conn }
+    }
+
+    /// Get a reference to the DB connection.
+    pub fn conn(&self) -> &PgConnection {
+        &self.db_conn
+    }
+}
+
+/// A mapping of the variable parts of a path. This maps each variable path
+/// segment's identifier to its value in a particular path. For any particular
+/// virtual node, the keys in this map are fixed, only the values vary.
 ///
 /// NOTE: There will NOT be a variable defined for the last segment in the path,
 /// i.e. the segment being operated on. This is because the variable would just
-/// be a duplicate of that value, which gets passed around anyway (see example).
+/// be a duplicate of the value that gets passed around anyway (see example).
 ///
 /// Ideally, instead of a map we would have fixed identifiers, but that requires
 /// macro wizardry that I just don't want to write. Example:
@@ -55,18 +74,33 @@ impl SegmentSpec {
 /// - Path: "/hardware/hw1/programs/prog1"
 /// - Variables:
 ///     - "hardware_spec_slug":"hw1"
-pub struct Context<'a> {
-    pub db_conn: &'a PgConnection,
-    pub variables: HashMap<&'a str, &'a str>,
+#[derive(Clone, Debug)]
+pub struct PathVariables {
+    map: HashMap<String, String>,
 }
 
-impl<'a> Context<'a> {
+impl PathVariables {
+    pub fn new() -> Self {
+        Self {
+            map: HashMap::new(),
+        }
+    }
+
     /// Helper for accessing path variables by name. All variable names are
     /// fixed at compile time, and all variables must be present in a path in
     /// order for it to match, so this should always succeed. A missing variable
     /// indicates a bug, hence why it panics in that case.
     pub fn get_var(&self, var_name: &'static str) -> &str {
-        self.variables.get(var_name).expect("Unknown path variable")
+        self.map.get(var_name).expect("Unknown path variable")
+    }
+
+    /// Insert a new path segment into the map, if the given segment is
+    /// variable. If the segment is fixed, this does nothing.
+    pub fn insert_if_var(&mut self, path_segment: SegmentSpec, value: &str) {
+        // If the segment is variable, store this value in the context
+        if let SegmentSpec::Variable(var_name) = path_segment {
+            self.map.insert(var_name.into(), value.into());
+        }
     }
 }
 
@@ -79,7 +113,12 @@ impl<'a> Context<'a> {
 pub trait VirtualNodeHandler: Debug + Sync {
     /// Checks if a physical node exists at the given path segment for this
     /// virtual node.
-    fn exists(&self, _context: &Context, _path_segment: &str) -> Result<bool> {
+    fn exists(
+        &self,
+        _context: &Context,
+        _path_variables: &PathVariables,
+        _path_segment: &str,
+    ) -> Result<bool> {
         // This default implementation covers fixed virtual nodes, which will
         // generally exist as long as their parent exists. Override this if
         // you have a variable node, or if a fixed node can exist conditionally.
@@ -87,16 +126,18 @@ pub trait VirtualNodeHandler: Debug + Sync {
     }
 
     /// Gets the permission for the physical node at the given path segment.
-    fn get_permissions(
+    fn permissions(
         &self,
         context: &Context,
+        path_variables: &PathVariables,
         path_segment: &str,
     ) -> Result<NodePermissions>;
 
     /// Gets the contents of the file at the given path segment.
-    fn get_content(
+    fn content(
         &self,
         _context: &Context,
+        _path_variables: &PathVariables,
         _path_segment: &str,
     ) -> Result<String> {
         // This only needs to be implemented for files. For directories, this
@@ -104,10 +145,16 @@ pub trait VirtualNodeHandler: Debug + Sync {
         panic!("Operation not supported for this node type")
     }
 
-    /// Lists all physical nodes that exist for this virtual node. Unlike the
-    /// other operations on this trait, this function doesn't take a path
-    /// segment, because it doesn't operate on a single physical node.
-    fn list_physical_nodes(&self, _context: &Context) -> Result<Vec<String>> {
+    /// Lists all physical nodes that exist for this variable virtual node.
+    /// This should only be called for variable nodes. Fixed nodes
+    /// will panic! Unlike the other operations on this trait, this function
+    /// doesn't take a path segment, because it doesn't operate on a single
+    /// physical node.
+    fn list_variable_nodes(
+        &self,
+        _context: &Context,
+        _path_variables: &PathVariables,
+    ) -> Result<Vec<String>> {
         // This only needs to be implemented for directories with variable path
         // segments. For files and fixed directories, this should never be
         // called.
@@ -128,11 +175,12 @@ pub struct VirtualNode {
 }
 
 impl VirtualNode {
+    /// Construct a new virtual node that points to files.
     pub const fn file(
         path_segment: SegmentSpec,
         handler: &'static impl VirtualNodeHandler,
     ) -> Self {
-        VirtualNode {
+        Self {
             path_segment,
             node_type: NodeType::File,
             handler,
@@ -140,12 +188,13 @@ impl VirtualNode {
         }
     }
 
+    /// Construct a new virtual node that points to directories.
     pub const fn dir(
         path_segment: SegmentSpec,
         handler: &'static impl VirtualNodeHandler,
         children: &'static [Self],
     ) -> Self {
-        VirtualNode {
+        Self {
             path_segment,
             node_type: NodeType::Directory,
             handler,
@@ -153,88 +202,36 @@ impl VirtualNode {
         }
     }
 
-    pub fn match_child(
-        &self,
-        path_segment: &str,
-    ) -> Option<&'static VirtualNode> {
+    /// Finds the child of this virtual node of this node that matches the given
+    /// path segment. The child will also be a virtual node.
+    pub fn find_child(&self, path_segment: &str) -> Option<&'static Self> {
         self.children
             .iter()
             .find(|child| child.path_segment.matches(path_segment))
     }
 
-    pub fn exists(
+    /// List the names of all physical nodes that exist for this virtual node.
+    /// For fixed virtual nodes, this will always return either 0 or 1 names.
+    /// For variable nodes it could return any number >= 0.
+    pub fn list_physical_nodes(
         &self,
         context: &Context,
-        path_segment: &str,
-    ) -> Result<bool> {
-        self.handler.exists(context, path_segment)
-    }
-
-    pub fn get_metadata(
-        &self,
-        context: &Context,
-        path_segment: &str,
-    ) -> Result<NodeMetadata> {
-        Ok(NodeMetadata {
-            node_type: self.node_type,
-            name: path_segment.into(),
-            permissions: self.handler.get_permissions(context, path_segment)?,
-        })
-    }
-
-    pub fn get_content(
-        &self,
-        context: &Context,
-        path_segment: &str,
-    ) -> Result<String> {
-        match self.node_type {
-            NodeType::File => self.handler.get_content(context, path_segment),
-            // Can't do this for directories, ya dummy
-            NodeType::Directory => Err(ServerError::UnsupportedFileOperation),
-        }
-    }
-
-    /// List all physical nodes that are children of this virtual node. The path
-    /// segment isn't needed for this operation, but it's included in the
-    /// signature to match <NodeOperation>.
-    pub fn list_children(
-        &self,
-        context: &Context,
-        _path_segment: &str,
-    ) -> Result<Vec<NodeMetadata>> {
-        match self.node_type {
-            NodeType::File => Err(ServerError::UnsupportedFileOperation),
-            NodeType::Directory => {
-                let mut rv: Vec<NodeMetadata> = Vec::new();
-                // Each virtual child could map to 0 or more physical nodes.
-                // Fixed children will map to exactly 1, but variable ones need
-                // to be listed dynamically (e.g. via a DB lookup) and so could
-                // be 0+ physical nodes.
-                for child in self.children {
-                    match child.path_segment {
-                        // For fixed children, just fetch their metadata
-                        SegmentSpec::Fixed(child_segment) => {
-                            rv.push(child.get_metadata(context, child_segment)?)
-                        }
-                        // For variable children, we'll need to dynamically
-                        // fetch a list of nodes. This looks different for each
-                        // node type.
-                        SegmentSpec::Variable(_) => rv.extend(
-                            child
-                                .handler
-                                .list_physical_nodes(context)?
-                                .iter()
-                                .map(|child_segment| {
-                                    child.get_metadata(context, child_segment)
-                                })
-                                // Each element in the iter is a Result,
-                                // we
-                                // need to collect into one Result
-                                .collect::<Result<Vec<NodeMetadata>>>()?,
-                        ),
-                    }
-                }
-                Ok(rv)
+        path_variables: &PathVariables,
+    ) -> Result<Vec<String>> {
+        match self.path_segment {
+            // For fixed nodes, we just need to check that the corresponding
+            // physical node exists.
+            SegmentSpec::Fixed(segment) => {
+                Ok(if self.handler.exists(context, path_variables, segment)? {
+                    vec![segment.into()]
+                } else {
+                    vec![]
+                })
+            }
+            // For variable nodes, we'll need to dynamically
+            // fetch a list of nodes.
+            SegmentSpec::Variable(_) => {
+                self.handler.list_variable_nodes(context, path_variables)
             }
         }
     }

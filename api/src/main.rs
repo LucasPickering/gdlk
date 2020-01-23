@@ -15,6 +15,7 @@ use std::{fs, path::PathBuf, process};
 use structopt::StructOpt;
 
 mod error;
+mod gql;
 mod models;
 mod schema;
 mod seed;
