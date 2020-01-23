@@ -32,5 +32,14 @@ pub fn seed_db(conn: &PgConnection) -> Result<(), diesel::result::Error> {
     .insert()
     .execute(conn)?;
 
+    NewProgramSpec {
+        slug: "prog2".into(),
+        hardware_spec_id,
+        input: vec![1, 2, 3],
+        expected_output: vec![2, 4, 6],
+    }
+    .insert()
+    .execute(conn)?;
+
     Ok(())
 }

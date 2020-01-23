@@ -12,8 +12,8 @@ use crate::{
     models::FullProgramSpec,
     schema::program_specs,
     vfs::{
-        Context, NodePermissions, VirtualNodeHandler, PERMS_R, PERMS_RW,
-        PERMS_RX,
+        internal::PathVariables, Context, NodePermissions, VirtualNodeHandler,
+        PERMS_R, PERMS_RW, PERMS_RX,
     },
 };
 use diesel::{
@@ -30,26 +30,36 @@ impl VirtualNodeHandler for ProgramSpecNodeHandler {
     fn exists(
         &self,
         context: &Context,
+        path_variables: &PathVariables,
         program_spec_slug: &str,
     ) -> Result<bool> {
-        let hw_spec_slug = context.get_var("hw_spec_slug");
+        let hw_spec_slug = path_variables.get_var("hw_spec_slug");
         Ok(select(exists(FullProgramSpec::filter_by_slugs(
             hw_spec_slug,
             program_spec_slug,
         )))
-        .get_result(context.db_conn)?)
+        .get_result(context.conn())?)
     }
 
-    fn get_permissions(&self, _: &Context, _: &str) -> Result<NodePermissions> {
+    fn permissions(
+        &self,
+        _: &Context,
+        _: &PathVariables,
+        _: &str,
+    ) -> Result<NodePermissions> {
         Ok(PERMS_RX)
     }
 
-    fn list_physical_nodes(&self, context: &Context) -> Result<Vec<String>> {
-        let hw_spec_slug = context.get_var("hw_spec_slug");
+    fn list_variable_nodes(
+        &self,
+        context: &Context,
+        path_variables: &PathVariables,
+    ) -> Result<Vec<String>> {
+        let hw_spec_slug = path_variables.get_var("hw_spec_slug");
         let program_spec_slugs: Vec<String> =
             FullProgramSpec::filter_by_hw_slug(hw_spec_slug)
                 .select(program_specs::dsl::slug)
-                .get_results(context.db_conn)?;
+                .get_results(context.conn())?;
         Ok(program_spec_slugs)
     }
 }
@@ -59,24 +69,30 @@ impl VirtualNodeHandler for ProgramSpecNodeHandler {
 pub struct ProgramSpecFileNodeHandler();
 
 impl VirtualNodeHandler for ProgramSpecFileNodeHandler {
-    fn get_permissions(
+    fn permissions(
         &self,
         _context: &Context,
+        _: &PathVariables,
         _path_segment: &str,
     ) -> Result<NodePermissions> {
         Ok(PERMS_R)
     }
 
-    fn get_content(&self, context: &Context, _: &str) -> Result<String> {
-        let hw_spec_slug = context.get_var("hw_spec_slug");
-        let program_spec_slug = context.get_var("program_spec_slug");
+    fn content(
+        &self,
+        context: &Context,
+        path_variables: &PathVariables,
+        _: &str,
+    ) -> Result<String> {
+        let hw_spec_slug = path_variables.get_var("hw_spec_slug");
+        let program_spec_slug = path_variables.get_var("program_spec_slug");
         let (input, expected_output): (Vec<LangValue>, Vec<LangValue>) =
             FullProgramSpec::filter_by_slugs(hw_spec_slug, program_spec_slug)
                 .select((
                     program_specs::dsl::input,
                     program_specs::dsl::expected_output,
                 ))
-                .get_result(context.db_conn)?;
+                .get_result(context.conn())?;
         Ok(format!(
             "Input: {:?}\nExpected output: {:?}\n",
             input, expected_output
@@ -91,11 +107,21 @@ impl VirtualNodeHandler for ProgramSpecFileNodeHandler {
 pub struct ProgramSourceNodeHandler();
 
 impl VirtualNodeHandler for ProgramSourceNodeHandler {
-    fn get_permissions(&self, _: &Context, _: &str) -> Result<NodePermissions> {
+    fn permissions(
+        &self,
+        _: &Context,
+        _: &PathVariables,
+        _: &str,
+    ) -> Result<NodePermissions> {
         Ok(PERMS_RW)
     }
 
-    fn get_content(&self, _: &Context, _: &str) -> Result<String> {
+    fn content(
+        &self,
+        _: &Context,
+        _: &PathVariables,
+        _: &str,
+    ) -> Result<String> {
         Ok("TODO".into())
     }
 }

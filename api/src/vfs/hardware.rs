@@ -12,7 +12,7 @@ use crate::{
     models::FullHardwareSpec,
     schema::hardware_specs,
     vfs::{
-        internal::{Context, VirtualNodeHandler},
+        internal::{Context, PathVariables, VirtualNodeHandler},
         NodePermissions, PERMS_R, PERMS_RX,
     },
 };
@@ -26,21 +26,35 @@ use diesel::{
 pub struct HardwareSpecNodeHandler();
 
 impl VirtualNodeHandler for HardwareSpecNodeHandler {
-    fn exists(&self, context: &Context, hw_spec_slug: &str) -> Result<bool> {
+    fn exists(
+        &self,
+        context: &Context,
+        _: &PathVariables,
+        hw_spec_slug: &str,
+    ) -> Result<bool> {
         Ok(
             select(exists(FullHardwareSpec::filter_by_slug(hw_spec_slug)))
-                .get_result(context.db_conn)?,
+                .get_result(context.conn())?,
         )
     }
 
-    fn get_permissions(&self, _: &Context, _: &str) -> Result<NodePermissions> {
+    fn permissions(
+        &self,
+        _: &Context,
+        _: &PathVariables,
+        _: &str,
+    ) -> Result<NodePermissions> {
         Ok(PERMS_RX)
     }
 
-    fn list_physical_nodes(&self, context: &Context) -> Result<Vec<String>> {
+    fn list_variable_nodes(
+        &self,
+        context: &Context,
+        _: &PathVariables,
+    ) -> Result<Vec<String>> {
         let hw_spec_slugs: Vec<String> = hardware_specs::dsl::hardware_specs
             .select(hardware_specs::dsl::slug)
-            .get_results(context.db_conn)?;
+            .get_results(context.conn())?;
         Ok(hw_spec_slugs)
     }
 }
@@ -50,19 +64,25 @@ impl VirtualNodeHandler for HardwareSpecNodeHandler {
 pub struct HardwareSpecFileNodeHandler();
 
 impl VirtualNodeHandler for HardwareSpecFileNodeHandler {
-    fn get_permissions(
+    fn permissions(
         &self,
-        _context: &Context,
-        _path_segment: &str,
+        _: &Context,
+        _: &PathVariables,
+        _: &str,
     ) -> Result<NodePermissions> {
         Ok(PERMS_R)
     }
 
-    fn get_content(&self, context: &Context, _: &str) -> Result<String> {
-        let hw_spec_slug = context.get_var("hw_spec_slug");
+    fn content(
+        &self,
+        context: &Context,
+        path_variables: &PathVariables,
+        _: &str,
+    ) -> Result<String> {
+        let hw_spec_slug = path_variables.get_var("hw_spec_slug");
         let hw_spec: FullHardwareSpec =
             FullHardwareSpec::filter_by_slug(hw_spec_slug)
-                .get_result(context.db_conn)?;
+                .get_result(context.conn())?;
         Ok(format!(
             "Registers: {}\nStacks: {}\nMax stack length: {}\n",
             hw_spec.num_registers, hw_spec.num_stacks, hw_spec.max_stack_length

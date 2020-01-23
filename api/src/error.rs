@@ -2,6 +2,7 @@
 
 use actix_web::{HttpResponse, ResponseError};
 use failure::Fail;
+use juniper::{FieldError, IntoFieldError, Value};
 
 pub type Result<T> = std::result::Result<T, ServerError>;
 
@@ -31,6 +32,14 @@ impl From<diesel::result::Error> for ServerError {
     }
 }
 
+// Juniper error
+impl IntoFieldError for ServerError {
+    fn into_field_error(self) -> FieldError {
+        FieldError::new(format!("{}", self), Value::Null)
+    }
+}
+
+// Actix error
 impl ResponseError for ServerError {
     fn error_response(&self) -> HttpResponse {
         match self {

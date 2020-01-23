@@ -16,6 +16,7 @@ diesel = { version = "1.4", features = ["postgres", "r2d2"] }
 env_logger = "0.7"
 failure = "0.1"
 gdlk = { path = "../core" }
+juniper = "0.14"
 lazy_static = "1.4"
 r2d2 = "0.8"
 regex = "1.3"
