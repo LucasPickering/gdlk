@@ -18,6 +18,7 @@ mod error;
 mod gql;
 mod models;
 mod schema;
+#[cfg(debug_assertions)]
 mod seed;
 mod server;
 mod util;
@@ -111,6 +112,7 @@ fn run(opt: Opt) -> Fallible<()> {
         Command::Server { host } => {
             server::run_server(pool, host)?;
         }
+        #[cfg(debug_assertions)]
         Command::Seed => {
             let conn = pool.get().unwrap();
             seed::seed_db(&conn)?;
