@@ -1,8 +1,4 @@
-use crate::{
-    error::ServerError,
-    models::{FullHardwareSpec, FullProgramSpec},
-    server::Pool,
-};
+use crate::{error::ServerError, models, server::Pool};
 use actix::{Actor, ActorContext, AsyncContext, StreamHandler};
 use actix_web::{get, web, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
@@ -232,10 +228,12 @@ pub async fn ws_program_specs_by_slugs(
     let conn = &pool.get().map_err(ServerError::from)? as &PgConnection;
     let (hw_spec_slug, program_spec_slug) = params.into_inner();
     // Look up the program spec by ID, get the associated hardware spec too
-    let (program_spec, hardware_spec): (FullProgramSpec, FullHardwareSpec) =
-        FullProgramSpec::filter_by_slugs(&hw_spec_slug, &program_spec_slug)
-            .get_result(conn)
-            .map_err(ServerError::from)?;
+    let (program_spec, hardware_spec): (
+        models::ProgramSpec,
+        models::HardwareSpec,
+    ) = models::ProgramSpec::filter_by_slugs(&hw_spec_slug, &program_spec_slug)
+        .get_result(conn)
+        .map_err(ServerError::from)?;
     ws::start(
         ProgramWebsocket::new(
             // These unwraps _should_ be safe because our DB constraints

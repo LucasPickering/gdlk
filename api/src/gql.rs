@@ -3,11 +3,13 @@
 //! GQL stuff in one module at some point, but not currently.
 
 use crate::{
+    models::User,
     util::Pool,
     vfs::{Node, VirtualFileSystem},
 };
+use diesel::RunQueryDsl;
 use juniper::FieldResult;
-use std::sync::Arc;
+use std::{rc::Rc, sync::Arc};
 
 pub struct GqlContext {
     pub pool: Arc<Pool>,
@@ -24,9 +26,17 @@ impl RootQuery {
         "1.0"
     }
 
-    fn fs_node(context: &GqlContext, path: String) -> FieldResult<Node> {
-        // pool is an Arc, so we can cheaply clone it
-        let fs = VirtualFileSystem::new(Arc::new(context.pool.get()?));
+    fn fs_node(
+        context: &GqlContext,
+        username: String,
+        path: String,
+    ) -> FieldResult<Node> {
+        // temporary way to get user -- just have the caller specify username
+        let user: User = User::filter_by_username(&username)
+            .get_result(&context.pool.get()?)?;
+
+        let fs =
+            VirtualFileSystem::new(Rc::new(context.pool.get()?), Rc::new(user));
         Ok(fs.node(&path)?)
     }
 }

@@ -23,6 +23,7 @@ mod program;
 use crate::{
     error::{Result, ServerError},
     gql::GqlContext,
+    models::User,
     util::PooledConnection,
     vfs::{
         hardware::{HardwareSpecFileNodeHandler, HardwareSpecNodeHandler},
@@ -37,7 +38,7 @@ use crate::{
     },
 };
 use juniper::{FieldResult, GraphQLEnum, GraphQLObject};
-use std::sync::Arc;
+use std::rc::Rc;
 
 #[derive(Copy, Clone, Debug, PartialEq, GraphQLEnum)]
 pub enum NodeType {
@@ -72,6 +73,11 @@ const PERMS_RX: NodePermissions = NodePermissions {
 /// file/directory. All file operations exist on this type.
 ///
 /// To get a reference to a node, you can use <VirtualFileSystem::node>.
+///
+/// This type needs to be able to outlive the <VirtualFileSystem> that creates
+/// it, so that it can be passed around for GraphQL purposes. Because of that,
+/// it owns its own copy of <Context>, and that copy holds <Rc>s instead of
+/// references.
 pub struct Node {
     context: Context,
     path_variables: PathVariables,
@@ -81,8 +87,8 @@ pub struct Node {
 
 // File operations that can be run on a Node
 impl Node {
-    pub fn name(&self) -> String {
-        self.path_segment.clone()
+    pub fn name(&self) -> &str {
+        &self.path_segment
     }
 
     pub fn node_type(&self) -> NodeType {
@@ -116,6 +122,15 @@ impl Node {
     /// directories, as files have no children. If called for a file, will
     /// return <ServerError::UnsupportedFileOperation>.
     pub fn children(&self) -> Result<Vec<Self>> {
+        // Include this node's name as a variable for the children. Remember
+        // that PathVariables doesn't ever contain the last path segment,
+        // so the name of this node won't be in path_variables. We need to add
+        // it now so that our children can access it. These clones are cheap
+        // because the variables map is going to be small.
+        let mut new_variables = self.path_variables.clone();
+        new_variables
+            .insert_if_var(self.vnode.path_segment, &self.path_segment);
+
         // Get each virtual child, paired with the name of each physical node
         // that exists for that virtual node.
         let child_vnodes: Vec<(&VirtualNode, Vec<String>)> =
@@ -134,22 +149,13 @@ impl Node {
                             child_vnode,
                             child_vnode.list_physical_nodes(
                                 &self.context,
-                                &self.path_variables,
+                                &new_variables,
                             )?,
                         ))
                     })
                     // Collect all results into one, and abort if any failed
                     .collect::<Result<Vec<(&VirtualNode, Vec<String>)>>>()?,
             };
-
-        // Include this node's name as a variable for the children. Remember
-        // that PathVariables doesn't ever contain the last path segment,
-        // so the name of this node won't be in path_variables. We need to add
-        // it now so that our children can access it. These clones are cheap
-        // because the variables map is going to be small.
-        let mut new_variables = self.path_variables.clone();
-        new_variables
-            .insert_if_var(self.vnode.path_segment, &self.path_segment);
 
         // Create a new Node for each child
         let mut child_nodes = Vec::new();
@@ -173,7 +179,7 @@ impl Node {
     /// to this node.
     #[graphql(name = "name")]
     fn gql_name() -> String {
-        self.name()
+        self.name().into()
     }
 
     /// The type of this node (file or directory).
@@ -221,15 +227,16 @@ impl Node {
 /// <Self::node>). Once you have a `Node`, you can run
 /// file operations on it.
 pub struct VirtualFileSystem {
-    db_conn: Arc<PooledConnection>,
+    db_conn: Rc<PooledConnection>,
+    user: Rc<User>,
 }
 
 impl VirtualFileSystem {
     /// Construct a new reference to the virtual file system. Construction is
     /// cheap, so it's fine to construct this only when it's needed, rather
     /// than maintaining a long-living instance.
-    pub fn new(db_conn: Arc<PooledConnection>) -> Self {
-        VirtualFileSystem { db_conn }
+    pub fn new(db_conn: Rc<PooledConnection>, user: Rc<User>) -> Self {
+        VirtualFileSystem { db_conn, user }
     }
 
     /// Gets a reference to a particular file system node. This is a _physical_
@@ -302,7 +309,7 @@ impl VirtualFileSystem {
         }
 
         let segments: Vec<&str> = internal::resolve_path(path);
-        let context = Context::new(self.db_conn.clone());
+        let context = Context::new(self.db_conn.clone(), self.user.clone());
         let mut path_variables = PathVariables::new();
         // Kick off the recursive process to walk down the tree
         let vnode = find_node(
@@ -368,7 +375,7 @@ static VFS_TREE: VirtualNode = VirtualNode::dir(
                                 &ProgramSpecFileNodeHandler(),
                             ),
                             VirtualNode::file(
-                                SegmentSpec::Fixed("program.gdlk"),
+                                SegmentSpec::Variable("program_source_name"),
                                 &ProgramSourceNodeHandler(),
                             ),
                         ],
@@ -383,7 +390,9 @@ static VFS_TREE: VirtualNode = VirtualNode::dir(
 mod tests {
     use super::*;
     use crate::{
-        models::{NewHardwareSpec, NewProgramSpec},
+        models::{
+            NewHardwareSpec, NewProgramSpec, NewUser, NewUserProgram, User,
+        },
         schema::{hardware_specs, program_specs},
         util,
     };
@@ -392,45 +401,65 @@ mod tests {
     fn setup() -> VirtualFileSystem {
         let conn = util::test_db_conn();
 
-        let hw_spec_id = diesel::insert_into(hardware_specs::table)
-            .values(&NewHardwareSpec {
-                slug: "hw1".into(),
-                num_registers: 1,
-                num_stacks: 0,
-                max_stack_length: 0,
-            })
-            .returning(hardware_specs::id)
-            .get_result(&conn)
-            .unwrap();
-        diesel::insert_into(program_specs::table)
-            .values(&NewProgramSpec {
-                slug: "prog1".into(),
-                hardware_spec_id: hw_spec_id,
-                input: vec![],
-                expected_output: vec![],
-            })
+        // Insert user
+        NewUser { username: "user1" }
+            .insert()
             .execute(&conn)
             .unwrap();
-        diesel::insert_into(program_specs::table)
-            .values(&NewProgramSpec {
-                slug: "prog2".into(),
-                hardware_spec_id: hw_spec_id,
-                input: vec![],
-                expected_output: vec![],
-            })
-            .execute(&conn)
-            .unwrap();
+        let user: User =
+            User::filter_by_username("user1").get_result(&conn).unwrap();
 
-        VirtualFileSystem::new(Arc::new(conn))
+        // Hardware spec
+        let hw_spec_id = NewHardwareSpec {
+            slug: "hw1",
+            num_registers: 1,
+            num_stacks: 0,
+            max_stack_length: 0,
+        }
+        .insert()
+        .returning(hardware_specs::id)
+        .get_result(&conn)
+        .unwrap();
+
+        // Program specs
+        let prog1_spec_id = NewProgramSpec {
+            slug: "prog1",
+            hardware_spec_id: hw_spec_id,
+            input: vec![],
+            expected_output: vec![],
+        }
+        .insert()
+        .returning(program_specs::id)
+        .get_result(&conn)
+        .unwrap();
+        NewProgramSpec {
+            slug: "prog2",
+            hardware_spec_id: hw_spec_id,
+            input: vec![],
+            expected_output: vec![],
+        }
+        .insert()
+        .execute(&conn)
+        .unwrap();
+
+        // Source code for one program
+        NewUserProgram {
+            user_id: user.id,
+            program_spec_id: prog1_spec_id,
+            file_name: "program.gdlk",
+            source_code: "READ\nWRITE\n",
+        }
+        .insert()
+        .execute(&conn)
+        .unwrap();
+
+        VirtualFileSystem::new(Rc::new(conn), Rc::new(user))
     }
 
     fn check_node_names(nodes: &[Node], expected_names: &[&str]) {
         assert_eq!(
-            nodes.iter().map(Node::name).collect::<Vec<String>>(),
-            expected_names
-                .iter()
-                .map(|s| String::from(*s))
-                .collect::<Vec<String>>()
+            nodes.iter().map(Node::name).collect::<Vec<&str>>(),
+            expected_names.iter().copied().collect::<Vec<&str>>()
         );
     }
 
@@ -547,7 +576,7 @@ mod tests {
         assert_eq!(source_file.name(), "program.gdlk");
         assert_eq!(source_file.node_type(), NodeType::File);
         assert_eq!(source_file.permissions().unwrap(), PERMS_RW);
-        assert_eq!(source_file.content().unwrap(), "TODO");
+        assert_eq!(source_file.content().unwrap(), "READ\nWRITE\n");
         assert!(source_file.children().is_err());
     }
 

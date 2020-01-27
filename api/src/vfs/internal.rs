@@ -4,13 +4,14 @@
 
 use crate::{
     error::Result,
+    models::User,
     util::PooledConnection,
     vfs::{NodePermissions, NodeType},
 };
 use diesel::PgConnection;
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::{collections::HashMap, fmt::Debug, sync::Arc};
+use std::{collections::HashMap, fmt::Debug, rc::Rc};
 
 /// A definition for a path segment in the virtual tree. The definition should
 /// be associated with a singular virtual node.
@@ -42,15 +43,20 @@ impl SegmentSpec {
 }
 
 /// The context needed in order to serve an fs node. This context is available
-/// to any fs operation, and are constant for every node in the tree.
+/// to any fs operation, and are constant for every node in the tree. This uses
+/// Rcs because it needs to be clonable without being dependent on references.
+/// This allows it to be freely copied between nodes, without any node being
+/// reliant on any outside lifetimes.
 #[derive(Clone)]
 pub struct Context {
-    db_conn: Arc<PooledConnection>,
+    db_conn: Rc<PooledConnection>,
+    // It may be faster to just clone a User, but I didn't test so ¯\_(ツ)_/¯
+    pub user: Rc<User>,
 }
 
 impl Context {
-    pub fn new(db_conn: Arc<PooledConnection>) -> Self {
-        Self { db_conn }
+    pub fn new(db_conn: Rc<PooledConnection>, user: Rc<User>) -> Self {
+        Self { db_conn, user }
     }
 
     /// Get a reference to the DB connection.
@@ -91,7 +97,10 @@ impl PathVariables {
     /// order for it to match, so this should always succeed. A missing variable
     /// indicates a bug, hence why it panics in that case.
     pub fn get_var(&self, var_name: &'static str) -> &str {
-        self.map.get(var_name).expect("Unknown path variable")
+        match self.map.get(var_name) {
+            Some(value) => value,
+            None => panic!(format!("Unknown path variable: {}", var_name)),
+        }
     }
 
     /// Insert a new path segment into the map, if the given segment is
