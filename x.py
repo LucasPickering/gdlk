@@ -78,21 +78,30 @@ def run_in_docker_service(service, cmd, env={}):
     run_cmd(["docker", "exec", "-t", *env_vars, f"gdlk_{service}_1", *cmd])
 
 
-@command("migrate", "Apply DB migrations through Diesel")
+@command("migration", "Apply DB migrations through Diesel")
 class Migrate(Command):
     def configure_parser(self, parser):
         parser.add_argument(
-            "--redo",
-            "-r",
-            action="store_true",
-            help="Redo migrations instead of an initial run. Will drop all"
-            " tables and re-run all migrations.",
+            "action",
+            choices=["run", "revert", "redo", "revert-all"],
+            help="The migration action to perform.",
         )
 
-    def run(self, redo):
-        run_in_docker_service(
-            API_SERVICE, ["diesel", "migration", "redo" if redo else "run"]
-        )
+    def revert_all(self):
+        # We can only revert one migration at a time, so run until it fails
+        try:
+            while True:
+                run_in_docker_service(
+                    API_SERVICE, ["diesel", "migration", "revert"]
+                )
+        except subprocess.CalledProcessError:
+            pass
+
+    def run(self, action):
+        if action == "revert-all":
+            self.revert_all()
+        else:
+            run_in_docker_service(API_SERVICE, ["diesel", "migration", action])
 
 
 @command("seed", "Insert seed data into the DB")
@@ -127,14 +136,21 @@ class Test(Command):
             default=[],
             help="Test name(s) to pass along to cargo",
         )
-
-    def test_core(self, debug, tests):
-        run_cmd(
-            ["cargo", "test", "-p", "gdlk", *tests, "--", "--nocapture"],
-            env={"DEBUG": str(int(debug))},
+        parser.add_argument(
+            "--backtrace",
+            "-b",
+            choices=["0", "1", "full"],
+            default="0",
+            help="Value to use for RUST_BACKTRACE",
         )
 
-    def test_api(self, debug, tests):
+    def test_core(self, debug, tests, backtrace):
+        run_cmd(
+            ["cargo", "test", "-p", "gdlk", *tests, "--", "--nocapture"],
+            env={"DEBUG": str(int(debug)), "RUST_BACKTRACE": backtrace},
+        )
+
+    def test_api(self, debug, tests, backtrace):
         try:
             run_in_docker_service(DB_SERVICE, ["dropdb", API_TEST_DB])
         except subprocess.CalledProcessError:
@@ -151,11 +167,15 @@ class Test(Command):
             # ["diesel", "migration", "run", "--locked-schema"],
             env={"DEBUG": str(int(debug)), "DATABASE_URL": db_url},
         )
-        run_in_docker_service(
-            API_SERVICE,
-            ["cargo", "test", *tests, "--", "--nocapture"],
-            env={"DATABASE_URL": db_url},
-        )
+        try:
+            run_in_docker_service(
+                API_SERVICE,
+                ["cargo", "test", *tests, "--", "--nocapture"],
+                env={"DATABASE_URL": db_url, "RUST_BACKTRACE": backtrace},
+            )
+        except subprocess.CalledProcessError:
+            # Ignore this exception, so we don't obfuscate the test output
+            pass
 
     def run(self, crates, **kwargs):
         for crate in crates:
