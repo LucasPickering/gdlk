@@ -1,25 +1,39 @@
 use crate::{
-    models::hardware::FullHardwareSpec,
-    schema::{hardware_specs, program_specs},
+    models::{hardware, HardwareSpec, User},
+    schema::{hardware_specs, program_specs, user_programs, users},
 };
 use diesel::{
-    dsl, expression::bound::Bound, prelude::*, query_builder::InsertStatement,
-    sql_types::Text, Identifiable, Queryable,
+    dsl,
+    expression::bound::Bound,
+    prelude::*,
+    query_builder::InsertStatement,
+    sql_types::{Int4, Text},
+    Identifiable, Queryable,
 };
-use gdlk::{ast::LangValue, ProgramSpec};
+use gdlk::ast::LangValue;
 use std::convert::TryFrom;
 use validator::{Validate, ValidationErrors};
 
+/// Inner join between program_specs and hardware_specs
+type InnerJoinSpecs =
+    dsl::InnerJoin<program_specs::table, hardware_specs::table>;
+
+/// Expression to filter program_specs by slug
 type WithSlug<'a> = dsl::Eq<program_specs::columns::slug, Bound<Text, &'a str>>;
 
-type WithHwSlug<'a> =
-    dsl::Eq<hardware_specs::columns::slug, Bound<Text, &'a str>>;
+/// Expression to filter program_specs by hardware spec slug and its own slug
+type WithSlugs<'a> = dsl::And<hardware::WithSlug<'a>, WithSlug<'a>>;
+
+/// Expression to filter user_programs by user ID, hardware spec slug, and
+/// program spec slug
+type WithUserAndSpecs<'a> =
+    dsl::And<WithSlugs<'a>, dsl::Eq<users::columns::id, Bound<Int4, i32>>>;
 
 /// A derivative of [ProgramSpec](gdlk::ProgramSpec), built from a DB query.
 #[derive(Debug, PartialEq, Identifiable, Associations, Queryable)]
-#[belongs_to(FullHardwareSpec, foreign_key = "hardware_spec_id")]
+#[belongs_to(HardwareSpec, foreign_key = "hardware_spec_id")]
 #[table_name = "program_specs"]
-pub struct FullProgramSpec {
+pub struct ProgramSpec {
     pub id: i32,
     /// Space-less identifier, unique to all program specs for a particular
     /// hardware spec (i.e. unique with `hardware_spec_id`)
@@ -34,14 +48,11 @@ pub struct FullProgramSpec {
     pub expected_output: Vec<LangValue>,
 }
 
-impl FullProgramSpec {
+impl ProgramSpec {
     /// Filters program specs by their associated hardware spec's slug.
     pub fn filter_by_hw_slug<'a>(
         hw_spec_slug: &'a str,
-    ) -> dsl::Filter<
-        dsl::InnerJoin<program_specs::table, hardware_specs::table>,
-        WithHwSlug<'a>,
-    > {
+    ) -> dsl::Filter<InnerJoinSpecs, hardware::WithSlug<'a>> {
         program_specs::dsl::program_specs
             .inner_join(hardware_specs::dsl::hardware_specs)
             .filter(hardware_specs::dsl::slug.eq(hw_spec_slug))
@@ -53,19 +64,16 @@ impl FullProgramSpec {
     pub fn filter_by_slugs<'a>(
         hw_spec_slug: &'a str,
         program_spec_slug: &'a str,
-    ) -> dsl::Filter<
-        dsl::InnerJoin<program_specs::table, hardware_specs::table>,
-        dsl::And<WithHwSlug<'a>, WithSlug<'a>>,
-    > {
+    ) -> dsl::Filter<InnerJoinSpecs, WithSlugs<'a>> {
         Self::filter_by_hw_slug(hw_spec_slug)
             .filter(program_specs::dsl::slug.eq(program_spec_slug))
     }
 }
 
-impl TryFrom<FullProgramSpec> for ProgramSpec {
+impl TryFrom<ProgramSpec> for gdlk::ProgramSpec {
     type Error = ValidationErrors;
 
-    fn try_from(other: FullProgramSpec) -> Result<Self, Self::Error> {
+    fn try_from(other: ProgramSpec) -> Result<Self, Self::Error> {
         let val = Self {
             input: other.input,
             expected_output: other.expected_output,
@@ -77,18 +85,18 @@ impl TryFrom<FullProgramSpec> for ProgramSpec {
 
 /// A derivative of [ProgramSpec](gdlk::ProgramSpec), meant for DB inserts.
 /// This can be constructed manually and inserted into the DB. These fields
-/// all correspond to [FullProgramSpec](FullProgramSpec), so look there for
+/// all correspond to [ProgramSpec](ProgramSpec), so look there for
 /// field-level documentation.
 #[derive(Debug, PartialEq, Insertable)]
 #[table_name = "program_specs"]
-pub struct NewProgramSpec {
-    pub slug: String,
+pub struct NewProgramSpec<'a> {
+    pub slug: &'a str,
     pub hardware_spec_id: i32,
     pub input: Vec<LangValue>,
     pub expected_output: Vec<LangValue>,
 }
 
-impl NewProgramSpec {
+impl NewProgramSpec<'_> {
     /// Insert this object into the `program_specs` DB table.
     pub fn insert(
         self,
@@ -97,5 +105,64 @@ impl NewProgramSpec {
         <Self as Insertable<program_specs::table>>::Values,
     > {
         self.insert_into(program_specs::table)
+    }
+}
+
+#[derive(Debug, PartialEq, Queryable, Associations)]
+#[belongs_to(User, foreign_key = "user_id")]
+#[belongs_to(ProgramSpec, foreign_key = "program_spec_id")]
+#[table_name = "user_programs"]
+pub struct UserProgram {
+    pub id: i32,
+    pub user_id: i32,
+    pub program_spec_id: i32,
+    pub file_name: String,
+    pub source_code: String,
+}
+
+impl UserProgram {
+    pub fn with_file_name<'a>(
+        file_name: &'a str,
+    ) -> dsl::Eq<user_programs::columns::file_name, Bound<Text, &'a str>> {
+        user_programs::dsl::file_name.eq(file_name)
+    }
+
+    pub fn filter_by_specs<'a>(
+        user_id: i32,
+        hw_spec_slug: &'a str,
+        program_spec_slug: &'a str,
+    ) -> dsl::Filter<
+        dsl::InnerJoin<
+            InnerJoinSpecs,
+            dsl::InnerJoin<user_programs::table, users::table>,
+        >,
+        WithUserAndSpecs<'a>,
+    > {
+        ProgramSpec::filter_by_slugs(hw_spec_slug, program_spec_slug)
+            .inner_join(
+                user_programs::dsl::user_programs.inner_join(users::dsl::users),
+            )
+            .filter(users::dsl::id.eq(user_id))
+    }
+}
+
+#[derive(Debug, PartialEq, Insertable)]
+#[table_name = "user_programs"]
+pub struct NewUserProgram<'a> {
+    pub user_id: i32,
+    pub program_spec_id: i32,
+    pub file_name: &'a str,
+    pub source_code: &'a str,
+}
+
+impl NewUserProgram<'_> {
+    /// Insert this object into the `user_programs` DB table.
+    pub fn insert(
+        self,
+    ) -> InsertStatement<
+        user_programs::table,
+        <Self as Insertable<user_programs::table>>::Values,
+    > {
+        self.insert_into(user_programs::table)
     }
 }

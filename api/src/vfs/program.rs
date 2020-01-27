@@ -9,8 +9,8 @@
 
 use crate::{
     error::Result,
-    models::FullProgramSpec,
-    schema::program_specs,
+    models::{ProgramSpec, UserProgram},
+    schema::{program_specs, user_programs},
     vfs::{
         internal::PathVariables, Context, NodePermissions, VirtualNodeHandler,
         PERMS_R, PERMS_RW, PERMS_RX,
@@ -34,7 +34,7 @@ impl VirtualNodeHandler for ProgramSpecNodeHandler {
         program_spec_slug: &str,
     ) -> Result<bool> {
         let hw_spec_slug = path_variables.get_var("hw_spec_slug");
-        Ok(select(exists(FullProgramSpec::filter_by_slugs(
+        Ok(select(exists(ProgramSpec::filter_by_slugs(
             hw_spec_slug,
             program_spec_slug,
         )))
@@ -57,7 +57,7 @@ impl VirtualNodeHandler for ProgramSpecNodeHandler {
     ) -> Result<Vec<String>> {
         let hw_spec_slug = path_variables.get_var("hw_spec_slug");
         let program_spec_slugs: Vec<String> =
-            FullProgramSpec::filter_by_hw_slug(hw_spec_slug)
+            ProgramSpec::filter_by_hw_slug(hw_spec_slug)
                 .select(program_specs::dsl::slug)
                 .get_results(context.conn())?;
         Ok(program_spec_slugs)
@@ -87,7 +87,7 @@ impl VirtualNodeHandler for ProgramSpecFileNodeHandler {
         let hw_spec_slug = path_variables.get_var("hw_spec_slug");
         let program_spec_slug = path_variables.get_var("program_spec_slug");
         let (input, expected_output): (Vec<LangValue>, Vec<LangValue>) =
-            FullProgramSpec::filter_by_slugs(hw_spec_slug, program_spec_slug)
+            ProgramSpec::filter_by_slugs(hw_spec_slug, program_spec_slug)
                 .select((
                     program_specs::dsl::input,
                     program_specs::dsl::expected_output,
@@ -118,10 +118,39 @@ impl VirtualNodeHandler for ProgramSourceNodeHandler {
 
     fn content(
         &self,
-        _: &Context,
-        _: &PathVariables,
-        _: &str,
+        context: &Context,
+        path_variables: &PathVariables,
+        path_segment: &str,
     ) -> Result<String> {
-        Ok("TODO".into())
+        let hw_spec_slug = path_variables.get_var("hw_spec_slug");
+        let program_spec_slug = path_variables.get_var("program_spec_slug");
+
+        // Get the source stored for this hw/program/user combo
+        let source: String = UserProgram::filter_by_specs(
+            context.user.id,
+            hw_spec_slug,
+            program_spec_slug,
+        )
+        .filter(UserProgram::with_file_name(path_segment))
+        .select(user_programs::dsl::source_code)
+        .get_result(context.conn())?;
+        Ok(source)
+    }
+
+    fn list_variable_nodes(
+        &self,
+        context: &Context,
+        path_variables: &PathVariables,
+    ) -> Result<Vec<String>> {
+        let hw_spec_slug = path_variables.get_var("hw_spec_slug");
+        let program_spec_slug = path_variables.get_var("program_spec_slug");
+
+        Ok(UserProgram::filter_by_specs(
+            context.user.id,
+            hw_spec_slug,
+            program_spec_slug,
+        )
+        .select(user_programs::dsl::file_name)
+        .get_results(context.conn())?)
     }
 }

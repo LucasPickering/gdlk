@@ -9,7 +9,7 @@
 
 use crate::{
     error::Result,
-    models::FullHardwareSpec,
+    models::HardwareSpec,
     schema::hardware_specs,
     vfs::{
         internal::{Context, PathVariables, VirtualNodeHandler},
@@ -32,10 +32,8 @@ impl VirtualNodeHandler for HardwareSpecNodeHandler {
         _: &PathVariables,
         hw_spec_slug: &str,
     ) -> Result<bool> {
-        Ok(
-            select(exists(FullHardwareSpec::filter_by_slug(hw_spec_slug)))
-                .get_result(context.conn())?,
-        )
+        Ok(select(exists(HardwareSpec::filter_by_slug(hw_spec_slug)))
+            .get_result(context.conn())?)
     }
 
     fn permissions(
@@ -80,9 +78,8 @@ impl VirtualNodeHandler for HardwareSpecFileNodeHandler {
         _: &str,
     ) -> Result<String> {
         let hw_spec_slug = path_variables.get_var("hw_spec_slug");
-        let hw_spec: FullHardwareSpec =
-            FullHardwareSpec::filter_by_slug(hw_spec_slug)
-                .get_result(context.conn())?;
+        let hw_spec: HardwareSpec = HardwareSpec::filter_by_slug(hw_spec_slug)
+            .get_result(context.conn())?;
         Ok(format!(
             "Registers: {}\nStacks: {}\nMax stack length: {}\n",
             hw_spec.num_registers, hw_spec.num_stacks, hw_spec.max_stack_length
