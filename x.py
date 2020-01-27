@@ -120,24 +120,29 @@ class Test(Command):
             action="store_true",
             help="Run tests in debug mode (DEBUG=1, see debug! macro in core)",
         )
+        parser.add_argument(
+            "--tests",
+            "-t",
+            nargs="+",
+            default=[],
+            help="Test name(s) to pass along to cargo",
+        )
 
-    def test_core(self, debug):
+    def test_core(self, debug, tests):
         run_cmd(
-            ["cargo", "test", "-p", "gdlk", "--", "--nocapture"],
+            ["cargo", "test", "-p", "gdlk", *tests, "--", "--nocapture"],
             env={"DEBUG": str(int(debug))},
         )
 
-    def test_api(self, debug):
+    def test_api(self, debug, tests):
         try:
-            run_in_docker_service(
-                DB_SERVICE, ["psql", "-c", f"DROP DATABASE {API_TEST_DB};"]
-            )
+            run_in_docker_service(DB_SERVICE, ["dropdb", API_TEST_DB])
         except subprocess.CalledProcessError:
             # If the DB doesn't exist, we don't care
             pass
+        run_in_docker_service(DB_SERVICE, ["createdb", API_TEST_DB])
 
         db_url = f"postgres://root:root@db/{API_TEST_DB}"
-        run_in_docker_service(DB_SERVICE, ["createdb", API_TEST_DB])
         run_in_docker_service(
             API_SERVICE,
             ["diesel", "migration", "run"],
@@ -147,13 +152,15 @@ class Test(Command):
             env={"DEBUG": str(int(debug)), "DATABASE_URL": db_url},
         )
         run_in_docker_service(
-            API_SERVICE, ["cargo", "test"], env={"DATABASE_URL": db_url}
+            API_SERVICE,
+            ["cargo", "test", *tests, "--", "--nocapture"],
+            env={"DATABASE_URL": db_url},
         )
 
-    def run(self, crates, debug):
+    def run(self, crates, **kwargs):
         for crate in crates:
             print(f"===== Testing {crate} =====")
-            self._CRATES[crate](debug)
+            self._CRATES[crate](**kwargs)
 
 
 @command("doc", "Watch, build, and (optionally) serve docs for our code")
