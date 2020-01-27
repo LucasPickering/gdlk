@@ -1,5 +1,7 @@
 FROM rustlang/rust:nightly-slim
 
+# This should be built with the repo root dir as the context
+
 ENV DOCKERIZE_VERSION v0.6.1
 
 # Need to do this first so we pick up the rust-toolchain file
