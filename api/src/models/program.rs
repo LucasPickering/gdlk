@@ -29,6 +29,13 @@ type WithSlugs<'a> = dsl::And<hardware::WithSlug<'a>, WithSlug<'a>>;
 type WithUserAndSpecs<'a> =
     dsl::And<WithSlugs<'a>, dsl::Eq<users::columns::id, Bound<Int4, i32>>>;
 
+/// Expression to filter user_programs by user ID, hardware spec slug,
+/// program spec slug, and file name
+type WithFileName<'a> = dsl::And<
+    WithUserAndSpecs<'a>,
+    dsl::Eq<user_programs::columns::file_name, Bound<Text, &'a str>>,
+>;
+
 /// A derivative of [ProgramSpec](gdlk::ProgramSpec), built from a DB query.
 #[derive(Debug, PartialEq, Identifiable, Associations, Queryable)]
 #[belongs_to(HardwareSpec, foreign_key = "hardware_spec_id")]
@@ -127,6 +134,7 @@ impl UserProgram {
         user_programs::dsl::file_name.eq(file_name)
     }
 
+    /// Get all user programs that exist for a user-program spec pair.
     pub fn filter_by_specs<'a>(
         user_id: i32,
         hw_spec_slug: &'a str,
@@ -143,6 +151,28 @@ impl UserProgram {
                 user_programs::dsl::user_programs.inner_join(users::dsl::users),
             )
             .filter(users::dsl::id.eq(user_id))
+    }
+
+    /// Filter down to exactly one UserProgram, based on a user, hw spec,
+    /// program spec, and file name.
+    pub fn filter_by_file_name<'a>(
+        user_id: i32,
+        hw_spec_slug: &'a str,
+        program_spec_slug: &'a str,
+        file_name: &'a str,
+    ) -> dsl::Filter<
+        dsl::InnerJoin<
+            InnerJoinSpecs,
+            dsl::InnerJoin<user_programs::table, users::table>,
+        >,
+        WithFileName<'a>,
+    > {
+        ProgramSpec::filter_by_slugs(hw_spec_slug, program_spec_slug)
+            .inner_join(
+                user_programs::dsl::user_programs.inner_join(users::dsl::users),
+            )
+            .filter(users::dsl::id.eq(user_id))
+            .filter(Self::with_file_name(file_name))
     }
 }
 

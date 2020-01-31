@@ -18,6 +18,8 @@ pub enum ServerError {
     NodeNotFound,
     #[fail(display = "Operation not supported")]
     UnsupportedFileOperation,
+    #[fail(display = "Permission denied")]
+    PermissionDenied,
 }
 
 impl From<r2d2::Error> for ServerError {
