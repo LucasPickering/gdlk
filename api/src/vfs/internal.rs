@@ -169,6 +169,27 @@ pub trait VirtualNodeHandler: Debug + Sync {
         // called.
         panic!("Operation not supported for this node type")
     }
+
+    fn set_content(
+        &self,
+        _context: &Context,
+        _path_variables: &PathVariables,
+        _path_segment: &str,
+        _content: &str,
+    ) -> Result<()> {
+        // This only needs to be implemented for writable files.
+        panic!("Operation not supported for this node type")
+    }
+
+    fn delete(
+        &self,
+        _context: &Context,
+        _path_variables: &PathVariables,
+        _path_segment: &str,
+    ) -> Result<()> {
+        // This only needs to be implemented for writable files.
+        panic!("Operation not supported for this node type")
+    }
 }
 
 /// A virtual node in the file system. In this context, "virtual" means that

@@ -13,7 +13,7 @@ pub type PooledConnection =
 #[cfg(test)]
 mod tests {
     use super::*;
-    use diesel::{Connection, PgConnection};
+    use diesel::Connection;
 
     /// Helper to create a database connection for testing. This establishes
     /// the connection, then starts a test transaction on it so that no changes
@@ -30,5 +30,17 @@ mod tests {
 
         (&conn as &PgConnection).begin_test_transaction().unwrap();
         conn
+    }
+
+    /// Assert that the first value is an Err, and that its string form matches
+    /// the second argument.
+    #[macro_export]
+    macro_rules! assert_err {
+        ($res:expr, $msg:tt $(,)?) => {
+            match $res {
+                Ok(_) => panic!("Expected Err, got Ok"),
+                Err(err) => assert_eq!(format!("{}", err), $msg),
+            }
+        };
     }
 }

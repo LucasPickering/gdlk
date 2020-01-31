@@ -72,12 +72,13 @@ const PERMS_RX: NodePermissions = NodePermissions {
 /// A physical node in the file system. This represents exactly one
 /// file/directory. All file operations exist on this type.
 ///
-/// To get a reference to a node, you can use <VirtualFileSystem::node>.
+/// To get a reference to a node, you can use <VirtualFileSystem::get_node>.
 ///
 /// This type needs to be able to outlive the <VirtualFileSystem> that creates
 /// it, so that it can be passed around for GraphQL purposes. Because of that,
 /// it owns its own copy of <Context>, and that copy holds <Rc>s instead of
 /// references.
+#[derive(Clone)]
 pub struct Node {
     context: Context,
     path_variables: PathVariables,
@@ -134,7 +135,7 @@ impl Node {
         // Get each virtual child, paired with the name of each physical node
         // that exists for that virtual node.
         let child_vnodes: Vec<(&VirtualNode, Vec<String>)> =
-            match self.vnode.node_type {
+            match self.node_type() {
                 // Files don't have children!
                 NodeType::File => {
                     return Err(ServerError::UnsupportedFileOperation)
@@ -170,6 +171,39 @@ impl Node {
 
         Ok(child_nodes)
     }
+
+    pub fn set_content(&self, content: String) -> Result<()> {
+        match self.node_type() {
+            NodeType::File => {
+                // Always ask for permission!
+                if self.permissions()?.write {
+                    self.vnode.handler.set_content(
+                        &self.context,
+                        &self.path_variables,
+                        &self.path_segment,
+                        &content,
+                    )
+                } else {
+                    Err(ServerError::PermissionDenied)
+                }
+            }
+            NodeType::Directory => Err(ServerError::UnsupportedFileOperation),
+        }
+    }
+
+    /// Delete this node. Any node with write permissions can be deleted. Any
+    /// other node will generate a <ServerError::PermissionDenied>.
+    pub fn delete(&self) -> Result<()> {
+        if self.permissions()?.write {
+            self.vnode.handler.delete(
+                &self.context,
+                &self.path_variables,
+                &self.path_segment,
+            )
+        } else {
+            Err(ServerError::PermissionDenied)
+        }
+    }
 }
 
 // GraphQL wrappers around the file operations
@@ -195,7 +229,7 @@ impl Node {
     }
 
     /// The data of this node. Files have string content, while directories have
-    /// no content. As such, this always returns `Some` for files and `None`
+    /// no content. As such, this always returns content for files and `null`
     /// for directories.
     #[graphql(name = "content")]
     fn gql_content() -> FieldResult<Option<String>> {
@@ -206,8 +240,8 @@ impl Node {
         }
     }
 
-    /// The names of the children of this node. Returns a `Some(Vec)` of
-    /// the children for a directory, and `None` for a file.
+    /// The nested children of this node. Returns an array of the children for a
+    /// directory, and `null` for a file.
     #[graphql(name = "children")]
     fn gql_children() -> FieldResult<Option<Vec<Self>>> {
         match self.children() {
@@ -215,6 +249,33 @@ impl Node {
             Err(ServerError::UnsupportedFileOperation) => Ok(None),
             Err(err) => Err(err.into()),
         }
+    }
+}
+
+/// A container to hold wrappers for all GQL mutations that can be run on a
+/// Node. These mutations all call down to methods that are defined on Node.
+pub struct NodeMutation(Node);
+
+impl NodeMutation {
+    pub fn new(node: Node) -> Self {
+        Self(node)
+    }
+}
+
+#[juniper::object(Context = GqlContext)]
+impl NodeMutation {
+    /// Set the contents of a file. Will fail if the node is a directory or
+    /// a file without write permissions.
+    fn set_content(&self, content: String) -> FieldResult<&Node> {
+        self.0.set_content(content)?;
+        Ok(&self.0)
+    }
+
+    /// Delete a file or directory. Will fail if the node does not have write
+    /// permissions. Returns the name (_not_ the full path) of the deleted file.
+    fn delete(&self) -> FieldResult<String> {
+        self.0.delete()?;
+        Ok(self.0.name().into())
     }
 }
 
@@ -242,7 +303,7 @@ impl VirtualFileSystem {
     /// Gets a reference to a particular file system node. This is a _physical_
     /// node, meaning it refers to exactly one node in the file system. This
     /// reference can be used to run operations on the node.
-    pub fn node(&self, path: &str) -> Result<Node> {
+    pub fn get_node(&self, path: &str) -> Result<Node> {
         /// Checks if the first segment in the path matches the given virtual
         /// node. If so, returns a tuple of (matched segment, remaining
         /// unmatched segments). If it doesn't match, returns a `NodeNotFound`.
@@ -390,6 +451,7 @@ static VFS_TREE: VirtualNode = VirtualNode::dir(
 mod tests {
     use super::*;
     use crate::{
+        assert_err,
         models::{
             NewHardwareSpec, NewProgramSpec, NewUser, NewUserProgram, User,
         },
@@ -464,64 +526,73 @@ mod tests {
     }
 
     #[test]
-    fn test_node() {
+    fn test_get_node() {
         let vfs = setup();
         // === negative test cases ===
-        assert!(vfs.node("/fake/path/does/not/exist").is_err());
-        assert!(vfs.node("hardware").is_err()); // relative paths don't work
+        assert!(vfs.get_node("/fake/path/does/not/exist").is_err());
+        assert!(vfs.get_node("hardware").is_err()); // relative paths don't work
 
         // Unknown hw and program IDs don't exist
-        assert!(vfs.node("/hardware/hw2").is_err());
-        assert!(vfs.node("/hardware/hw1/programs/prog100").is_err());
+        assert!(vfs.get_node("/hardware/hw2").is_err());
+        assert!(vfs.get_node("/hardware/hw1/programs/prog100").is_err());
+        assert!(vfs
+            .get_node("/hardware/hw1/programs/prog1/program2.gdlk")
+            .is_err());
 
         // === positive test cases ===
-        assert!(vfs.node("").is_ok());
-        assert!(vfs.node("/").is_ok());
-        assert!(vfs.node("//").is_ok()); // slash gets de-duped
-        assert!(vfs.node("/hardware").is_ok());
-        assert!(vfs.node("/hardware/").is_ok());
-        assert!(vfs.node("/hardware/hw1/spec.txt").is_ok());
-        assert!(vfs.node("/hardware/hw1/programs/prog1").is_ok());
-        assert!(vfs.node("/hardware/hw1/programs/prog1/spec.txt").is_ok());
+        assert!(vfs.get_node("").is_ok());
+        assert!(vfs.get_node("/").is_ok());
+        assert!(vfs.get_node("//").is_ok()); // slash gets de-duped
+        assert!(vfs.get_node("/hardware").is_ok());
+        assert!(vfs.get_node("/hardware/").is_ok());
+        assert!(vfs.get_node("/hardware/hw1/spec.txt").is_ok());
+        assert!(vfs.get_node("/hardware/hw1/programs/prog1").is_ok());
+        assert!(vfs
+            .get_node("/hardware/hw1/programs/prog1/spec.txt")
+            .is_ok());
     }
 
     #[test]
     fn test_root_dir() {
         let vfs = setup();
-        let node = vfs.node("/").unwrap();
+        let node = vfs.get_node("/").unwrap();
         assert_eq!(node.name(), "");
         assert_eq!(node.node_type(), NodeType::Directory);
         assert_eq!(node.permissions().unwrap(), PERMS_RX);
-        assert!(node.content().is_err());
+        assert_err!(node.content(), "Operation not supported");
+        assert_err!(node.set_content("test".into()), "Operation not supported");
         check_node_names(&node.children().unwrap(), &["hardware"]);
+        assert_err!(node.delete(), "Permission denied");
     }
 
     #[test]
     fn test_hw_dir() {
         let vfs = setup();
-        let node = vfs.node("/hardware").unwrap();
+        let node = vfs.get_node("/hardware").unwrap();
         assert_eq!(node.name(), "hardware");
         assert_eq!(node.node_type(), NodeType::Directory);
         assert_eq!(node.permissions().unwrap(), PERMS_RX);
-        assert!(node.content().is_err());
+        assert_err!(node.content(), "Operation not supported");
         check_node_names(&node.children().unwrap(), &["hw1"]);
+        assert_err!(node.delete(), "Permission denied");
     }
 
     #[test]
     fn test_hw_spec() {
         let vfs = setup();
 
-        let hw_spec_dir = vfs.node("/hardware/hw1").unwrap();
+        let hw_spec_dir = vfs.get_node("/hardware/hw1").unwrap();
         assert_eq!(hw_spec_dir.name(), "hw1");
         assert_eq!(hw_spec_dir.node_type(), NodeType::Directory);
         assert_eq!(hw_spec_dir.permissions().unwrap(), PERMS_RX);
-        assert!(hw_spec_dir.content().is_err());
+        assert_err!(hw_spec_dir.content(), "Operation not supported");
         check_node_names(
             &hw_spec_dir.children().unwrap(),
             &["spec.txt", "programs"],
         );
+        assert_err!(hw_spec_dir.delete(), "Permission denied");
 
-        let spec_file = vfs.node("/hardware/hw1/spec.txt").unwrap();
+        let spec_file = vfs.get_node("/hardware/hw1/spec.txt").unwrap();
         assert_eq!(spec_file.name(), "spec.txt");
         assert_eq!(spec_file.node_type(), NodeType::File);
         assert_eq!(spec_file.permissions().unwrap(), PERMS_R);
@@ -529,19 +600,21 @@ mod tests {
             spec_file.content().unwrap(),
             "Registers: 1\nStacks: 0\nMax stack length: 0\n"
         );
-        assert!(spec_file.children().is_err());
+        assert_err!(spec_file.children(), "Operation not supported");
+        assert_err!(spec_file.delete(), "Permission denied");
     }
 
     #[test]
     fn test_hw_programs_dir() {
         let vfs = setup();
 
-        let node = vfs.node("/hardware/hw1/programs").unwrap();
+        let node = vfs.get_node("/hardware/hw1/programs").unwrap();
         assert_eq!(node.name(), "programs");
         assert_eq!(node.node_type(), NodeType::Directory);
         assert_eq!(node.permissions().unwrap(), PERMS_RX);
-        assert!(node.content().is_err());
+        assert_err!(node.content(), "Operation not supported");
         check_node_names(&node.children().unwrap(), &["prog1", "prog2"]);
+        assert_err!(node.delete(), "Permission denied");
     }
 
     #[test]
@@ -549,18 +622,20 @@ mod tests {
         let vfs = setup();
 
         let program_spec_dir =
-            vfs.node("/hardware/hw1/programs/prog1").unwrap();
+            vfs.get_node("/hardware/hw1/programs/prog1").unwrap();
         assert_eq!(program_spec_dir.name(), "prog1");
         assert_eq!(program_spec_dir.node_type(), NodeType::Directory);
         assert_eq!(program_spec_dir.permissions().unwrap(), PERMS_RX);
-        assert!(program_spec_dir.content().is_err());
+        assert_err!(program_spec_dir.content(), "Operation not supported");
         check_node_names(
             &program_spec_dir.children().unwrap(),
             &["spec.txt", "program.gdlk"],
         );
+        assert_err!(program_spec_dir.delete(), "Permission denied");
 
-        let spec_file =
-            vfs.node("/hardware/hw1/programs/prog1/spec.txt").unwrap();
+        let spec_file = vfs
+            .get_node("/hardware/hw1/programs/prog1/spec.txt")
+            .unwrap();
         assert_eq!(spec_file.name(), "spec.txt");
         assert_eq!(spec_file.node_type(), NodeType::File);
         assert_eq!(spec_file.permissions().unwrap(), PERMS_R);
@@ -568,16 +643,23 @@ mod tests {
             spec_file.content().unwrap(),
             "Input: []\nExpected output: []\n"
         );
-        assert!(spec_file.children().is_err());
+        assert_err!(spec_file.children(), "Operation not supported");
+        assert_err!(spec_file.delete(), "Permission denied");
 
         let source_file = vfs
-            .node("/hardware/hw1/programs/prog1/program.gdlk")
+            .get_node("/hardware/hw1/programs/prog1/program.gdlk")
             .unwrap();
         assert_eq!(source_file.name(), "program.gdlk");
         assert_eq!(source_file.node_type(), NodeType::File);
         assert_eq!(source_file.permissions().unwrap(), PERMS_RW);
         assert_eq!(source_file.content().unwrap(), "READ\nWRITE\n");
-        assert!(source_file.children().is_err());
+        assert_err!(source_file.children(), "Operation not supported");
+        // Delete the file, and make sure it's gone
+        assert!(source_file.delete().is_ok());
+        assert_err!(
+            vfs.get_node("/hardware/hw1/programs/prog1/program.gdlk"),
+            "File or directory not found",
+        );
     }
 
     #[test]
@@ -593,7 +675,7 @@ mod tests {
 
         // Last node is fixed
         {
-            let hw_dir = vfs.node("/hardware").unwrap();
+            let hw_dir = vfs.get_node("/hardware").unwrap();
             let hw_children = hw_dir.children().unwrap();
             let hw1_dir = hw_children.get(0).unwrap();
             assert_eq!(hw1_dir.name(), "hw1");
@@ -608,7 +690,7 @@ mod tests {
 
         // Last node is variable
         {
-            let hw1_dir = vfs.node("/hardware/hw1").unwrap();
+            let hw1_dir = vfs.get_node("/hardware/hw1").unwrap();
             assert_eq!(hw1_dir.name(), "hw1");
             let hw1_children = hw1_dir.children().unwrap();
             let hw1_spec_file = hw1_children.get(0).unwrap();

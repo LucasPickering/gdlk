@@ -18,7 +18,7 @@ use crate::{
 };
 use diesel::{
     dsl::{exists, select},
-    QueryDsl, RunQueryDsl,
+    ExpressionMethods, QueryDsl, RunQueryDsl,
 };
 use gdlk::ast::LangValue;
 
@@ -107,6 +107,24 @@ impl VirtualNodeHandler for ProgramSpecFileNodeHandler {
 pub struct ProgramSourceNodeHandler();
 
 impl VirtualNodeHandler for ProgramSourceNodeHandler {
+    fn exists(
+        &self,
+        context: &Context,
+        path_variables: &PathVariables,
+        path_segment: &str,
+    ) -> Result<bool> {
+        let hw_spec_slug = path_variables.get_var("hw_spec_slug");
+        let program_spec_slug = path_variables.get_var("program_spec_slug");
+
+        Ok(select(exists(UserProgram::filter_by_file_name(
+            context.user.id,
+            hw_spec_slug,
+            program_spec_slug,
+            path_segment,
+        )))
+        .get_result(context.conn())?)
+    }
+
     fn permissions(
         &self,
         _: &Context,
@@ -126,12 +144,12 @@ impl VirtualNodeHandler for ProgramSourceNodeHandler {
         let program_spec_slug = path_variables.get_var("program_spec_slug");
 
         // Get the source stored for this hw/program/user combo
-        let source: String = UserProgram::filter_by_specs(
+        let source: String = UserProgram::filter_by_file_name(
             context.user.id,
             hw_spec_slug,
             program_spec_slug,
+            path_segment,
         )
-        .filter(UserProgram::with_file_name(path_segment))
         .select(user_programs::dsl::source_code)
         .get_result(context.conn())?;
         Ok(source)
@@ -152,5 +170,60 @@ impl VirtualNodeHandler for ProgramSourceNodeHandler {
         )
         .select(user_programs::dsl::file_name)
         .get_results(context.conn())?)
+    }
+
+    fn set_content(
+        &self,
+        context: &Context,
+        path_variables: &PathVariables,
+        path_segment: &str,
+        content: &str,
+    ) -> Result<()> {
+        use self::user_programs::dsl::*;
+
+        let hw_spec_slug = path_variables.get_var("hw_spec_slug");
+        let program_spec_slug = path_variables.get_var("program_spec_slug");
+
+        // Diesel doesn't support updates with joins, so we have to fetch the
+        // ID of the UserProgram first, then do the update in a second query.
+        let user_program_id: i32 = UserProgram::filter_by_file_name(
+            context.user.id,
+            hw_spec_slug,
+            program_spec_slug,
+            path_segment,
+        )
+        .select(id)
+        .get_result(context.conn())?;
+        diesel::update(user_programs.filter(id.eq(user_program_id)))
+            .set(source_code.eq(content))
+            .execute(context.conn())?;
+
+        Ok(())
+    }
+
+    fn delete(
+        &self,
+        context: &Context,
+        path_variables: &PathVariables,
+        path_segment: &str,
+    ) -> Result<()> {
+        use self::user_programs::dsl::*;
+
+        let hw_spec_slug = path_variables.get_var("hw_spec_slug");
+        let program_spec_slug = path_variables.get_var("program_spec_slug");
+
+        // Diesel doesn't support updates with joins, so we have to fetch the
+        // ID of the UserProgram first, then do the update in a second query.
+        let user_program_id: i32 = UserProgram::filter_by_file_name(
+            context.user.id,
+            hw_spec_slug,
+            program_spec_slug,
+            path_segment,
+        )
+        .select(id)
+        .get_result(context.conn())?;
+        diesel::delete(user_programs.filter(id.eq(user_program_id)))
+            .execute(context.conn())?;
+        Ok(())
     }
 }

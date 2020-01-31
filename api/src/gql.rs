@@ -3,9 +3,10 @@
 //! GQL stuff in one module at some point, but not currently.
 
 use crate::{
+    error::Result,
     models::User,
     util::Pool,
-    vfs::{Node, VirtualFileSystem},
+    vfs::{Node, NodeMutation, VirtualFileSystem},
 };
 use diesel::RunQueryDsl;
 use juniper::FieldResult;
@@ -18,33 +19,51 @@ pub struct GqlContext {
 // To make our context usable by Juniper, we have to implement a marker trait.
 impl juniper::Context for GqlContext {}
 
+/// Helper to get a Node for a context, user, and path. This is used for both
+/// the query and mutation handlers, so we factor out the common code here.
+fn get_fs_node(
+    context: &GqlContext,
+    username: String,
+    path: String,
+) -> Result<Node> {
+    // temporary way to get user -- just have the caller specify username
+    let user: User =
+        User::filter_by_username(&username).get_result(&context.pool.get()?)?;
+
+    let fs =
+        VirtualFileSystem::new(Rc::new(context.pool.get()?), Rc::new(user));
+    fs.get_node(&path)
+}
+
+/// The top-level query object
 pub struct RootQuery;
 
 #[juniper::object(Context = GqlContext)]
 impl RootQuery {
-    fn api_version() -> &str {
-        "1.0"
-    }
-
+    /// A file system read operation.
     fn fs_node(
         context: &GqlContext,
         username: String,
         path: String,
     ) -> FieldResult<Node> {
-        // temporary way to get user -- just have the caller specify username
-        let user: User = User::filter_by_username(&username)
-            .get_result(&context.pool.get()?)?;
-
-        let fs =
-            VirtualFileSystem::new(Rc::new(context.pool.get()?), Rc::new(user));
-        Ok(fs.node(&path)?)
+        Ok(get_fs_node(context, username, path)?)
     }
 }
 
+/// The top-level mutation object
 pub struct RootMutation;
 
 #[juniper::object(Context = GqlContext)]
-impl RootMutation {}
+impl RootMutation {
+    /// A file system write operation.
+    fn fs_node(
+        context: &GqlContext,
+        username: String,
+        path: String,
+    ) -> FieldResult<NodeMutation> {
+        Ok(NodeMutation::new(get_fs_node(context, username, path)?))
+    }
+}
 
 pub type GqlSchema = juniper::RootNode<'static, RootQuery, RootMutation>;
 
