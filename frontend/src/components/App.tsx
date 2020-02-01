@@ -1,6 +1,6 @@
-import React from "react";
-import "./App.css";
-import Terminal from "./Terminal";
+import React from 'react';
+import './App.css';
+import Terminal from './Terminal';
 const App: React.FC = () => {
   return (
     <div className="App">
