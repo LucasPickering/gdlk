@@ -82,7 +82,6 @@ We use nightly Rust. Here's a list of reasons why. If this list every gets empty
 
 - Rust features
   - [try_trait](https://github.com/rust-lang/rust/issues/42327)
-  - [slice_patterns](https://github.com/rust-lang/rust/issues/62254)
   - [const_fn](https://github.com/rust-lang/rust/issues/57563)
   - [trait_alias](https://github.com/rust-lang/rust/issues/41517)
 - Rustfmt
