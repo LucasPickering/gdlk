@@ -11,13 +11,23 @@ pub enum ServerError {
     /// Wrapper for R2D2's error type
     #[fail(display = "{}", 0)]
     R2d2Error(#[cause] r2d2::Error),
+
     /// Wrapper for Diesel's error type
     #[fail(display = "{}", 0)]
     DieselError(#[cause] diesel::result::Error),
+
+    // ===== FS errors =====
+    /// A file system node was requested, but no node exists at the given path.
     #[fail(display = "File or directory not found")]
     NodeNotFound,
+
+    /// The attempted file system operation is not supported for the node it
+    /// was attempted on.
     #[fail(display = "Operation not supported")]
     UnsupportedFileOperation,
+
+    /// The file system node does not provide the permissions required to
+    /// perform the attempted operation.
     #[fail(display = "Permission denied")]
     PermissionDenied,
 }

@@ -13,7 +13,7 @@ use crate::{
     schema::hardware_specs,
     vfs::{
         internal::{Context, PathVariables, VirtualNodeHandler},
-        NodePermissions, PERMS_R, PERMS_RX,
+        NodePermissions, PERMS_R,
     },
 };
 use diesel::{
@@ -42,7 +42,7 @@ impl VirtualNodeHandler for HardwareSpecNodeHandler {
         _: &PathVariables,
         _: &str,
     ) -> Result<NodePermissions> {
-        Ok(PERMS_RX)
+        Ok(PERMS_R)
     }
 
     fn list_variable_nodes(
