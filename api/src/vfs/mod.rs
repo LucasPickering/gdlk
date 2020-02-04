@@ -46,27 +46,72 @@ pub enum NodeType {
     Directory,
 }
 
+/// A node has two permission flags: (R)ead and (Write). These flags have
+/// different meanings for files vs directories.
+///
+/// <table>
+///   <thead>
+///     <tr>
+///       <th>Permission</th>
+///       <th>Directory</th>
+///       <th>File</th>
+///     </tr>
+///   </thead>
+///   <tbody>
+///     <tr>
+///       <td>Read</td>
+///       <td>List the directory's children</td>
+///       <td>Read a file's contents</td>
+///     </tr>
+///     <tr>
+///       <td>Write</td>
+///       <td>Create files in the directory, delete the directory</td>
+///       <td>Change the file's contents, delete the file</td>
+///     </tr>
+///   </tbody>
+/// </table>
+///
+/// Note that read permission on a node is _not_ required to view that node's
+/// metadata (name, type, permissions). That permission is implicitly granted
+/// when you have read permission on the node's parent. For example, if you
+/// have read permission on `/dir1`, then you can _always_ read the metadata
+/// for `/dir1/file1`, even if you don't have read permissions on `/dir1/file1`.
+
 #[derive(Copy, Clone, Debug, PartialEq, GraphQLObject)]
 pub struct NodePermissions {
     pub read: bool,
     pub write: bool,
-    pub execute: bool,
+}
+
+impl NodePermissions {
+    /// Check if these permissions permit reads. If not, return a
+    /// <ServerError::PermissionDenied>.
+    pub fn require_read(self) -> Result<()> {
+        if self.read {
+            Ok(())
+        } else {
+            Err(ServerError::PermissionDenied)
+        }
+    }
+
+    /// Check if these permissions permit writes. If not, return a
+    /// <ServerError::PermissionDenied>.
+    pub fn require_write(self) -> Result<()> {
+        if self.write {
+            Ok(())
+        } else {
+            Err(ServerError::PermissionDenied)
+        }
+    }
 }
 
 const PERMS_R: NodePermissions = NodePermissions {
     read: true,
     write: false,
-    execute: false,
 };
 const PERMS_RW: NodePermissions = NodePermissions {
     read: true,
     write: true,
-    execute: false,
-};
-const PERMS_RX: NodePermissions = NodePermissions {
-    read: true,
-    write: false,
-    execute: true,
 };
 
 /// A physical node in the file system. This represents exactly one
@@ -104,25 +149,31 @@ impl Node {
         )
     }
 
-    /// Gets the actual data of this node. This is only possible for files. If
-    /// called for a directory, will return
-    /// <ServerError::UnsupportedFileOperation>.
+    /// Gets the actual data of this node. This is only possible for files, and
+    /// requires read permission. Returns an error if this node is a directory,
+    /// or does not have read permission.
     pub fn content(&self) -> Result<String> {
         match self.vnode.node_type {
-            NodeType::File => self.vnode.handler.content(
-                &self.context,
-                &self.path_variables,
-                &self.path_segment,
-            ),
+            NodeType::File => {
+                self.permissions()?.require_read()?;
+                self.vnode.handler.content(
+                    &self.context,
+                    &self.path_variables,
+                    &self.path_segment,
+                )
+            }
             // Can't do this for directories, ya dummy
             NodeType::Directory => Err(ServerError::UnsupportedFileOperation),
         }
     }
 
     /// Gets a list of each child of this node. This is only possible for
-    /// directories, as files have no children. If called for a file, will
-    /// return <ServerError::UnsupportedFileOperation>.
+    /// directories, as files have no children. Requires read permission.
+    /// Returns an error if this node is a file or does not have read
+    /// permissions.
     pub fn children(&self) -> Result<Vec<Self>> {
+        self.permissions()?.require_read()?;
+
         // Include this node's name as a variable for the children. Remember
         // that PathVariables doesn't ever contain the last path segment,
         // so the name of this node won't be in path_variables. We need to add
@@ -172,20 +223,19 @@ impl Node {
         Ok(child_nodes)
     }
 
+    /// Change the content of this node to the the given value. Requires write
+    /// permission. Returns an error if this node is a directory or does not
+    /// have write permission.
     pub fn set_content(&self, content: String) -> Result<()> {
         match self.node_type() {
             NodeType::File => {
-                // Always ask for permission!
-                if self.permissions()?.write {
-                    self.vnode.handler.set_content(
-                        &self.context,
-                        &self.path_variables,
-                        &self.path_segment,
-                        &content,
-                    )
-                } else {
-                    Err(ServerError::PermissionDenied)
-                }
+                self.permissions()?.require_write()?;
+                self.vnode.handler.set_content(
+                    &self.context,
+                    &self.path_variables,
+                    &self.path_segment,
+                    &content,
+                )
             }
             NodeType::Directory => Err(ServerError::UnsupportedFileOperation),
         }
@@ -194,15 +244,12 @@ impl Node {
     /// Delete this node. Any node with write permissions can be deleted. Any
     /// other node will generate a <ServerError::PermissionDenied>.
     pub fn delete(&self) -> Result<()> {
-        if self.permissions()?.write {
-            self.vnode.handler.delete(
-                &self.context,
-                &self.path_variables,
-                &self.path_segment,
-            )
-        } else {
-            Err(ServerError::PermissionDenied)
-        }
+        self.permissions()?.require_write()?;
+        self.vnode.handler.delete(
+            &self.context,
+            &self.path_variables,
+            &self.path_segment,
+        )
     }
 }
 
@@ -264,14 +311,14 @@ impl NodeMutation {
 
 #[juniper::object(Context = GqlContext)]
 impl NodeMutation {
-    /// Set the contents of a file. Will fail if the node is a directory or
-    /// a file without write permissions.
+    /// Set the contents of a file. Fails if the node is a directory or a file
+    /// without write permissions.
     fn set_content(&self, content: String) -> FieldResult<&Node> {
         self.0.set_content(content)?;
         Ok(&self.0)
     }
 
-    /// Delete a file or directory. Will fail if the node does not have write
+    /// Delete a file or directory. Fails if the node does not have write
     /// permissions. Returns the name (_not_ the full path) of the deleted file.
     fn delete(&self) -> FieldResult<String> {
         self.0.delete()?;
@@ -285,7 +332,7 @@ impl NodeMutation {
 /// might be needed to serve file paths, e.g. DB connections.
 ///
 /// This struct is useful for getting references to particular nodes (see
-/// <Self::node>). Once you have a `Node`, you can run
+/// <Self::get_node>). Once you have a `Node`, you can run
 /// file operations on it.
 pub struct VirtualFileSystem {
     db_conn: Rc<PooledConnection>,
@@ -402,13 +449,13 @@ impl VirtualNodeHandler for SimpleDirHandler {
         _: &PathVariables,
         _: &str,
     ) -> Result<NodePermissions> {
-        Ok(PERMS_RX)
+        Ok(PERMS_R)
     }
 }
 
 /// The entire VFS node tree. This defines the layout of the tree. Each node has
 /// a path spec, a handler that defines how it behaves, and optionally children.
-/// Obviously, only directions can have children.
+/// Obviously, only directories can have children.
 static VFS_TREE: VirtualNode = VirtualNode::dir(
     // If you update something here, make sure to update the comment above!
     SegmentSpec::Fixed(""),
@@ -558,7 +605,7 @@ mod tests {
         let node = vfs.get_node("/").unwrap();
         assert_eq!(node.name(), "");
         assert_eq!(node.node_type(), NodeType::Directory);
-        assert_eq!(node.permissions().unwrap(), PERMS_RX);
+        assert_eq!(node.permissions().unwrap(), PERMS_R);
         assert_err!(node.content(), "Operation not supported");
         assert_err!(node.set_content("test".into()), "Operation not supported");
         check_node_names(&node.children().unwrap(), &["hardware"]);
@@ -571,7 +618,7 @@ mod tests {
         let node = vfs.get_node("/hardware").unwrap();
         assert_eq!(node.name(), "hardware");
         assert_eq!(node.node_type(), NodeType::Directory);
-        assert_eq!(node.permissions().unwrap(), PERMS_RX);
+        assert_eq!(node.permissions().unwrap(), PERMS_R);
         assert_err!(node.content(), "Operation not supported");
         check_node_names(&node.children().unwrap(), &["hw1"]);
         assert_err!(node.delete(), "Permission denied");
@@ -584,7 +631,7 @@ mod tests {
         let hw_spec_dir = vfs.get_node("/hardware/hw1").unwrap();
         assert_eq!(hw_spec_dir.name(), "hw1");
         assert_eq!(hw_spec_dir.node_type(), NodeType::Directory);
-        assert_eq!(hw_spec_dir.permissions().unwrap(), PERMS_RX);
+        assert_eq!(hw_spec_dir.permissions().unwrap(), PERMS_R);
         assert_err!(hw_spec_dir.content(), "Operation not supported");
         check_node_names(
             &hw_spec_dir.children().unwrap(),
@@ -611,7 +658,7 @@ mod tests {
         let node = vfs.get_node("/hardware/hw1/programs").unwrap();
         assert_eq!(node.name(), "programs");
         assert_eq!(node.node_type(), NodeType::Directory);
-        assert_eq!(node.permissions().unwrap(), PERMS_RX);
+        assert_eq!(node.permissions().unwrap(), PERMS_R);
         assert_err!(node.content(), "Operation not supported");
         check_node_names(&node.children().unwrap(), &["prog1", "prog2"]);
         assert_err!(node.delete(), "Permission denied");
@@ -625,7 +672,7 @@ mod tests {
             vfs.get_node("/hardware/hw1/programs/prog1").unwrap();
         assert_eq!(program_spec_dir.name(), "prog1");
         assert_eq!(program_spec_dir.node_type(), NodeType::Directory);
-        assert_eq!(program_spec_dir.permissions().unwrap(), PERMS_RX);
+        assert_eq!(program_spec_dir.permissions().unwrap(), PERMS_R);
         assert_err!(program_spec_dir.content(), "Operation not supported");
         check_node_names(
             &program_spec_dir.children().unwrap(),

@@ -13,7 +13,7 @@ use crate::{
     schema::{program_specs, user_programs},
     vfs::{
         internal::PathVariables, Context, NodePermissions, VirtualNodeHandler,
-        PERMS_R, PERMS_RW, PERMS_RX,
+        PERMS_R, PERMS_RW,
     },
 };
 use diesel::{
@@ -47,7 +47,7 @@ impl VirtualNodeHandler for ProgramSpecNodeHandler {
         _: &PathVariables,
         _: &str,
     ) -> Result<NodePermissions> {
-        Ok(PERMS_RX)
+        Ok(PERMS_R)
     }
 
     fn list_variable_nodes(
