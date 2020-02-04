@@ -65,7 +65,7 @@ pub enum NodeType {
 ///     </tr>
 ///     <tr>
 ///       <td>Write</td>
-///       <td>Create files in the directory, delete the directory</td>
+///       <td>Create files in the directory</td>
 ///       <td>Change the file's contents, delete the file</td>
 ///     </tr>
 ///   </tbody>
@@ -172,6 +172,11 @@ impl Node {
     /// Returns an error if this node is a file or does not have read
     /// permissions.
     pub fn children(&self) -> Result<Vec<Self>> {
+        // Files don't have children!
+        if self.node_type() == NodeType::File {
+            return Err(ServerError::UnsupportedFileOperation);
+        }
+
         self.permissions()?.require_read()?;
 
         // Include this node's name as a variable for the children. Remember
@@ -179,35 +184,24 @@ impl Node {
         // so the name of this node won't be in path_variables. We need to add
         // it now so that our children can access it. These clones are cheap
         // because the variables map is going to be small.
-        let mut new_variables = self.path_variables.clone();
-        new_variables
-            .insert_if_var(self.vnode.path_segment, &self.path_segment);
+        let new_variables = self.clone_variables_for_child();
 
         // Get each virtual child, paired with the name of each physical node
         // that exists for that virtual node.
-        let child_vnodes: Vec<(&VirtualNode, Vec<String>)> =
-            match self.node_type() {
-                // Files don't have children!
-                NodeType::File => {
-                    return Err(ServerError::UnsupportedFileOperation)
-                }
-                NodeType::Directory => self
-                    .vnode
-                    .children
-                    .iter()
-                    // For each virtual child, collect its physical nodes
-                    .map(|child_vnode| {
-                        Ok((
-                            child_vnode,
-                            child_vnode.list_physical_nodes(
-                                &self.context,
-                                &new_variables,
-                            )?,
-                        ))
-                    })
-                    // Collect all results into one, and abort if any failed
-                    .collect::<Result<Vec<(&VirtualNode, Vec<String>)>>>()?,
-            };
+        let child_vnodes: Vec<(&VirtualNode, Vec<String>)> = self
+            .vnode
+            .children
+            .iter()
+            // For each virtual child, collect its physical nodes
+            .map(|child_vnode| {
+                Ok((
+                    child_vnode,
+                    child_vnode
+                        .list_physical_nodes(&self.context, &new_variables)?,
+                ))
+            })
+            // Collect all results into one, and abort if any failed
+            .collect::<Result<Vec<(&VirtualNode, Vec<String>)>>>()?;
 
         // Create a new Node for each child
         let mut child_nodes = Vec::new();
@@ -221,6 +215,58 @@ impl Node {
         }
 
         Ok(child_nodes)
+    }
+
+    /// Clone our copy of path variables, and insert our own name into the
+    /// clone. This allows the clone to safely be passed to child nodes.
+    fn clone_variables_for_child(&self) -> PathVariables {
+        let mut new_variables = self.path_variables.clone();
+        new_variables
+            .insert_if_var(self.vnode.path_segment, &self.path_segment);
+        new_variables
+    }
+
+    /// Create a persistent instance of this node. Nodes can exist in a
+    /// "dangling" state where they reference objects that don't actually exist
+    /// in the DB/system. This function creates a physical entry so that the
+    /// node is no longer a dangling reference.
+    fn create(&self) -> Result<()> {
+        self.vnode.handler.create_node(
+            &self.context,
+            &self.path_variables,
+            &self.path_segment,
+        )
+    }
+
+    /// Create a child of this node with the given path segment. Only supported
+    /// for directories with write permission. Returns an error if this node is
+    /// a file, does not have write permission.
+    pub fn create_child(&self, child_path_segment: String) -> Result<Self> {
+        match self.node_type() {
+            NodeType::File => Err(ServerError::UnsupportedFileOperation),
+            NodeType::Directory => {
+                self.permissions()?.require_write()?;
+                match self.vnode.find_child(&child_path_segment) {
+                    Some(child_vnode) => {
+                        let child_node = Self {
+                            context: self.context.clone(),
+                            path_variables: self.clone_variables_for_child(),
+                            path_segment: child_path_segment,
+                            vnode: child_vnode,
+                        };
+                        child_node.create()?;
+                        Ok(child_node)
+                    }
+                    // No virtual nodes match the requested name
+                    None => panic!(
+                        "No matching virtual nodes for name {} (child of {}). \
+                        This probably indicates the parent has write \
+                        permissions when it shouldn't.",
+                        child_path_segment, self.path_segment
+                    ),
+                }
+            }
+        }
     }
 
     /// Change the content of this node to the the given value. Requires write
@@ -241,15 +287,21 @@ impl Node {
         }
     }
 
-    /// Delete this node. Any node with write permissions can be deleted. Any
-    /// other node will generate a <ServerError::PermissionDenied>.
+    /// Delete this file. Only files with write permission can be deleted
+    /// (punting on directories for now). Returns an error if this this is
+    /// a directory or a file without write permission.
     pub fn delete(&self) -> Result<()> {
-        self.permissions()?.require_write()?;
-        self.vnode.handler.delete(
-            &self.context,
-            &self.path_variables,
-            &self.path_segment,
-        )
+        match self.node_type() {
+            NodeType::File => {
+                self.permissions()?.require_write()?;
+                self.vnode.handler.delete(
+                    &self.context,
+                    &self.path_variables,
+                    &self.path_segment,
+                )
+            }
+            NodeType::Directory => Err(ServerError::UnsupportedFileOperation),
+        }
     }
 }
 
@@ -311,6 +363,12 @@ impl NodeMutation {
 
 #[juniper::object(Context = GqlContext)]
 impl NodeMutation {
+    /// Create a new child of this node, with the given name. Fails if this node
+    /// is a file, doesn't have write permissions, or the name isn't valid.
+    fn create_child(&self, name: String) -> FieldResult<Node> {
+        Ok(self.0.create_child(name)?)
+    }
+
     /// Set the contents of a file. Fails if the node is a directory or a file
     /// without write permissions.
     fn set_content(&self, content: String) -> FieldResult<&Node> {
@@ -499,9 +557,7 @@ mod tests {
     use super::*;
     use crate::{
         assert_err,
-        models::{
-            NewHardwareSpec, NewProgramSpec, NewUser, NewUserProgram, User,
-        },
+        models::{NewHardwareSpec, NewProgramSpec, NewUser, User},
         schema::{hardware_specs, program_specs},
         util,
     };
@@ -531,7 +587,7 @@ mod tests {
         .unwrap();
 
         // Program specs
-        let prog1_spec_id = NewProgramSpec {
+        NewProgramSpec {
             slug: "prog1",
             hardware_spec_id: hw_spec_id,
             input: vec![],
@@ -539,24 +595,13 @@ mod tests {
         }
         .insert()
         .returning(program_specs::id)
-        .get_result(&conn)
+        .execute(&conn)
         .unwrap();
         NewProgramSpec {
             slug: "prog2",
             hardware_spec_id: hw_spec_id,
             input: vec![],
             expected_output: vec![],
-        }
-        .insert()
-        .execute(&conn)
-        .unwrap();
-
-        // Source code for one program
-        NewUserProgram {
-            user_id: user.id,
-            program_spec_id: prog1_spec_id,
-            file_name: "program.gdlk",
-            source_code: "READ\nWRITE\n",
         }
         .insert()
         .execute(&conn)
@@ -599,6 +644,7 @@ mod tests {
             .is_ok());
     }
 
+    /// Tests for /
     #[test]
     fn test_root_dir() {
         let vfs = setup();
@@ -609,9 +655,11 @@ mod tests {
         assert_err!(node.content(), "Operation not supported");
         assert_err!(node.set_content("test".into()), "Operation not supported");
         check_node_names(&node.children().unwrap(), &["hardware"]);
-        assert_err!(node.delete(), "Permission denied");
+        assert_err!(node.create_child("child".into()), "Permission denied");
+        assert_err!(node.delete(), "Operation not supported");
     }
 
+    /// Tests for /hardware/
     #[test]
     fn test_hw_dir() {
         let vfs = setup();
@@ -621,9 +669,11 @@ mod tests {
         assert_eq!(node.permissions().unwrap(), PERMS_R);
         assert_err!(node.content(), "Operation not supported");
         check_node_names(&node.children().unwrap(), &["hw1"]);
-        assert_err!(node.delete(), "Permission denied");
+        assert_err!(node.create_child("child".into()), "Permission denied");
+        assert_err!(node.delete(), "Operation not supported");
     }
 
+    /// Tests for /hardware/<slug>/ and /hardware/<slug>/spec.txt
     #[test]
     fn test_hw_spec() {
         let vfs = setup();
@@ -637,7 +687,11 @@ mod tests {
             &hw_spec_dir.children().unwrap(),
             &["spec.txt", "programs"],
         );
-        assert_err!(hw_spec_dir.delete(), "Permission denied");
+        assert_err!(
+            hw_spec_dir.create_child("child".into()),
+            "Permission denied"
+        );
+        assert_err!(hw_spec_dir.delete(), "Operation not supported");
 
         let spec_file = vfs.get_node("/hardware/hw1/spec.txt").unwrap();
         assert_eq!(spec_file.name(), "spec.txt");
@@ -648,9 +702,14 @@ mod tests {
             "Registers: 1\nStacks: 0\nMax stack length: 0\n"
         );
         assert_err!(spec_file.children(), "Operation not supported");
+        assert_err!(
+            spec_file.create_child("child".into()),
+            "Operation not supported"
+        );
         assert_err!(spec_file.delete(), "Permission denied");
     }
 
+    /// Tests for /hardware/<slug>/programs/
     #[test]
     fn test_hw_programs_dir() {
         let vfs = setup();
@@ -661,44 +720,74 @@ mod tests {
         assert_eq!(node.permissions().unwrap(), PERMS_R);
         assert_err!(node.content(), "Operation not supported");
         check_node_names(&node.children().unwrap(), &["prog1", "prog2"]);
-        assert_err!(node.delete(), "Permission denied");
+        assert_err!(node.create_child("child".into()), "Permission denied");
+        assert_err!(node.delete(), "Operation not supported");
     }
 
+    /// Tests for /hardware/<slug>/programs/<slug>/
     #[test]
     fn test_program_spec_dir() {
         let vfs = setup();
 
-        let program_spec_dir =
-            vfs.get_node("/hardware/hw1/programs/prog1").unwrap();
-        assert_eq!(program_spec_dir.name(), "prog1");
-        assert_eq!(program_spec_dir.node_type(), NodeType::Directory);
-        assert_eq!(program_spec_dir.permissions().unwrap(), PERMS_R);
-        assert_err!(program_spec_dir.content(), "Operation not supported");
+        let node = vfs.get_node("/hardware/hw1/programs/prog1").unwrap();
+        assert_eq!(node.name(), "prog1");
+        assert_eq!(node.node_type(), NodeType::Directory);
+        assert_eq!(node.permissions().unwrap(), PERMS_RW);
+        assert_err!(node.content(), "Operation not supported");
+
         check_node_names(
-            &program_spec_dir.children().unwrap(),
+            &[node.create_child("program.gdlk".into()).unwrap()],
+            &["program.gdlk"],
+        );
+        // TODO fix this. It triggers a DB error which breaks the test
+        // transaction. Probably need to move away from transactions for tests.
+        // assert_err!(
+        //     node.create_child("program.gdlk".into()),
+        //     "Node already exists"
+        // );
+        check_node_names(
+            &node.children().unwrap(),
             &["spec.txt", "program.gdlk"],
         );
-        assert_err!(program_spec_dir.delete(), "Permission denied");
 
-        let spec_file = vfs
+        assert_err!(node.delete(), "Operation not supported");
+    }
+
+    /// Tests for /hardware/<slug>/programs/<slug>/spec.txt
+    #[test]
+    fn test_program_spec_file() {
+        let vfs = setup();
+
+        let node = vfs
             .get_node("/hardware/hw1/programs/prog1/spec.txt")
             .unwrap();
-        assert_eq!(spec_file.name(), "spec.txt");
-        assert_eq!(spec_file.node_type(), NodeType::File);
-        assert_eq!(spec_file.permissions().unwrap(), PERMS_R);
-        assert_eq!(
-            spec_file.content().unwrap(),
-            "Input: []\nExpected output: []\n"
-        );
-        assert_err!(spec_file.children(), "Operation not supported");
-        assert_err!(spec_file.delete(), "Permission denied");
+        assert_eq!(node.name(), "spec.txt");
+        assert_eq!(node.node_type(), NodeType::File);
+        assert_eq!(node.permissions().unwrap(), PERMS_R);
+        assert_eq!(node.content().unwrap(), "Input: []\nExpected output: []\n");
+        assert_err!(node.children(), "Operation not supported");
+        assert_err!(node.delete(), "Permission denied");
+    }
 
+    /// Tests for /hardware/<slug>/programs/<slug>/<source file>
+    #[test]
+    fn test_program_source_file() {
+        let vfs = setup();
+
+        let program_spec_dir =
+            vfs.get_node("/hardware/hw1/programs/prog1").unwrap();
+        program_spec_dir
+            .create_child("program.gdlk".into())
+            .unwrap();
+
+        // This is the file we just created
         let source_file = vfs
             .get_node("/hardware/hw1/programs/prog1/program.gdlk")
             .unwrap();
         assert_eq!(source_file.name(), "program.gdlk");
         assert_eq!(source_file.node_type(), NodeType::File);
         assert_eq!(source_file.permissions().unwrap(), PERMS_RW);
+        source_file.set_content("READ\nWRITE\n".into()).unwrap();
         assert_eq!(source_file.content().unwrap(), "READ\nWRITE\n");
         assert_err!(source_file.children(), "Operation not supported");
         // Delete the file, and make sure it's gone

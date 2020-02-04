@@ -8,8 +8,8 @@
 //! ```
 
 use crate::{
-    error::Result,
-    models::{ProgramSpec, UserProgram},
+    error::{Result, ServerError},
+    models::{NewUserProgram, ProgramSpec, UserProgram},
     schema::{program_specs, user_programs},
     vfs::{
         internal::PathVariables, Context, NodePermissions, VirtualNodeHandler,
@@ -18,6 +18,7 @@ use crate::{
 };
 use diesel::{
     dsl::{exists, select},
+    result::DatabaseErrorKind,
     ExpressionMethods, QueryDsl, RunQueryDsl,
 };
 use gdlk::ast::LangValue;
@@ -47,7 +48,7 @@ impl VirtualNodeHandler for ProgramSpecNodeHandler {
         _: &PathVariables,
         _: &str,
     ) -> Result<NodePermissions> {
-        Ok(PERMS_R)
+        Ok(PERMS_RW)
     }
 
     fn list_variable_nodes(
@@ -170,6 +171,37 @@ impl VirtualNodeHandler for ProgramSourceNodeHandler {
         )
         .select(user_programs::dsl::file_name)
         .get_results(context.conn())?)
+    }
+
+    fn create_node(
+        &self,
+        context: &Context,
+        path_variables: &PathVariables,
+        path_segment: &str,
+    ) -> Result<()> {
+        let hw_spec_slug = path_variables.get_var("hw_spec_slug");
+        let program_spec_slug = path_variables.get_var("program_spec_slug");
+
+        let program_spec_id: i32 =
+            ProgramSpec::filter_by_slugs(hw_spec_slug, program_spec_slug)
+                .select(program_specs::dsl::id)
+                .get_result(context.conn())?;
+
+        let new = NewUserProgram {
+            user_id: context.user.id,
+            program_spec_id,
+            file_name: path_segment,
+            source_code: "",
+        };
+        match new.insert().execute(context.conn()) {
+            Ok(_) => Ok(()),
+            // A UniqueViolation means there's already a file at this path
+            Err(diesel::result::Error::DatabaseError(
+                DatabaseErrorKind::UniqueViolation,
+                _,
+            )) => Err(ServerError::AlreadyExists),
+            Err(err) => Err(err.into()),
+        }
     }
 
     fn set_content(
