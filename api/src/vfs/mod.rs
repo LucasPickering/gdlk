@@ -150,12 +150,12 @@ impl Node {
     }
 
     /// Gets the actual data of this node. This is only possible for files, and
-    /// requires read permission. Will return an error if this node is a
-    /// directory, or does not have read permission.
+    /// requires read permission. Return an error if this node is a directory,
+    /// or does not have read permission.
     pub fn content(&self) -> Result<String> {
         match self.vnode.node_type {
             NodeType::File => {
-                self.permissions()?.require_read()?; // Require read perms
+                self.permissions()?.require_read()?;
                 self.vnode.handler.content(
                     &self.context,
                     &self.path_variables,
@@ -168,11 +168,11 @@ impl Node {
     }
 
     /// Gets a list of each child of this node. This is only possible for
-    /// directories, as files have no children. Requires read permission. Will
-    /// return an error if this node is a file or does not have read
+    /// directories, as files have no children. Requires read permission.
+    /// Returns an error if this node is a file or does not have read
     /// permissions.
     pub fn children(&self) -> Result<Vec<Self>> {
-        self.permissions()?.require_read()?; // Require read perms
+        self.permissions()?.require_read()?;
 
         // Include this node's name as a variable for the children. Remember
         // that PathVariables doesn't ever contain the last path segment,
@@ -229,7 +229,7 @@ impl Node {
     pub fn set_content(&self, content: String) -> Result<()> {
         match self.node_type() {
             NodeType::File => {
-                self.permissions()?.require_write()?; // Require write perms
+                self.permissions()?.require_write()?;
                 self.vnode.handler.set_content(
                     &self.context,
                     &self.path_variables,
@@ -244,7 +244,7 @@ impl Node {
     /// Delete this node. Any node with write permissions can be deleted. Any
     /// other node will generate a <ServerError::PermissionDenied>.
     pub fn delete(&self) -> Result<()> {
-        self.permissions()?.require_write()?; // Require write perms
+        self.permissions()?.require_write()?;
         self.vnode.handler.delete(
             &self.context,
             &self.path_variables,
@@ -311,14 +311,14 @@ impl NodeMutation {
 
 #[juniper::object(Context = GqlContext)]
 impl NodeMutation {
-    /// Set the contents of a file. Will fail if the node is a directory or
-    /// a file without write permissions.
+    /// Set the contents of a file. Fails if the node is a directory or a file
+    /// without write permissions.
     fn set_content(&self, content: String) -> FieldResult<&Node> {
         self.0.set_content(content)?;
         Ok(&self.0)
     }
 
-    /// Delete a file or directory. Will fail if the node does not have write
+    /// Delete a file or directory. Fails if the node does not have write
     /// permissions. Returns the name (_not_ the full path) of the deleted file.
     fn delete(&self) -> FieldResult<String> {
         self.0.delete()?;
