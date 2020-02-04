@@ -10,9 +10,9 @@ services:
   db:
     image: postgres:12-alpine
     environment:
-      - POSTGRES_DB=gdlk
-      - POSTGRES_USER=root
-      - POSTGRES_PASSWORD=root
+      POSTGRES_DB: gdlk
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
     ports:
       - "5432:5432"
 
@@ -20,6 +20,8 @@ services:
     build:
       context: .
       dockerfile: ./api/Dockerfile
+      args:
+        install_cargo_watch: 1
     command: cargo watch -x "run -- server"
     tty: true # Colorize output
     volumes:
@@ -30,8 +32,8 @@ services:
     depends_on:
       - db
     environment:
-      - RUST_BACKTRACE=1
-      - SERVER_HOST=0.0.0.0:8000
-      - DATABASE_URL=postgres://root:root@db/gdlk
+      RUST_BACKTRACE: 1
+      SERVER_HOST: 0.0.0.0:8000
+      DATABASE_URL: postgres://root:root@db/gdlk
     ports:
       - "8000:8000"

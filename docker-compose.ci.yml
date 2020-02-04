@@ -4,9 +4,9 @@ services:
   db:
     image: postgres:12-alpine
     environment:
-      - POSTGRES_DB=gdlk
-      - POSTGRES_USER=root
-      - POSTGRES_PASSWORD=root
+      POSTGRES_DB: gdlk
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
 
   api:
     build:
@@ -15,5 +15,5 @@ services:
     depends_on:
       - db
     environment:
-      - RUST_BACKTRACE=1
-      - DATABASE_URL=postgres://root:root@db/gdlk
+      RUST_BACKTRACE: 1
+      DATABASE_URL: postgres://root:root@db/gdlk
