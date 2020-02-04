@@ -30,6 +30,11 @@ pub enum ServerError {
     /// perform the attempted operation.
     #[fail(display = "Permission denied")]
     PermissionDenied,
+
+    /// User attempted to create a node, but a node already exists at that
+    /// path.
+    #[fail(display = "Node already exists")]
+    AlreadyExists,
 }
 
 impl From<r2d2::Error> for ServerError {

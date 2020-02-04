@@ -151,7 +151,7 @@ pub trait VirtualNodeHandler: Debug + Sync {
     ) -> Result<String> {
         // This only needs to be implemented for files. For directories, this
         // should never be called because the Node wrapper checks the node type.
-        panic!("Operation not supported for this node type")
+        panic!("Operation not supported for this virtual node")
     }
 
     /// Lists all physical nodes that exist for this variable virtual node.
@@ -167,9 +167,24 @@ pub trait VirtualNodeHandler: Debug + Sync {
         // This only needs to be implemented for directories with variable path
         // segments. For files and fixed directories, this should never be
         // called.
-        panic!("Operation not supported for this node type")
+        panic!("Operation not supported for this virtual node")
     }
 
+    /// Create a physical node at the given path segment. This will perform
+    /// whatever operations are necessary so that a physical node will exist
+    /// for this virtual node at that name.
+    fn create_node(
+        &self,
+        _context: &Context,
+        _path_variables: &PathVariables,
+        _path_segment: &str,
+    ) -> Result<()> {
+        // Implement this for children of writable directories that can have
+        // files created
+        panic!("Operation not supported for this virtual node")
+    }
+
+    /// Set the content of the physical node at the given path segment.
     fn set_content(
         &self,
         _context: &Context,
@@ -178,9 +193,10 @@ pub trait VirtualNodeHandler: Debug + Sync {
         _content: &str,
     ) -> Result<()> {
         // This only needs to be implemented for writable files.
-        panic!("Operation not supported for this node type")
+        panic!("Operation not supported for this virtual node")
     }
 
+    /// Delete the physical node at the given path segment.
     fn delete(
         &self,
         _context: &Context,
@@ -188,7 +204,7 @@ pub trait VirtualNodeHandler: Debug + Sync {
         _path_segment: &str,
     ) -> Result<()> {
         // This only needs to be implemented for writable files.
-        panic!("Operation not supported for this node type")
+        panic!("Operation not supported for this virtual node")
     }
 }
 
