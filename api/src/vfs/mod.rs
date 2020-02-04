@@ -150,7 +150,7 @@ impl Node {
     }
 
     /// Gets the actual data of this node. This is only possible for files, and
-    /// requires read permission. Return an error if this node is a directory,
+    /// requires read permission. Returns an error if this node is a directory,
     /// or does not have read permission.
     pub fn content(&self) -> Result<String> {
         match self.vnode.node_type {
@@ -455,7 +455,7 @@ impl VirtualNodeHandler for SimpleDirHandler {
 
 /// The entire VFS node tree. This defines the layout of the tree. Each node has
 /// a path spec, a handler that defines how it behaves, and optionally children.
-/// Obviously, only directions can have children.
+/// Obviously, only directories can have children.
 static VFS_TREE: VirtualNode = VirtualNode::dir(
     // If you update something here, make sure to update the comment above!
     SegmentSpec::Fixed(""),
