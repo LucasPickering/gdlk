@@ -6,7 +6,7 @@ use crate::{
     error::Result,
     models::User,
     util::Pool,
-    vfs::{Node, NodeMutation, VirtualFileSystem},
+    vfs::{NodeMutation, NodeReference, VirtualFileSystem},
 };
 use diesel::RunQueryDsl;
 use juniper::FieldResult;
@@ -19,13 +19,13 @@ pub struct GqlContext {
 // To make our context usable by Juniper, we have to implement a marker trait.
 impl juniper::Context for GqlContext {}
 
-/// Helper to get a Node for a context, user, and path. This is used for both
+/// Helper to get a node for a context, user, and path. This is used for both
 /// the query and mutation handlers, so we factor out the common code here.
 fn get_fs_node(
     context: &GqlContext,
     username: String,
     path: String,
-) -> Result<Node> {
+) -> Result<NodeReference> {
     // temporary way to get user -- just have the caller specify username
     let user: User =
         User::filter_by_username(&username).get_result(&context.pool.get()?)?;
@@ -45,7 +45,7 @@ impl RootQuery {
         context: &GqlContext,
         username: String,
         path: String,
-    ) -> FieldResult<Node> {
+    ) -> FieldResult<NodeReference> {
         Ok(get_fs_node(context, username, path)?)
     }
 }

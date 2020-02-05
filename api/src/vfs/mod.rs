@@ -114,8 +114,12 @@ const PERMS_RW: NodePermissions = NodePermissions {
     write: true,
 };
 
-/// A physical node in the file system. This represents exactly one
-/// file/directory. All file operations exist on this type.
+/// A reference to a physical node in the file system. This represents exactly
+/// one file/directory. All file operations exist on this type. This reference
+/// doesn't necessarily point to a node that exists. In some scenarios, the
+/// referenced node will _not_ exist, in which case this is a "dangling"
+/// reference. In those cases, the only operation that is possible is `create`,
+/// which will create the corresponding node.
 ///
 /// To get a reference to a node, you can use <VirtualFileSystem::get_node>.
 ///
@@ -124,15 +128,15 @@ const PERMS_RW: NodePermissions = NodePermissions {
 /// it owns its own copy of <Context>, and that copy holds <Rc>s instead of
 /// references.
 #[derive(Clone)]
-pub struct Node {
+pub struct NodeReference {
     context: Context,
     path_variables: PathVariables,
     path_segment: String,
     vnode: &'static VirtualNode,
 }
 
-// File operations that can be run on a Node
-impl Node {
+// File operations that can be run on a node
+impl NodeReference {
     pub fn name(&self) -> &str {
         &self.path_segment
     }
@@ -203,7 +207,7 @@ impl Node {
             // Collect all results into one, and abort if any failed
             .collect::<Result<Vec<(&VirtualNode, Vec<String>)>>>()?;
 
-        // Create a new Node for each child
+        // Create a new NodeReference for each child
         let mut child_nodes = Vec::new();
         for (child_vnode, child_names) in child_vnodes {
             child_nodes.extend(child_names.into_iter().map(|child_name| Self {
@@ -226,10 +230,10 @@ impl Node {
         new_variables
     }
 
-    /// Create a persistent instance of this node. Nodes can exist in a
-    /// "dangling" state where they reference objects that don't actually exist
-    /// in the DB/system. This function creates a physical entry so that the
-    /// node is no longer a dangling reference.
+    /// Create a persistent node for this dangling reference. This function
+    /// creates a physical entry for the reference node, so that the reference
+    /// is no longer a dangling reference. If this reference is _not_ dangling,
+    /// then this operation should fail with a <ServerError::AlreadyExists>.
     fn create(&self) -> Result<()> {
         self.vnode.handler.create_node(
             &self.context,
@@ -307,7 +311,7 @@ impl Node {
 
 // GraphQL wrappers around the file operations
 #[juniper::object(Context = GqlContext)]
-impl Node {
+impl NodeReference {
     /// The name of this node, i.e. the last segment in the path that refers
     /// to this node.
     #[graphql(name = "name")]
@@ -352,12 +356,13 @@ impl Node {
 }
 
 /// A container to hold wrappers for all GQL mutations that can be run on a
-/// Node. These mutations all call down to methods that are defined on Node.
-pub struct NodeMutation(Node);
+/// node. These mutations all call down to methods that are defined on
+/// NodeReference.
+pub struct NodeMutation(NodeReference);
 
 impl NodeMutation {
-    pub fn new(node: Node) -> Self {
-        Self(node)
+    pub fn new(node_ref: NodeReference) -> Self {
+        Self(node_ref)
     }
 }
 
@@ -365,13 +370,13 @@ impl NodeMutation {
 impl NodeMutation {
     /// Create a new child of this node, with the given name. Fails if this node
     /// is a file, doesn't have write permissions, or the name isn't valid.
-    fn create_child(&self, name: String) -> FieldResult<Node> {
+    fn create_child(&self, name: String) -> FieldResult<NodeReference> {
         Ok(self.0.create_child(name)?)
     }
 
     /// Set the contents of a file. Fails if the node is a directory or a file
     /// without write permissions.
-    fn set_content(&self, content: String) -> FieldResult<&Node> {
+    fn set_content(&self, content: String) -> FieldResult<&NodeReference> {
         self.0.set_content(content)?;
         Ok(&self.0)
     }
@@ -390,7 +395,7 @@ impl NodeMutation {
 /// might be needed to serve file paths, e.g. DB connections.
 ///
 /// This struct is useful for getting references to particular nodes (see
-/// <Self::get_node>). Once you have a `Node`, you can run
+/// <Self::get_node>). Once you have a <NodeReference>, you can run
 /// file operations on it.
 pub struct VirtualFileSystem {
     db_conn: Rc<PooledConnection>,
@@ -408,7 +413,7 @@ impl VirtualFileSystem {
     /// Gets a reference to a particular file system node. This is a _physical_
     /// node, meaning it refers to exactly one node in the file system. This
     /// reference can be used to run operations on the node.
-    pub fn get_node(&self, path: &str) -> Result<Node> {
+    pub fn get_node(&self, path: &str) -> Result<NodeReference> {
         /// Checks if the first segment in the path matches the given virtual
         /// node. If so, returns a tuple of (matched segment, remaining
         /// unmatched segments). If it doesn't match, returns a `NodeNotFound`.
@@ -484,7 +489,7 @@ impl VirtualFileSystem {
             &mut path_variables,
             segments.as_slice(),
         )?;
-        Ok(Node {
+        Ok(NodeReference {
             context,
             path_variables,
             path_segment: (*segments.last().unwrap()).to_owned(),
@@ -610,9 +615,9 @@ mod tests {
         VirtualFileSystem::new(Rc::new(conn), Rc::new(user))
     }
 
-    fn check_node_names(nodes: &[Node], expected_names: &[&str]) {
+    fn check_node_names(nodes: &[NodeReference], expected_names: &[&str]) {
         assert_eq!(
-            nodes.iter().map(Node::name).collect::<Vec<&str>>(),
+            nodes.iter().map(NodeReference::name).collect::<Vec<&str>>(),
             expected_names.iter().copied().collect::<Vec<&str>>()
         );
     }
