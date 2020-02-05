@@ -150,7 +150,8 @@ pub trait VirtualNodeHandler: Debug + Sync {
         _path_segment: &str,
     ) -> Result<String> {
         // This only needs to be implemented for files. For directories, this
-        // should never be called because the Node wrapper checks the node type.
+        // should never be called because the NodeReference wrapper checks the
+        // node type.
         panic!("Operation not supported for this virtual node")
     }
 
