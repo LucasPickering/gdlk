@@ -39,7 +39,7 @@ extern crate validator_derive;
 
 pub mod ast;
 mod consts;
-mod desugar;
+mod delabel;
 mod error;
 mod machine;
 mod models;
@@ -52,7 +52,7 @@ pub use error::*;
 pub use machine::*;
 pub use models::*;
 
-use ast::MachineInstr;
+use ast::Instruction;
 use std::fmt::Debug;
 use validator::Validate;
 
@@ -75,7 +75,7 @@ pub fn compile(
         .debug()
         .validate(hardware_spec)?
         .debug()
-        .desugar()
+        .delabel()
         .debug()
         .compile(hardware_spec, program_spec))
 }
@@ -114,11 +114,10 @@ impl Compiler<String> {
     }
 }
 
-impl Compiler<Vec<MachineInstr>> {
-    /// Compiles a program into a [Machine](Machine). This takes an hardware
-    /// spec, which the program will execute on, and a program spec, which the
-    /// program will try to match, and builds a machine around it so that it can
-    /// be executed.
+impl Compiler<Vec<Instruction>> {
+    /// Compiles a program into a <Machine>. This takes a hardware spec, which
+    /// the program will execute on, and a program spec, which the program will
+    /// try to match, and builds a machine around it so that it can be executed.
     pub fn compile(
         self,
         hardware_spec: &HardwareSpec,

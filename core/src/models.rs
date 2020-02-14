@@ -8,7 +8,7 @@ use validator::Validate;
 
 /// The "hardware" that a program can execute on. This defines computing
 /// constraints. This is needed both at compile time and runtime.
-#[derive(Debug, PartialEq, Serialize, Deserialize, Validate)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Validate)]
 pub struct HardwareSpec {
     /// Number of registers available
     #[validate(range(min = 1, max = 16))]
@@ -35,7 +35,7 @@ impl Default for HardwareSpec {
 /// Specification that defines a correct program. Provides the input that a
 /// program runs on, and defines the expected output, which is used to determine
 /// if the program is correct. Only needed at runtime.
-#[derive(Debug, PartialEq, Serialize, Deserialize, Validate)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Validate)]
 pub struct ProgramSpec {
     /// The input values, where the element at position 0 is the first one that
     /// will be popped off.

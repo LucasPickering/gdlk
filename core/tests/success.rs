@@ -78,56 +78,6 @@ fn test_set_push_pop() {
 }
 
 #[test]
-fn test_if() {
-    execute_expect_success(
-        HardwareSpec {
-            num_registers: 1,
-            num_stacks: 0,
-            max_stack_length: 0,
-        },
-        ProgramSpec {
-            input: vec![],
-            expected_output: vec![1],
-        },
-        "
-        IF RX0 {
-            WRITE RX0
-        }
-        SET RX0 1
-        IF RX0 {
-            WRITE RX0
-        }
-        ",
-    );
-}
-
-#[test]
-fn test_while() {
-    execute_expect_success(
-        HardwareSpec {
-            num_registers: 1,
-            num_stacks: 1,
-            max_stack_length: 5,
-        },
-        ProgramSpec {
-            input: vec![],
-            expected_output: vec![2, 1, 0],
-        },
-        "
-        PUSH RX0 S0
-        SET RX0 1
-        PUSH RX0 S0
-        SET RX0 2
-        PUSH RX0 S0
-        WHILE RX0 {
-            POP S0 RX0
-            WRITE RX0
-        }
-        ",
-    );
-}
-
-#[test]
 fn test_arithmetic() {
     execute_expect_success(
         HardwareSpec {
@@ -184,6 +134,78 @@ fn test_cmp() {
 }
 
 #[test]
+fn test_jumps() {
+    let hw_spec = HardwareSpec {
+        num_registers: 1,
+        num_stacks: 0,
+        max_stack_length: 0,
+    };
+    let program_spec = ProgramSpec {
+        input: vec![],
+        expected_output: vec![1],
+    };
+    execute_expect_success(
+        hw_spec.clone(),
+        program_spec.clone(),
+        "
+        JMP GOOD
+        BAD:
+        WRITE -1
+        GOOD:
+        WRITE 1
+        ",
+    );
+    execute_expect_success(
+        hw_spec.clone(),
+        program_spec.clone(),
+        "
+        JEZ 0 GOOD
+        BAD:
+        WRITE -1
+        GOOD:
+        WRITE 1
+        JEZ 1 BAD
+        ",
+    );
+    execute_expect_success(
+        hw_spec.clone(),
+        program_spec.clone(),
+        "
+        JNZ 1 GOOD
+        BAD:
+        WRITE -1
+        GOOD:
+        WRITE 1
+        JNZ 0 BAD
+        ",
+    );
+    execute_expect_success(
+        hw_spec.clone(),
+        program_spec.clone(),
+        "
+        JLZ -10 GOOD
+        BAD:
+        WRITE -1
+        GOOD:
+        WRITE 1
+        JLZ 0 BAD
+        ",
+    );
+    execute_expect_success(
+        hw_spec,
+        program_spec,
+        "
+        JGZ 3 GOOD
+        BAD:
+        WRITE -1
+        GOOD:
+        WRITE 1
+        JGZ 0 BAD
+        ",
+    );
+}
+
+#[test]
 fn test_square_all() {
     execute_expect_success(
         HardwareSpec {
@@ -196,11 +218,13 @@ fn test_square_all() {
             expected_output: vec![1, 4, 9, 16, 25, 36, 49, 64, 81, 100],
         },
         "
-        WHILE RLI {
+        LOOP:
+            JEZ RLI END
             READ RX0
             MUL RX0 RX0
             WRITE RX0
-        }
+            JMP LOOP
+        END:
         ",
     );
 }
@@ -221,13 +245,15 @@ fn test_fibonacci() {
         READ RX0
         SET RX1 0
         SET RX2 1
-        WHILE RX0 {
+        LOOP:
+            JEZ RX0 END
             WRITE RX1
             SET RX3 RX2
             ADD RX2 RX1
             SET RX1 RX3
             SUB RX0 1
-        }
+            JMP LOOP
+        END:
         ",
     );
 }
@@ -249,41 +275,51 @@ fn test_insertion_sort() {
         ; RX1:  the current element in the sorted list we're comparing to
         ; RX2:  scratch space for comparisons and such
         ; S0:   the sorted list so far, with greatest at the bottom
-        ; S1:   scratch spaced used during insertion, to hold the chunk of the
+        ; S1:   scratch space used during insertion, to hold the chunk of the
         ;       list that's less than RX0
-        WHILE RLI {
+        READ_LOOP:
+            JEZ RLI END_READ_LOOP
             READ RX0
             SET RX2 RS0
-            WHILE RX2 {
+
+            CMP_LOOP:
+                JEZ RX2 END_CMP_LOOP
                 POP S0 RX1
 
-                ; check if
-                CMP RX2 RX0 RX1
-                SUB RX2 1
-                IF RX2 {
-                    SET RX2 -1
-                }
-                IF RX2 { ; RX0 <= RX1
-                    PUSH RX1 S0 ; RX1 > RX0, put it back on the stack
-                }
-                ADD RX2 1
-                IF RX2 { ; RX0 > RX1
+                ; compare RX0 and RX1
+                SET RX2 RX0
+                SUB RX2 RX1
+                JGZ RX2 0_GT_1
+
+                0_LTE_1:
+                    PUSH RX1 S0 ; RX0 <= RX1, put RX1 back on the stack
+                    JMP END_CMP_LOOP ; we're done here
+                0_GT_1:
+                    ; RX0 > RX1, we must go deeper
                     PUSH RX1 S1
-                }
-                MUL RX2 RS0 ; iterate if RX0 > RX1 and there's more left in S0
-            }
+                    JGZ RS0 CMP_LOOP ; iterate if there are more values to check
+            END_CMP_LOOP:
+            ; we found the right spot for RX0!
             PUSH RX0 S0
-            WHILE RS1 {
+
+            ; stack S1 back onto S0
+            RESTACK_LOOP:
+                JEZ RS1 END_RESTACK_LOOP
                 POP S1 RX1
                 PUSH RX1 S0
-            }
-        }
+                JMP RESTACK_LOOP
+            END_RESTACK_LOOP:
+
+            JMP READ_LOOP
+        END_READ_LOOP:
 
         ; write the sorted list to output
-        WHILE RS0 {
+        WRITE_LOOP:
+            JEZ RS0 END_WRITE_LOOP
             POP S0 RX0
             WRITE RX0
-        }
+            JMP WRITE_LOOP
+        END_WRITE_LOOP:
         ",
     );
 }
@@ -306,27 +342,7 @@ fn test_cycle_count_simple() {
 }
 
 #[test]
-fn test_cycle_count_if() {
-    let m1 = execute_expect_success(
-        HardwareSpec::default(),
-        ProgramSpec {
-            input: vec![],
-            expected_output: vec![],
-        },
-        "
-        SET RX0 0
-        IF RX0 {}
-
-        SET RX0 1
-        IF RX0 {}
-        ",
-    );
-    // IF counts as one instruction, regardless of the value of the condition
-    assert_eq!(m1.cycle_count, 4);
-}
-
-#[test]
-fn test_cycle_count_while() {
+fn test_cycle_count_jump() {
     let m1 = execute_expect_success(
         HardwareSpec::default(),
         ProgramSpec {
@@ -334,15 +350,15 @@ fn test_cycle_count_while() {
             expected_output: vec![1, 2, 3],
         },
         "
-        WHILE RLI {
-            READ RX0
-            WRITE RX0
-        }
+        START:
+        JEZ RLI END
+        READ RX0
+        WRITE RX0
+        JMP START
+        END:
         ",
     );
-    // The initial WHILE check counts as one instruction, plus one more for
-    // each subsequent loop
-    assert_eq!(m1.cycle_count, 10);
+    assert_eq!(m1.cycle_count, 13);
 }
 
 #[test]
@@ -356,9 +372,11 @@ fn test_equal_max_cycle_count() {
         },
         "
         READ RX0
-        WHILE RX0 {
-            SUB RX0 1
-        }
+        JEZ RX0 END
+        LOOP:
+        SUB RX0 1
+        JGZ RX0 LOOP
+        END:
         ",
     );
     assert_eq!(machine.cycle_count, MAX_CYCLE_COUNT);

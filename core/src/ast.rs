@@ -14,6 +14,9 @@ pub type UserRegisterIdentifier = usize;
 /// A symbol used to identify a certain stack
 pub type StackIdentifier = usize;
 
+/// A label for a certain point in the code
+pub type Label = String;
+
 /// A reference to a register. Registers can be readonly (in which case the
 /// value is a reflection of some other part of state), or read-write, which
 /// means the user can read and write freely from/to it.
@@ -42,7 +45,7 @@ impl Display for RegisterRef {
     }
 }
 
-/// Something that can produce a [LangValue](LangValue) idempotently. The value
+/// Something that can produce a <LangValue> idempotently. The value
 /// can be read (repeatedly if necessary), but cannot be written to.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ValueSource {
@@ -60,25 +63,29 @@ pub enum ValueSource {
 /// An operator should never jump. This allows simplification of execution code,
 /// because we know that each operator will immediately progress to the next
 /// instruction.
+///
+/// NOTE: All arithmetic operations are wrapping (for overflow/underflow).
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Operator {
     /// Reads one value from the input buffer to a register
     Read(RegisterRef),
-    /// Writes the value in a register to the output buffer
-    Write(RegisterRef),
-    /// Sets a register to a constant value
+    /// Writes a value to the output buffer
+    Write(ValueSource),
+    /// Sets a register to a value
     Set(RegisterRef, ValueSource),
-    /// Adds the two registers. Puts the result in the first register.
+    /// Adds two values. Puts the result in the first argument.
     Add(RegisterRef, ValueSource),
-    /// Subtracts the second register from the first. Puts the result in the
-    /// first register.
+    /// Subtracts the second value from the first. Puts the result in the
+    /// first argument.
     Sub(RegisterRef, ValueSource),
-    /// Multiplies the two registers. Puts the result in the first register.
+    /// Multiplies the two values. Puts the result in the first argument.
     Mul(RegisterRef, ValueSource),
     /// Compares the last two arguments, and stores the comparison result in
     /// the first register. Result is -1 if the first value is less than the
     /// second, 0 if they are equal, and 1 if the first value is greater. The
     /// result will **never** be any value other than -1, 0, or 1.
+    ///
+    /// TODO: maybe we should remove this op?
     Cmp(RegisterRef, ValueSource, ValueSource),
     /// Pushes the value in a register onto the given stack
     Push(ValueSource, StackIdentifier),
@@ -86,39 +93,50 @@ pub enum Operator {
     Pop(StackIdentifier, RegisterRef),
 }
 
-#[derive(Debug, PartialEq)]
-pub enum Instr {
-    /// A simple operator (see [Operator](Operator))
-    Operator(Operator),
-    /// Executes the body if the register is != 0
-    If(RegisterRef, Vec<Instr>),
-    /// Executes the body while the register is != 0
-    While(RegisterRef, Vec<Instr>),
-}
-
-/// A parsed program, i.e. an Abstract Syntax Tree.
-#[derive(Debug, PartialEq)]
-pub struct Program {
-    pub body: Vec<Instr>,
-}
-
-/// An instruction set that is ready to be executed by a
-/// [Machine](crate::Machine). This instruction set is as minimal as possible,
-/// to reduce the complexity of the runtime.
+/// The different types of jumps. This just holds the jump type and conditional
+/// value, not the jump target. That should be held by the parent, because the
+/// target type can vary (label vs offset).
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum MachineInstr {
-    /// A simple operator (see [Operator](Operator))
-    Operator(Operator),
+pub enum Jump {
+    /// Jumps unconditionally
+    Jmp,
+    /// Jumps if the value == 0
+    Jez(ValueSource),
+    /// Jumps if the value != 0
+    Jnz(ValueSource),
+    /// Jumps if the value > 0
+    Jlz(ValueSource),
+    /// Jumps if the value < 0
+    Jgz(ValueSource),
+}
 
-    // Jumps are relative: In `Jmp(n)`, `n` is relative to the current program
-    // counter.
-    // - `Jmp(-1)` repeats the previous instruction
-    // - `Jmp(0)` repeats this instruction (so create an infinite loop)
-    // - `Jmp(1)` goes to the next instruction (a no-op)
-    // - `Jmp(2)` skips the next instruction
-    // - etc...
-    /// Jumps `n` relative instructions if the register == 0
-    Jez(i32, RegisterRef),
-    /// Jumps `n` relative instructions if the register != 0
-    Jnz(i32, RegisterRef),
+/// A statement is one complete parseable element. Generally, each statement
+/// goes on its own line in the source.
+#[derive(Clone, Debug, PartialEq)]
+pub enum SourceStatement {
+    Label(Label),
+    Operator(Operator),
+    /// Jump to the given label
+    Jump(Jump, Label),
+}
+
+/// A parsed and untransformed program
+#[derive(Clone, Debug, PartialEq)]
+pub struct SourceProgram {
+    pub body: Vec<SourceStatement>,
+}
+
+/// An executable instruction. These are the instructions that machines actually
+/// execute.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Instruction {
+    Operator(Operator),
+    /// These jumps are relative: In `Jmp(n)`, `n` is relative to the current
+    /// program counter.
+    /// - `Jmp(-1)` repeats the previous instruction
+    /// - `Jmp(0)` repeats this instruction (so create an infinite loop)
+    /// - `Jmp(1)` goes to the next instruction (a no-op)
+    /// - `Jmp(2)` skips the next instruction
+    /// - etc...
+    Jump(Jump, isize),
 }
