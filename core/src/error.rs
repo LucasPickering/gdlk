@@ -1,4 +1,4 @@
-use crate::ast::{RegisterRef, StackIdentifier};
+use crate::ast::{Label, RegisterRef, StackIdentifier};
 use failure::Fail;
 use serde::Serialize;
 use std::{
@@ -32,6 +32,14 @@ pub enum CompileError {
     /// Tried to write to a read-only register
     #[fail(display = "Cannot write to read-only register {}", 0)]
     UnwritableRegister(RegisterRef),
+
+    /// Defined a label more than once
+    #[fail(display = "Duplicate label {}", 0)]
+    DuplicateLabel(Label),
+
+    /// Referenced a label that wasn't defined
+    #[fail(display = "Invalid reference to label {}", 0)]
+    InvalidLabel(Label),
 }
 
 /// An error that occurs during execution of a program. The error will be
@@ -77,6 +85,16 @@ impl CompileErrors {
         Self(None)
     }
 
+    /// Adds a new error to the collection
+    pub fn push(&mut self, error: CompileError) {
+        match &mut self.0 {
+            None => {
+                self.0 = Some(vec![error]);
+            }
+            Some(errs) => errs.push(error),
+        }
+    }
+
     /// Combines this error collection with another, returning a collection with
     /// both sets of errors.
     pub fn chain(mut self, other: Self) -> Self {
@@ -92,6 +110,13 @@ impl CompileErrors {
             }
         }
         self
+    }
+}
+
+// For converting a single error into a collection
+impl From<CompileError> for CompileErrors {
+    fn from(error: CompileError) -> Self {
+        Self(Some(vec![error]))
     }
 }
 
@@ -113,13 +138,6 @@ impl Try for CompileErrors {
 
     fn from_error(errs: Self) -> Self {
         errs
-    }
-}
-
-// For converting a single error into a collection
-impl From<CompileError> for CompileErrors {
-    fn from(error: CompileError) -> Self {
-        Self(Some(vec![error]))
     }
 }
 

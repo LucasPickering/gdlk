@@ -31,8 +31,8 @@ fn test_exceed_max_cycle_count() {
             expected_output: vec![],
         },
         "
-        SET RX0 1
-        WHILE RX0 {}
+        START:
+        JMP START
         ",
         "The maximum number of cycles has been reached",
     );

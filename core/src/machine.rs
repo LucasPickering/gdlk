@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        LangValue, MachineInstr, Operator, RegisterRef, StackIdentifier,
+        Instruction, Jump, LangValue, Operator, RegisterRef, StackIdentifier,
         ValueSource,
     },
     consts::MAX_CYCLE_COUNT,
@@ -27,7 +27,7 @@ pub struct Machine {
     // serialization. We store these ourselves instead of keeping references
     // to the originals because it just makes life a lot easier.
     #[serde(skip)]
-    program: Vec<MachineInstr>,
+    program: Vec<Instruction>,
     #[serde(skip)]
     expected_output: Vec<LangValue>,
     #[serde(skip)]
@@ -59,7 +59,7 @@ impl Machine {
     pub fn new(
         hardware_spec: &HardwareSpec,
         program_spec: &ProgramSpec,
-        program: Vec<MachineInstr>,
+        program: Vec<Instruction>,
     ) -> Self {
         Self {
             // Static data
@@ -89,9 +89,9 @@ impl Machine {
 
     /// Gets a source value, which could either be a constant or a register.
     /// If the value is a constant, just return that. If it's a register,
-    /// return the value from that register. Returns `RuntimeError` if it
-    /// is an invalid register reference.
-    fn get_value_from_source(&self, src: &ValueSource) -> LangValue {
+    /// return the value from that register. Panics if the register reference is
+    /// invalid (shouldn't be possible because of validation).
+    fn get_val_from_src(&self, src: &ValueSource) -> LangValue {
         match src {
             ValueSource::Const(val) => *val,
             ValueSource::Register(reg) => self.get_reg(reg),
@@ -178,10 +178,10 @@ impl Machine {
             .ok_or(RuntimeError::ProgramTerminated)?;
 
         // Execute the instruction. For most instructions, the number of
-        // instructions to consume is just 1, so for those return None. For
-        // jumps though, it can vary so they'll return Some(n).
-        let instrs_to_consume: Option<i32> = match instr {
-            MachineInstr::Operator(op) => {
+        // instructions to consume is just 1. For jumps though, it can vary.
+        let instrs_to_consume: isize = match instr {
+            // Operators
+            Instruction::Operator(op) => {
                 match op {
                     Operator::Read(reg) => match self.input.pop_front() {
                         Some(val) => {
@@ -189,17 +189,17 @@ impl Machine {
                         }
                         None => return Err(RuntimeError::EmptyInput),
                     },
-                    Operator::Write(reg) => {
-                        self.output.push(self.get_reg(&reg));
+                    Operator::Write(src) => {
+                        self.output.push(self.get_val_from_src(&src));
                     }
                     Operator::Set(dst, src) => {
-                        self.set_reg(&dst, self.get_value_from_source(&src));
+                        self.set_reg(&dst, self.get_val_from_src(&src));
                     }
                     Operator::Add(dst, src) => {
                         self.set_reg(
                             &dst,
                             (Wrapping(self.get_reg(&dst))
-                                + Wrapping(self.get_value_from_source(&src)))
+                                + Wrapping(self.get_val_from_src(&src)))
                             .0,
                         );
                     }
@@ -207,7 +207,7 @@ impl Machine {
                         self.set_reg(
                             &dst,
                             (Wrapping(self.get_reg(&dst))
-                                - Wrapping(self.get_value_from_source(&src)))
+                                - Wrapping(self.get_val_from_src(&src)))
                             .0,
                         );
                     }
@@ -215,13 +215,13 @@ impl Machine {
                         self.set_reg(
                             &dst,
                             (Wrapping(self.get_reg(&dst))
-                                * Wrapping(self.get_value_from_source(&src)))
+                                * Wrapping(self.get_val_from_src(&src)))
                             .0,
                         );
                     }
                     Operator::Cmp(dst, src_1, src_2) => {
-                        let val_1 = self.get_value_from_source(&src_1);
-                        let val_2 = self.get_value_from_source(&src_2);
+                        let val_1 = self.get_val_from_src(&src_1);
+                        let val_2 = self.get_val_from_src(&src_2);
                         let cmp = match val_1.cmp(&val_2) {
                             Ordering::Less => -1,
                             Ordering::Equal => 0,
@@ -230,31 +230,29 @@ impl Machine {
                         self.set_reg(&dst, cmp);
                     }
                     Operator::Push(src, stack_id) => {
-                        self.push_stack(
-                            stack_id,
-                            self.get_value_from_source(&src),
-                        )?;
+                        self.push_stack(stack_id, self.get_val_from_src(&src))?;
                     }
                     Operator::Pop(stack_id, dst) => {
                         let popped = self.pop_stack(stack_id)?;
                         self.set_reg(&dst, popped);
                     }
                 }
-                None
+                1
             }
 
-            MachineInstr::Jez(num_instrs, reg) => {
-                if self.get_reg(&reg) == 0 {
-                    Some(num_instrs)
+            // Jumps
+            Instruction::Jump(jump, offset) => {
+                let should_jump = match jump {
+                    Jump::Jmp => true,
+                    Jump::Jez(src) => self.get_val_from_src(&src) == 0,
+                    Jump::Jnz(src) => self.get_val_from_src(&src) != 0,
+                    Jump::Jlz(src) => self.get_val_from_src(&src) < 0,
+                    Jump::Jgz(src) => self.get_val_from_src(&src) > 0,
+                };
+                if should_jump {
+                    offset
                 } else {
-                    None
-                }
-            }
-            MachineInstr::Jnz(num_instrs, reg) => {
-                if self.get_reg(&reg) != 0 {
-                    Some(num_instrs)
-                } else {
-                    None
+                    1
                 }
             }
         };
@@ -263,9 +261,8 @@ impl Machine {
         // or by 1 (for all other instructions). Overflow/underflow _shouldn't_
         // occur here, but if it does, that should panic in debug mode and
         // cause all kinds of fuckery in release mode.
-        self.program_counter = (self.program_counter as i32
-            + instrs_to_consume.unwrap_or(1))
-            as usize;
+        self.program_counter =
+            (self.program_counter as isize + instrs_to_consume) as usize;
         self.cycle_count += 1;
         debug!(println!("Executed {:?}\n\tState: {:?}", instr, self));
         Ok(())

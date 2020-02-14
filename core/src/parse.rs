@@ -1,7 +1,7 @@
 use crate::{
     ast::{
-        Instr, LangValue, Operator, Program, RegisterRef, StackIdentifier,
-        UserRegisterIdentifier, ValueSource,
+        Jump, Label, LangValue, Operator, RegisterRef, SourceProgram,
+        SourceStatement, StackIdentifier, UserRegisterIdentifier, ValueSource,
     },
     consts::{REG_INPUT_LEN, REG_STACK_LEN_PREFIX, REG_USER_PREFIX},
     error::CompileError,
@@ -9,9 +9,9 @@ use crate::{
 };
 use nom::{
     branch::alt,
-    bytes::complete::{tag_no_case, take_till},
+    bytes::complete::{tag, tag_no_case, take_while1},
     character::complete::{
-        alpha1, char, digit1, line_ending, multispace0, space0, space1,
+        alpha1, anychar, char, digit1, line_ending, multispace0, space0, space1,
     },
     combinator::{all_consuming, cut, map, map_res, opt, peek, recognize},
     error::{
@@ -19,10 +19,15 @@ use nom::{
         VerboseErrorKind,
     },
     lib::std::ops::RangeTo,
-    multi::{many0, many1},
-    sequence::{delimited, preceded, terminated, tuple},
+    multi::{many0, many1, many_till},
+    sequence::{preceded, terminated, tuple},
     AsChar, Compare, IResult, InputTake, InputTakeAtPosition, Slice,
 };
+
+type ParseResult<'a, T> = IResult<&'a str, T, VerboseError<&'a str>>;
+
+// ===== Combinators =====
+
 fn one_arg<I, O, E: ParseError<I>, F>(
     arg_parser: F,
 ) -> impl Fn(I) -> IResult<I, O, E>
@@ -66,25 +71,34 @@ where
     ))
 }
 
-/// Parses one instruction keyword, and uses the passed parser to parse the
-/// arguments
-fn instr<'a, Input: 'a, O, F, Error: ParseError<Input>>(
-    instr: &'static str,
-    arg_parser: F,
-) -> impl Fn(Input) -> IResult<Input, O, Error>
+/// Parses one instruction (operator or jump) keyword and arguments. Uses the
+/// passed parser to parse the arguments, then passes those through the mapper
+/// to get a value.
+fn tag_with_args<'a, I: 'a, O, Args, ArgParser, Mapper, E>(
+    instr_name: &'static str,
+    arg_parser: ArgParser,
+    mapper: Mapper,
+) -> impl Fn(I) -> IResult<I, O, E>
 where
-    Input: InputTake + Clone + Compare<&'static str> + Slice<RangeTo<usize>>,
-    F: Fn(Input) -> IResult<Input, O, Error>,
+    I: InputTake + Clone + Compare<&'static str> + Slice<RangeTo<usize>>,
+    E: ParseError<I>,
+    ArgParser: Fn(I) -> IResult<I, Args, E>,
+    Mapper: Fn(Args) -> O,
 {
-    preceded(
-        context(instr, tag_no_case(instr)),
-        context(instr, cut(arg_parser)),
+    map(
+        preceded(
+            context(instr_name, tag_no_case(instr_name)),
+            context(instr_name, cut(arg_parser)),
+        ),
+        mapper,
     )
 }
 
+// ===== Parsers =====
+
 /// Parses a register identifer, something like "RX0". Does not parse any
 /// whitespace around it.
-fn reg_ident(input: &str) -> IResult<&str, RegisterRef, VerboseError<&str>> {
+fn reg_ident(input: &str) -> ParseResult<'_, RegisterRef> {
     let (input, val) = context(
         "Register",
         alt((
@@ -111,9 +125,7 @@ fn reg_ident(input: &str) -> IResult<&str, RegisterRef, VerboseError<&str>> {
 
 /// Parses a stack identifier, like "S1". Does not parse any whitespace around
 /// it.
-fn stack_ident(
-    input: &str,
-) -> IResult<&str, StackIdentifier, VerboseError<&str>> {
+fn stack_ident(input: &str) -> ParseResult<'_, StackIdentifier> {
     let (input, val) = preceded(
         multispace0,
         preceded(
@@ -126,14 +138,14 @@ fn stack_ident(
 
 /// Parses a `LangValue`, like "10" or "-3", not including any surrounding
 /// whitespace.
-fn lang_value(input: &str) -> IResult<&str, LangValue, VerboseError<&str>> {
+fn lang_value(input: &str) -> ParseResult<'_, LangValue> {
     map_res(recognize(tuple((opt(char('-')), digit1))), |s: &str| {
         s.parse::<LangValue>()
     })(input)
 }
 
 /// Parses either a `LangValue` or `Register`.
-fn value_source(input: &str) -> IResult<&str, ValueSource, VerboseError<&str>> {
+fn value_source(input: &str) -> ParseResult<'_, ValueSource> {
     alt((
         // "1" => ValueSource::Const(1)
         map(lang_value, ValueSource::Const),
@@ -142,102 +154,99 @@ fn value_source(input: &str) -> IResult<&str, ValueSource, VerboseError<&str>> {
     ))(input)
 }
 
-fn parse_read(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
-    // input is remaining stuff to parse
-    // >>> Read RX0
-    let (input, reg) = instr("Read", one_arg(reg_ident))(input)?;
-    Ok((input, Instr::Operator(Operator::Read(reg))))
+/// Parses a label (either declaration or usage), NOT including the trailing
+/// colon.
+fn label(input: &str) -> ParseResult<'_, Label> {
+    map(
+        take_while1(|c: char| c.is_alphanumeric() || c == '_'),
+        Label::from,
+    )(input)
 }
 
-fn parse_write(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
-    // >>> Write RX0
-    let (input, reg) = instr("Write", one_arg(reg_ident))(input)?;
-    Ok((input, Instr::Operator(Operator::Write(reg))))
+/// Matches a label statement (i.e. label declaration).
+fn label_stmt(input: &str) -> ParseResult<'_, SourceStatement> {
+    map(terminated(label, tag(":")), SourceStatement::Label)(input)
 }
 
-fn parse_set(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
-    // >>> Set RX0 10
-    let (input, (reg, src)) =
-        instr("Set", two_args(reg_ident, value_source))(input)?;
-    Ok((input, Instr::Operator(Operator::Set(reg, src))))
+fn operator_stmt(input: &str) -> ParseResult<'_, SourceStatement> {
+    map(
+        alt((
+            tag_with_args("READ", one_arg(reg_ident), Operator::Read),
+            tag_with_args("WRITE", one_arg(value_source), Operator::Write),
+            tag_with_args(
+                "SET",
+                two_args(reg_ident, value_source),
+                |(dst, src)| Operator::Set(dst, src),
+            ),
+            tag_with_args(
+                "ADD",
+                two_args(reg_ident, value_source),
+                |(dst, src)| Operator::Add(dst, src),
+            ),
+            tag_with_args(
+                "SUB",
+                two_args(reg_ident, value_source),
+                |(dst, src)| Operator::Sub(dst, src),
+            ),
+            tag_with_args(
+                "MUL",
+                two_args(reg_ident, value_source),
+                |(dst, src)| Operator::Mul(dst, src),
+            ),
+            tag_with_args(
+                "CMP",
+                three_args(reg_ident, value_source, value_source),
+                |(dst, src_1, src_2)| Operator::Cmp(dst, src_1, src_2),
+            ),
+            tag_with_args(
+                "PUSH",
+                two_args(value_source, stack_ident),
+                |(src, stack)| Operator::Push(src, stack),
+            ),
+            tag_with_args(
+                "POP",
+                two_args(stack_ident, reg_ident),
+                |(stack, dst)| Operator::Pop(stack, dst),
+            ),
+        )),
+        SourceStatement::Operator,
+    )(input)
 }
 
-fn parse_add(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
-    // >>> Add RX0 RX1
-    let (input, (dst, src)) =
-        instr("Add", two_args(reg_ident, value_source))(input)?;
-    Ok((input, Instr::Operator(Operator::Add(dst, src))))
-}
-
-fn parse_sub(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
-    // >>> Sub RX0 RX1
-    let (input, (dst, src)) =
-        instr("Sub", two_args(reg_ident, value_source))(input)?;
-    Ok((input, Instr::Operator(Operator::Sub(dst, src))))
-}
-
-fn parse_mul(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
-    // >>> Mul RX0 RX1
-    let (input, (dst, src)) =
-        instr("Mul", two_args(reg_ident, value_source))(input)?;
-    Ok((input, Instr::Operator(Operator::Mul(dst, src))))
-}
-
-fn parse_cmp(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
-    // >>> Cmp RX0 5 10
-    let (input, (dst, src_1, src_2)) =
-        instr("Cmp", three_args(reg_ident, value_source, value_source))(input)?;
-    Ok((input, Instr::Operator(Operator::Cmp(dst, src_1, src_2))))
-}
-
-fn parse_push(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
-    // >>> Push RX0 S1
-    let (input, (src, stack)) =
-        instr("Push", two_args(value_source, stack_ident))(input)?;
-    Ok((input, Instr::Operator(Operator::Push(src, stack))))
-}
-
-fn parse_pop(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
-    // >>> Pop S1 RX0
-    let (input, (stack, reg)) =
-        instr("POP", two_args(stack_ident, reg_ident))(input)?;
-    Ok((input, Instr::Operator(Operator::Pop(stack, reg))))
-}
-
-fn parse_if(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
-    // >>> If RX0 { ... }
-    let (input, reg) = instr("If", one_arg(reg_ident))(input)?;
-    let (input, body) = parse_body(input)?;
-    Ok((input, Instr::If(reg, body)))
-}
-
-fn parse_while(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
-    // >>> While RX0 { ... }
-    let (input, reg) = instr("While", one_arg(reg_ident))(input)?;
-    let (input, body) = parse_body(input)?;
-    Ok((input, Instr::While(reg, body)))
+fn jump_stmt(input: &str) -> ParseResult<'_, SourceStatement> {
+    alt((
+        tag_with_args("JMP", one_arg(label), |l| {
+            SourceStatement::Jump(Jump::Jmp, l)
+        }),
+        tag_with_args("JEZ", two_args(value_source, label), |(src, l)| {
+            SourceStatement::Jump(Jump::Jez(src), l)
+        }),
+        tag_with_args("JNZ", two_args(value_source, label), |(src, l)| {
+            SourceStatement::Jump(Jump::Jnz(src), l)
+        }),
+        tag_with_args("JGZ", two_args(value_source, label), |(src, l)| {
+            SourceStatement::Jump(Jump::Jgz(src), l)
+        }),
+        tag_with_args("JLZ", two_args(value_source, label), |(src, l)| {
+            SourceStatement::Jump(Jump::Jlz(src), l)
+        }),
+    ))(input)
 }
 
 // TODO: for now throwing away spaces and comments
 // probably want too keep them when we do source mapping
-fn comment(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
+fn comment(input: &str) -> ParseResult<'_, &str> {
     let (input, _) = preceded(
         space0,
         context(
             "Comment",
-            terminated(
-                char(';'),
-                cut(tuple((
-                    take_till(|c| c == '\n' || c == '\r'),
-                    line_ending,
-                ))),
-            ),
+            terminated(char(';'), cut(many_till(anychar, line_ending))),
         ),
     )(input)?;
     Ok((input, ""))
 }
 
-fn comment_or_spaces(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
+fn comment_or_spaces(input: &str) -> ParseResult<'_, &str> {
     let (input, _) =
         many0(tuple((space0, many1(alt((comment, line_ending))), space0)))(
             input,
@@ -245,45 +254,18 @@ fn comment_or_spaces(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
     Ok((input, ""))
 }
 
-fn try_each_instr(input: &str) -> IResult<&str, Instr, VerboseError<&str>> {
-    let (input, (_, res, _)) = tuple((
-        comment_or_spaces,
-        context(
-            "Instruction",
-            alt((
-                parse_read,
-                parse_write,
-                parse_set,
-                parse_add,
-                parse_sub,
-                parse_mul,
-                parse_cmp,
-                parse_push,
-                parse_pop,
-                parse_if,
-                parse_while,
-            )),
-        ),
-        comment_or_spaces,
-    ))(input)?;
-    Ok((input, res))
+fn statement(input: &str) -> ParseResult<'_, SourceStatement> {
+    map(
+        tuple((
+            comment_or_spaces,
+            alt((label_stmt, operator_stmt, jump_stmt)),
+            comment_or_spaces,
+        )),
+        |(_, stmt, _)| stmt,
+    )(input)
 }
 
-// Parse the body of an if or while statement
-//
-// something like (\s*{<BODY>\s*})
-fn parse_body(input: &str) -> IResult<&str, Vec<Instr>, VerboseError<&str>> {
-    // multispace0 matches 0 or more whitespace chars (including new lines)
-    let (input, res) = cut(delimited(
-        preceded(multispace0, char('{')),
-        many0(try_each_instr), /* many0 will match 0 more, so the body could
-                                * be empty */
-        preceded(multispace0, char('}')),
-    ))(input)?;
-    Ok((input, res))
-}
-
-fn parse_gdlk(input: &str) -> IResult<&str, Vec<Instr>, VerboseError<&str>> {
+fn parse_gdlk(input: &str) -> ParseResult<'_, Vec<SourceStatement>> {
     // parses the whole program followed by 0 or more whitespace chars
 
     // consume starting whitespace
@@ -291,17 +273,17 @@ fn parse_gdlk(input: &str) -> IResult<&str, Vec<Instr>, VerboseError<&str>> {
     // make sure something is there but don't consume the input
     // TODO: make this error message nicer
     peek(alpha1)(input)?;
-    let (input, res) = all_consuming(many0(try_each_instr))(input)?;
+    let (input, res) = all_consuming(many0(statement))(input)?;
     Ok((input, res))
 }
 
 impl Compiler<String> {
     /// Parses source code from the given input, into an abstract syntax tree.
-    pub fn parse(self) -> Result<Compiler<Program>, CompileError> {
+    pub fn parse(self) -> Result<Compiler<SourceProgram>, CompileError> {
         let input_str = &self.0;
         match parse_gdlk(input_str) {
             Ok((_, body)) => {
-                let prog = Program { body };
+                let prog = SourceProgram { body };
                 Ok(Compiler(prog))
             }
             Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
@@ -334,6 +316,29 @@ impl Compiler<String> {
 mod tests {
     use super::*;
     #[test]
+    fn test_parse_labels() {
+        assert_eq!(
+            parse_gdlk(
+                "
+            LBL:
+            LBL1:
+            LBL_WITH_UNDERSCORE:
+            1LBL:
+            "
+            ),
+            Ok((
+                "",
+                vec![
+                    SourceStatement::Label("LBL".into()),
+                    SourceStatement::Label("LBL1".into()),
+                    SourceStatement::Label("LBL_WITH_UNDERSCORE".into()),
+                    SourceStatement::Label("1LBL".into())
+                ]
+            ))
+        )
+    }
+
+    #[test]
     fn test_parse_read_write() {
         assert_eq!(
             parse_gdlk(
@@ -345,8 +350,12 @@ mod tests {
             Ok((
                 "",
                 vec![
-                    Instr::Operator(Operator::Read(RegisterRef::User(0))),
-                    Instr::Operator(Operator::Write(RegisterRef::User(0)))
+                    SourceStatement::Operator(Operator::Read(
+                        RegisterRef::User(0)
+                    )),
+                    SourceStatement::Operator(Operator::Write(
+                        ValueSource::Register(RegisterRef::User(0))
+                    ))
                 ]
             ))
         )
@@ -365,15 +374,15 @@ mod tests {
             Ok((
                 "",
                 vec![
-                    Instr::Operator(Operator::Set(
+                    SourceStatement::Operator(Operator::Set(
                         RegisterRef::User(1),
                         ValueSource::Const(4)
                     )),
-                    Instr::Operator(Operator::Set(
+                    SourceStatement::Operator(Operator::Set(
                         RegisterRef::User(1),
                         ValueSource::Register(RegisterRef::InputLength),
                     )),
-                    Instr::Operator(Operator::Set(
+                    SourceStatement::Operator(Operator::Set(
                         RegisterRef::User(1),
                         ValueSource::Register(RegisterRef::StackLength(0)),
                     )),
@@ -388,7 +397,7 @@ mod tests {
             parse_gdlk("Add RX1 RX4"),
             Ok((
                 "",
-                vec![Instr::Operator(Operator::Add(
+                vec![SourceStatement::Operator(Operator::Add(
                     RegisterRef::User(1),
                     ValueSource::Register(RegisterRef::User(4))
                 ))]
@@ -402,7 +411,7 @@ mod tests {
             parse_gdlk("Add RX1 -10"),
             Ok((
                 "",
-                vec![Instr::Operator(Operator::Add(
+                vec![SourceStatement::Operator(Operator::Add(
                     RegisterRef::User(1),
                     ValueSource::Const(-10)
                 ))]
@@ -417,7 +426,7 @@ mod tests {
             parse_gdlk(source.as_str()),
             Ok((
                 "",
-                vec![Instr::Operator(Operator::Add(
+                vec![SourceStatement::Operator(Operator::Add(
                     RegisterRef::User(1),
                     ValueSource::Const(std::i32::MAX)
                 ))]
@@ -432,7 +441,7 @@ mod tests {
             parse_gdlk(source.as_str()),
             Ok((
                 "",
-                vec![Instr::Operator(Operator::Add(
+                vec![SourceStatement::Operator(Operator::Add(
                     RegisterRef::User(1),
                     ValueSource::Const(std::i32::MIN)
                 ))]
@@ -446,7 +455,7 @@ mod tests {
             parse_gdlk("Sub RX1 RX4"),
             Ok((
                 "",
-                vec![Instr::Operator(Operator::Sub(
+                vec![SourceStatement::Operator(Operator::Sub(
                     RegisterRef::User(1),
                     ValueSource::Register(RegisterRef::User(4))
                 ))]
@@ -460,7 +469,7 @@ mod tests {
             parse_gdlk("Mul rx1 rx0"),
             Ok((
                 "",
-                vec![Instr::Operator(Operator::Mul(
+                vec![SourceStatement::Operator(Operator::Mul(
                     RegisterRef::User(1),
                     ValueSource::Register(RegisterRef::User(0))
                 ))]
@@ -474,7 +483,7 @@ mod tests {
             parse_gdlk("CMP RX0 5 10"),
             Ok((
                 "",
-                vec![Instr::Operator(Operator::Cmp(
+                vec![SourceStatement::Operator(Operator::Cmp(
                     RegisterRef::User(0),
                     ValueSource::Const(5),
                     ValueSource::Const(10),
@@ -489,7 +498,7 @@ mod tests {
             parse_gdlk("Push RX2 S4"),
             Ok((
                 "",
-                vec![Instr::Operator(Operator::Push(
+                vec![SourceStatement::Operator(Operator::Push(
                     ValueSource::Register(RegisterRef::User(2)),
                     4
                 ))]
@@ -503,64 +512,45 @@ mod tests {
             parse_gdlk("Pop S4 RX2"),
             Ok((
                 "",
-                vec![Instr::Operator(Operator::Pop(4, RegisterRef::User(2)))]
+                vec![SourceStatement::Operator(Operator::Pop(
+                    4,
+                    RegisterRef::User(2)
+                ))]
             ))
         )
     }
 
     #[test]
-    fn test_parse_if() {
+    fn test_jumps() {
         assert_eq!(
             parse_gdlk(
-                "IF RX10 {
-            Read RX10
-            write RX10
-        }"
+                "JMP LBL
+                JEZ RX0 LBL
+                JNZ RX0 LBL
+                JLZ RX0 LBL
+                JGZ RX0 LBL
+                "
             ),
-            Ok((
-                "",
-                vec![Instr::If(
-                    RegisterRef::User(10),
-                    vec![
-                        Instr::Operator(Operator::Read(RegisterRef::User(10))),
-                        Instr::Operator(Operator::Write(RegisterRef::User(10))),
-                    ]
-                )]
-            ))
-        )
-    }
-
-    #[test]
-    fn test_parse_while() {
-        assert_eq!(
-            parse_gdlk(
-                "WHiLE RX0 {
-            READ RX0
-            Write RX0
-        }"
-            ),
-            Ok((
-                "",
-                vec![Instr::While(
-                    RegisterRef::User(0),
-                    vec![
-                        Instr::Operator(Operator::Read(RegisterRef::User(0))),
-                        Instr::Operator(Operator::Write(RegisterRef::User(0))),
-                    ]
-                )]
-            ))
-        )
-    }
-
-    #[test]
-    fn test_parse_empty_if_and_while() {
-        assert_eq!(
-            parse_gdlk("while RX0 {}if RX1{}"),
             Ok((
                 "",
                 vec![
-                    Instr::While(RegisterRef::User(0), vec![]),
-                    Instr::If(RegisterRef::User(1), vec![])
+                    SourceStatement::Jump(Jump::Jmp, "LBL".into()),
+                    SourceStatement::Jump(
+                        Jump::Jez(ValueSource::Register(RegisterRef::User(0))),
+                        "LBL".into()
+                    ),
+                    SourceStatement::Jump(
+                        Jump::Jnz(ValueSource::Register(RegisterRef::User(0))),
+                        "LBL".into()
+                    ),
+                    SourceStatement::Jump(
+                        Jump::Jlz(ValueSource::Register(RegisterRef::User(0))),
+                        "LBL".into()
+                    ),
+                    SourceStatement::Jump(
+                        Jump::Jgz(ValueSource::Register(RegisterRef::User(0))),
+                        "LBL".into()
+                    ),
                 ]
             ))
         )
@@ -572,7 +562,7 @@ mod tests {
             parse_gdlk("; comment over here\n Add RX1 RX4 ; comment here\n"),
             Ok((
                 "",
-                vec![Instr::Operator(Operator::Add(
+                vec![SourceStatement::Operator(Operator::Add(
                     RegisterRef::User(1),
                     ValueSource::Register(RegisterRef::User(4))
                 ))]
@@ -601,24 +591,36 @@ mod tests {
             Ok((
                 "",
                 vec![
-                    Instr::Operator(Operator::Read(RegisterRef::User(0))),
-                    Instr::Operator(Operator::Set(
+                    SourceStatement::Operator(Operator::Read(
+                        RegisterRef::User(0)
+                    )),
+                    SourceStatement::Operator(Operator::Set(
                         RegisterRef::User(0),
                         ValueSource::Const(2)
                     )),
-                    Instr::Operator(Operator::Write(RegisterRef::User(0))),
-                    Instr::Operator(Operator::Read(RegisterRef::User(1))),
-                    Instr::Operator(Operator::Set(
+                    SourceStatement::Operator(Operator::Write(
+                        ValueSource::Register(RegisterRef::User(0))
+                    )),
+                    SourceStatement::Operator(Operator::Read(
+                        RegisterRef::User(1)
+                    )),
+                    SourceStatement::Operator(Operator::Set(
                         RegisterRef::User(1),
                         ValueSource::Const(3)
                     )),
-                    Instr::Operator(Operator::Write(RegisterRef::User(1))),
-                    Instr::Operator(Operator::Read(RegisterRef::User(2))),
-                    Instr::Operator(Operator::Set(
+                    SourceStatement::Operator(Operator::Write(
+                        ValueSource::Register(RegisterRef::User(1))
+                    )),
+                    SourceStatement::Operator(Operator::Read(
+                        RegisterRef::User(2)
+                    )),
+                    SourceStatement::Operator(Operator::Set(
                         RegisterRef::User(2),
                         ValueSource::Const(4)
                     )),
-                    Instr::Operator(Operator::Write(RegisterRef::User(2)))
+                    SourceStatement::Operator(Operator::Write(
+                        ValueSource::Register(RegisterRef::User(2))
+                    ))
                 ]
             ))
         )
