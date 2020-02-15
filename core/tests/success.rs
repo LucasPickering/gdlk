@@ -377,3 +377,8 @@ fn test_equal_max_cycle_count() {
     );
     assert_eq!(machine.cycle_count, MAX_CYCLE_COUNT);
 }
+
+#[test]
+fn test_parse_empty_file() {
+    execute_expect_success(HardwareSpec::default(), ProgramSpec::default(), "");
+}

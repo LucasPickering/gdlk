@@ -10,20 +10,19 @@ use crate::{
 };
 use nom::{
     branch::alt,
-    bytes::complete::{tag, tag_no_case, take_while1},
-    character::complete::{
-        alpha1, anychar, char, digit1, line_ending, multispace0, space0, space1,
-    },
-    combinator::{all_consuming, cut, map, map_res, opt, peek, recognize},
+    bytes::complete::{is_not, tag, tag_no_case, take_while1},
+    character::complete::{char, digit1, line_ending, space0, space1},
+    combinator::{all_consuming, cut, map, map_res, opt, recognize},
     error::{
         context, convert_error, ErrorKind, ParseError, VerboseError,
         VerboseErrorKind,
     },
     lib::std::ops::RangeTo,
-    multi::{many0, many1, many_till},
-    sequence::{preceded, terminated, tuple},
+    multi::many0,
+    sequence::{delimited, preceded, terminated, tuple},
     AsChar, Compare, IResult, InputTake, InputTakeAtPosition, Slice,
 };
+use std::iter;
 
 type ParseResult<'a, T> = IResult<&'a str, T, VerboseError<&'a str>>;
 
@@ -124,17 +123,12 @@ fn reg_ident(input: &str) -> ParseResult<'_, RegisterRef> {
     Ok((input, val))
 }
 
-/// Parses a stack identifier, like "S1". Does not parse any whitespace around
-/// it.
+/// Parses a stack identifier, like "S1", not including surrounding  whitespace.
 fn stack_ident(input: &str) -> ParseResult<'_, StackIdentifier> {
-    let (input, val) = preceded(
-        multispace0,
-        preceded(
-            tag_no_case("S"),
-            map_res(digit1, |s: &str| s.parse::<StackIdentifier>()),
-        ),
-    )(input)?;
-    Ok((input, val))
+    preceded(
+        tag_no_case("S"),
+        map_res(digit1, |s: &str| s.parse::<StackIdentifier>()),
+    )(input)
 }
 
 /// Parses a `LangValue`, like "10" or "-3", not including any surrounding
@@ -232,98 +226,115 @@ fn jump_stmt(input: &str) -> ParseResult<'_, Statement> {
     ))(input)
 }
 
-// TODO: for now throwing away spaces and comments
-// probably want too keep them when we do source mapping
-fn comment(input: &str) -> ParseResult<'_, &str> {
-    let (input, _) = preceded(
-        space0,
-        context(
-            "Comment",
-            terminated(char(';'), cut(many_till(anychar, line_ending))),
-        ),
-    )(input)?;
-    Ok((input, ""))
-}
-
-fn comment_or_spaces(input: &str) -> ParseResult<'_, &str> {
-    let (input, _) =
-        many0(tuple((space0, many1(alt((comment, line_ending))), space0)))(
-            input,
-        )?;
-    Ok((input, ""))
-}
-
-fn statement(input: &str) -> ParseResult<'_, Statement> {
+/// Parses a line comment, which starts with a ; and runs to the end of the
+/// line. This terminates at the line ending, but does _not_ consume it.
+fn line_comment(input: &str) -> ParseResult<'_, &str> {
     map(
-        tuple((
-            comment_or_spaces,
-            alt((label_stmt, operator_stmt, jump_stmt)),
-            comment_or_spaces,
-        )),
-        |(_, stmt, _)| stmt,
+        context("Comment", preceded(char(';'), many0(is_not("\r\n")))),
+        |_| "", // throw the comment away
     )(input)
 }
 
-fn parse_gdlk(input: &str) -> ParseResult<'_, Vec<Statement>> {
-    // parses the whole program followed by 0 or more whitespace chars
+/// Parses one source statement. This consumes surrounding spaces/comments, but
+/// not the line ending.
+fn statement(input: &str) -> ParseResult<'_, Statement> {
+    context("Statement", alt((label_stmt, operator_stmt, jump_stmt)))(input)
+}
 
-    // consume starting whitespace
-    let (input, _) = comment_or_spaces(input)?;
-    // make sure something is there but don't consume the input
-    // TODO: make this error message nicer
-    peek(alpha1)(input)?;
-    let (input, res) = all_consuming(many0(statement))(input)?;
-    Ok((input, res))
+/// Parse a single line, not including the line ending.
+fn line(input: &str) -> ParseResult<'_, Option<Statement>> {
+    context(
+        "Line",
+        delimited(space0, opt(statement), tuple((space0, opt(line_comment)))),
+    )(input)
+}
+
+/// Parse a full program
+fn parse_gdlk(input: &str) -> ParseResult<'_, Vec<Statement>> {
+    map(
+        // separated_list doesn't work properly so we have to do this
+        all_consuming(tuple((many0(terminated(line, line_ending)), opt(line)))),
+        // filter out None lines
+        |(lines, last_line)| {
+            lines
+                .into_iter()
+                .chain(iter::once(last_line.unwrap_or(None)))
+                .filter_map(std::convert::identity)
+                .collect()
+        },
+    )(input)
+}
+
+fn parse(input: &str) -> Result<Vec<Statement>, CompileError> {
+    match parse_gdlk(input) {
+        Ok((_, body)) => Ok(body),
+        Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
+            match e.errors.as_slice() {
+                [(substring, VerboseErrorKind::Nom(ErrorKind::Eof)), ..] => {
+                    // If the error is EOF that means there was remaining
+                    // input that was not parsed
+                    // so they put in a bad keyword
+                    // TODO: need to make this custom error look more like
+                    // how convert_error outputs
+                    Err(CompileError::ParseError(format!(
+                        "Invalid keyword: {}",
+                        substring
+                    )))
+                }
+                _ => Err(CompileError::ParseError(convert_error(&input, e))),
+            }
+        }
+        Err(nom::Err::Incomplete(_needed)) => {
+            // TODO: better ass
+            Err(CompileError::ParseError("ass".to_string()))
+        }
+    }
 }
 
 impl Compiler<String> {
     /// Parses source code from the given input, into an abstract syntax tree.
     pub fn parse(self) -> Result<Compiler<Program>, CompileError> {
-        let input_str = &self.0;
-        match parse_gdlk(input_str) {
-            Ok((_, body)) => {
-                let prog = Program { body };
-                Ok(Compiler(prog))
-            }
-            Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
-                match e.errors.as_slice() {
-                    [(substring, VerboseErrorKind::Nom(ErrorKind::Eof)), ..] => {
-                        // If the error is EOF that means there was remaining
-                        // input that was not parsed
-                        // so they put in a bad keyword
-                        // TODO: need to make this custom error look more like
-                        // how convert_error outputs
-                        Err(CompileError::ParseError(format!(
-                            "Invalid keyword: {}",
-                            substring
-                        )))
-                    }
-                    _ => Err(CompileError::ParseError(convert_error(
-                        &input_str, e,
-                    ))),
-                }
-            }
-            Err(nom::Err::Incomplete(_needed)) => {
-                // TODO: better ass
-                Err(CompileError::ParseError("ass".to_string()))
-            }
-        }
+        parse(&self.0).map(|stmts| Compiler(Program { body: stmts }))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_parse_line() {
+        assert_eq!(line(""), Ok(("", None)));
+        assert_eq!(line("    "), Ok(("", None)));
+        assert_eq!(line(" ; comment"), Ok(("", None)));
+        assert_eq!(
+            line("  READ RX0 ;comment"),
+            Ok((
+                "",
+                Some(Statement::Operator(Operator::Read(RegisterRef::User(0))))
+            ))
+        );
+        assert_eq!(line(" ; comment\nMORE"), Ok(("\nMORE", None)));
+    }
+
+    #[test]
+    fn test_whitespace() {
+        assert_eq!(parse(""), Ok(vec![]));
+        assert_eq!(parse("\n\n\n"), Ok(vec![]));
+        assert_eq!(parse("  "), Ok(vec![]));
+        assert_eq!(parse("  \n  "), Ok(vec![]));
+    }
+
     #[test]
     fn test_parse_labels() {
         assert_eq!(
             parse_gdlk(
                 "
-            LBL:
-            LBL1:
-            LBL_WITH_UNDERSCORE:
-            1LBL:
-            "
+                LBL:
+                LBL1:
+                LBL_WITH_UNDERSCORE:
+                1LBL:
+                "
             ),
             Ok((
                 "",
