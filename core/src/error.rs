@@ -48,7 +48,7 @@ pub enum CompileError {
 #[derive(Debug, PartialEq, Fail, Serialize)]
 pub enum RuntimeError {
     /// Tried to push onto stack that is at capacity
-    #[fail(display = "Overflow on stack {}", 0)]
+    #[fail(display = "Overflow on stack S{}", 0)]
     StackOverflow(StackIdentifier),
 
     /// READ attempted while input is empty
@@ -56,7 +56,7 @@ pub enum RuntimeError {
     EmptyInput,
 
     /// POP attempted while stack is empty
-    #[fail(display = "Cannot pop from empty stack {}", 0)]
+    #[fail(display = "Cannot pop from empty stack S{}", 0)]
     EmptyStack(StackIdentifier),
 
     /// Too many cycles in the program

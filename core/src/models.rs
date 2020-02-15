@@ -46,3 +46,13 @@ pub struct ProgramSpec {
     #[validate(length(max = 256))]
     pub expected_output: Vec<LangValue>,
 }
+
+// Useful for creating this type in tests
+impl Default for ProgramSpec {
+    fn default() -> Self {
+        Self {
+            input: vec![],
+            expected_output: vec![],
+        }
+    }
+}
