@@ -52,7 +52,7 @@ pub use error::*;
 pub use machine::*;
 pub use models::*;
 
-use ast::Instruction;
+use ast::compiled::Program;
 use std::fmt::Debug;
 use validator::Validate;
 
@@ -114,10 +114,11 @@ impl Compiler<String> {
     }
 }
 
-impl Compiler<Vec<Instruction>> {
-    /// Compiles a program into a <Machine>. This takes a hardware spec, which
-    /// the program will execute on, and a program spec, which the program will
-    /// try to match, and builds a machine around it so that it can be executed.
+impl Compiler<Program> {
+    /// Alocates a <Machine> for a compiled program. This takes a hardware spec,
+    /// which the program will execute on, and a program spec, which the
+    /// program will try to match, and builds a machine around the program so
+    /// that it can be executed.
     pub fn compile(
         self,
         hardware_spec: &HardwareSpec,

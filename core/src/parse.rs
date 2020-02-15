@@ -1,7 +1,8 @@
 use crate::{
     ast::{
-        Jump, Label, LangValue, Operator, RegisterRef, SourceProgram,
-        SourceStatement, StackIdentifier, UserRegisterIdentifier, ValueSource,
+        source::{Program, Statement},
+        Jump, Label, LangValue, Operator, RegisterRef, StackIdentifier,
+        UserRegisterIdentifier, ValueSource,
     },
     consts::{REG_INPUT_LEN, REG_STACK_LEN_PREFIX, REG_USER_PREFIX},
     error::CompileError,
@@ -164,11 +165,11 @@ fn label(input: &str) -> ParseResult<'_, Label> {
 }
 
 /// Matches a label statement (i.e. label declaration).
-fn label_stmt(input: &str) -> ParseResult<'_, SourceStatement> {
-    map(terminated(label, tag(":")), SourceStatement::Label)(input)
+fn label_stmt(input: &str) -> ParseResult<'_, Statement> {
+    map(terminated(label, tag(":")), Statement::Label)(input)
 }
 
-fn operator_stmt(input: &str) -> ParseResult<'_, SourceStatement> {
+fn operator_stmt(input: &str) -> ParseResult<'_, Statement> {
     map(
         alt((
             tag_with_args("READ", one_arg(reg_ident), Operator::Read),
@@ -209,26 +210,24 @@ fn operator_stmt(input: &str) -> ParseResult<'_, SourceStatement> {
                 |(stack, dst)| Operator::Pop(stack, dst),
             ),
         )),
-        SourceStatement::Operator,
+        Statement::Operator,
     )(input)
 }
 
-fn jump_stmt(input: &str) -> ParseResult<'_, SourceStatement> {
+fn jump_stmt(input: &str) -> ParseResult<'_, Statement> {
     alt((
-        tag_with_args("JMP", one_arg(label), |l| {
-            SourceStatement::Jump(Jump::Jmp, l)
-        }),
+        tag_with_args("JMP", one_arg(label), |l| Statement::Jump(Jump::Jmp, l)),
         tag_with_args("JEZ", two_args(value_source, label), |(src, l)| {
-            SourceStatement::Jump(Jump::Jez(src), l)
+            Statement::Jump(Jump::Jez(src), l)
         }),
         tag_with_args("JNZ", two_args(value_source, label), |(src, l)| {
-            SourceStatement::Jump(Jump::Jnz(src), l)
+            Statement::Jump(Jump::Jnz(src), l)
         }),
         tag_with_args("JGZ", two_args(value_source, label), |(src, l)| {
-            SourceStatement::Jump(Jump::Jgz(src), l)
+            Statement::Jump(Jump::Jgz(src), l)
         }),
         tag_with_args("JLZ", two_args(value_source, label), |(src, l)| {
-            SourceStatement::Jump(Jump::Jlz(src), l)
+            Statement::Jump(Jump::Jlz(src), l)
         }),
     ))(input)
 }
@@ -254,7 +253,7 @@ fn comment_or_spaces(input: &str) -> ParseResult<'_, &str> {
     Ok((input, ""))
 }
 
-fn statement(input: &str) -> ParseResult<'_, SourceStatement> {
+fn statement(input: &str) -> ParseResult<'_, Statement> {
     map(
         tuple((
             comment_or_spaces,
@@ -265,7 +264,7 @@ fn statement(input: &str) -> ParseResult<'_, SourceStatement> {
     )(input)
 }
 
-fn parse_gdlk(input: &str) -> ParseResult<'_, Vec<SourceStatement>> {
+fn parse_gdlk(input: &str) -> ParseResult<'_, Vec<Statement>> {
     // parses the whole program followed by 0 or more whitespace chars
 
     // consume starting whitespace
@@ -279,11 +278,11 @@ fn parse_gdlk(input: &str) -> ParseResult<'_, Vec<SourceStatement>> {
 
 impl Compiler<String> {
     /// Parses source code from the given input, into an abstract syntax tree.
-    pub fn parse(self) -> Result<Compiler<SourceProgram>, CompileError> {
+    pub fn parse(self) -> Result<Compiler<Program>, CompileError> {
         let input_str = &self.0;
         match parse_gdlk(input_str) {
             Ok((_, body)) => {
-                let prog = SourceProgram { body };
+                let prog = Program { body };
                 Ok(Compiler(prog))
             }
             Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
@@ -329,10 +328,10 @@ mod tests {
             Ok((
                 "",
                 vec![
-                    SourceStatement::Label("LBL".into()),
-                    SourceStatement::Label("LBL1".into()),
-                    SourceStatement::Label("LBL_WITH_UNDERSCORE".into()),
-                    SourceStatement::Label("1LBL".into())
+                    Statement::Label("LBL".into()),
+                    Statement::Label("LBL1".into()),
+                    Statement::Label("LBL_WITH_UNDERSCORE".into()),
+                    Statement::Label("1LBL".into())
                 ]
             ))
         )
@@ -350,10 +349,8 @@ mod tests {
             Ok((
                 "",
                 vec![
-                    SourceStatement::Operator(Operator::Read(
-                        RegisterRef::User(0)
-                    )),
-                    SourceStatement::Operator(Operator::Write(
+                    Statement::Operator(Operator::Read(RegisterRef::User(0))),
+                    Statement::Operator(Operator::Write(
                         ValueSource::Register(RegisterRef::User(0))
                     ))
                 ]
@@ -374,15 +371,15 @@ mod tests {
             Ok((
                 "",
                 vec![
-                    SourceStatement::Operator(Operator::Set(
+                    Statement::Operator(Operator::Set(
                         RegisterRef::User(1),
                         ValueSource::Const(4)
                     )),
-                    SourceStatement::Operator(Operator::Set(
+                    Statement::Operator(Operator::Set(
                         RegisterRef::User(1),
                         ValueSource::Register(RegisterRef::InputLength),
                     )),
-                    SourceStatement::Operator(Operator::Set(
+                    Statement::Operator(Operator::Set(
                         RegisterRef::User(1),
                         ValueSource::Register(RegisterRef::StackLength(0)),
                     )),
@@ -397,7 +394,7 @@ mod tests {
             parse_gdlk("Add RX1 RX4"),
             Ok((
                 "",
-                vec![SourceStatement::Operator(Operator::Add(
+                vec![Statement::Operator(Operator::Add(
                     RegisterRef::User(1),
                     ValueSource::Register(RegisterRef::User(4))
                 ))]
@@ -411,7 +408,7 @@ mod tests {
             parse_gdlk("Add RX1 -10"),
             Ok((
                 "",
-                vec![SourceStatement::Operator(Operator::Add(
+                vec![Statement::Operator(Operator::Add(
                     RegisterRef::User(1),
                     ValueSource::Const(-10)
                 ))]
@@ -426,7 +423,7 @@ mod tests {
             parse_gdlk(source.as_str()),
             Ok((
                 "",
-                vec![SourceStatement::Operator(Operator::Add(
+                vec![Statement::Operator(Operator::Add(
                     RegisterRef::User(1),
                     ValueSource::Const(std::i32::MAX)
                 ))]
@@ -441,7 +438,7 @@ mod tests {
             parse_gdlk(source.as_str()),
             Ok((
                 "",
-                vec![SourceStatement::Operator(Operator::Add(
+                vec![Statement::Operator(Operator::Add(
                     RegisterRef::User(1),
                     ValueSource::Const(std::i32::MIN)
                 ))]
@@ -455,7 +452,7 @@ mod tests {
             parse_gdlk("Sub RX1 RX4"),
             Ok((
                 "",
-                vec![SourceStatement::Operator(Operator::Sub(
+                vec![Statement::Operator(Operator::Sub(
                     RegisterRef::User(1),
                     ValueSource::Register(RegisterRef::User(4))
                 ))]
@@ -469,7 +466,7 @@ mod tests {
             parse_gdlk("Mul rx1 rx0"),
             Ok((
                 "",
-                vec![SourceStatement::Operator(Operator::Mul(
+                vec![Statement::Operator(Operator::Mul(
                     RegisterRef::User(1),
                     ValueSource::Register(RegisterRef::User(0))
                 ))]
@@ -483,7 +480,7 @@ mod tests {
             parse_gdlk("CMP RX0 5 10"),
             Ok((
                 "",
-                vec![SourceStatement::Operator(Operator::Cmp(
+                vec![Statement::Operator(Operator::Cmp(
                     RegisterRef::User(0),
                     ValueSource::Const(5),
                     ValueSource::Const(10),
@@ -498,7 +495,7 @@ mod tests {
             parse_gdlk("Push RX2 S4"),
             Ok((
                 "",
-                vec![SourceStatement::Operator(Operator::Push(
+                vec![Statement::Operator(Operator::Push(
                     ValueSource::Register(RegisterRef::User(2)),
                     4
                 ))]
@@ -512,7 +509,7 @@ mod tests {
             parse_gdlk("Pop S4 RX2"),
             Ok((
                 "",
-                vec![SourceStatement::Operator(Operator::Pop(
+                vec![Statement::Operator(Operator::Pop(
                     4,
                     RegisterRef::User(2)
                 ))]
@@ -534,20 +531,20 @@ mod tests {
             Ok((
                 "",
                 vec![
-                    SourceStatement::Jump(Jump::Jmp, "LBL".into()),
-                    SourceStatement::Jump(
+                    Statement::Jump(Jump::Jmp, "LBL".into()),
+                    Statement::Jump(
                         Jump::Jez(ValueSource::Register(RegisterRef::User(0))),
                         "LBL".into()
                     ),
-                    SourceStatement::Jump(
+                    Statement::Jump(
                         Jump::Jnz(ValueSource::Register(RegisterRef::User(0))),
                         "LBL".into()
                     ),
-                    SourceStatement::Jump(
+                    Statement::Jump(
                         Jump::Jlz(ValueSource::Register(RegisterRef::User(0))),
                         "LBL".into()
                     ),
-                    SourceStatement::Jump(
+                    Statement::Jump(
                         Jump::Jgz(ValueSource::Register(RegisterRef::User(0))),
                         "LBL".into()
                     ),
@@ -562,7 +559,7 @@ mod tests {
             parse_gdlk("; comment over here\n Add RX1 RX4 ; comment here\n"),
             Ok((
                 "",
-                vec![SourceStatement::Operator(Operator::Add(
+                vec![Statement::Operator(Operator::Add(
                     RegisterRef::User(1),
                     ValueSource::Register(RegisterRef::User(4))
                 ))]
@@ -591,34 +588,28 @@ mod tests {
             Ok((
                 "",
                 vec![
-                    SourceStatement::Operator(Operator::Read(
-                        RegisterRef::User(0)
-                    )),
-                    SourceStatement::Operator(Operator::Set(
+                    Statement::Operator(Operator::Read(RegisterRef::User(0))),
+                    Statement::Operator(Operator::Set(
                         RegisterRef::User(0),
                         ValueSource::Const(2)
                     )),
-                    SourceStatement::Operator(Operator::Write(
+                    Statement::Operator(Operator::Write(
                         ValueSource::Register(RegisterRef::User(0))
                     )),
-                    SourceStatement::Operator(Operator::Read(
-                        RegisterRef::User(1)
-                    )),
-                    SourceStatement::Operator(Operator::Set(
+                    Statement::Operator(Operator::Read(RegisterRef::User(1))),
+                    Statement::Operator(Operator::Set(
                         RegisterRef::User(1),
                         ValueSource::Const(3)
                     )),
-                    SourceStatement::Operator(Operator::Write(
+                    Statement::Operator(Operator::Write(
                         ValueSource::Register(RegisterRef::User(1))
                     )),
-                    SourceStatement::Operator(Operator::Read(
-                        RegisterRef::User(2)
-                    )),
-                    SourceStatement::Operator(Operator::Set(
+                    Statement::Operator(Operator::Read(RegisterRef::User(2))),
+                    Statement::Operator(Operator::Set(
                         RegisterRef::User(2),
                         ValueSource::Const(4)
                     )),
-                    SourceStatement::Operator(Operator::Write(
+                    Statement::Operator(Operator::Write(
                         ValueSource::Register(RegisterRef::User(2))
                     ))
                 ]

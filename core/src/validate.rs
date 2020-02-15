@@ -1,7 +1,7 @@
 use crate::{
     ast::{
-        Jump, Label, Operator, RegisterRef, SourceProgram, SourceStatement,
-        StackIdentifier, ValueSource,
+        source::{Program, Statement},
+        Jump, Label, Operator, RegisterRef, StackIdentifier, ValueSource,
     },
     error::{CompileError, CompileErrors},
     models::HardwareSpec,
@@ -126,12 +126,12 @@ impl Validate for Jump {
     }
 }
 
-impl Validate for SourceStatement {
+impl Validate for Statement {
     fn validate(&self, context: &Context) -> CompileErrors {
         match self {
-            SourceStatement::Label(_) => CompileErrors::none(),
-            SourceStatement::Operator(op) => op.validate(context),
-            SourceStatement::Jump(jump, label) => {
+            Statement::Label(_) => CompileErrors::none(),
+            Statement::Operator(op) => op.validate(context),
+            Statement::Jump(jump, label) => {
                 jump.validate(context).chain(label.validate(context))
             }
         }
@@ -158,13 +158,11 @@ fn validate_writable(reg: &RegisterRef) -> CompileErrors {
 
 /// Collect all labels in the program into a set. Returns errors for any
 /// duplicate labels.
-fn collect_labels(
-    body: &[SourceStatement],
-) -> (HashSet<&Label>, CompileErrors) {
+fn collect_labels(body: &[Statement]) -> (HashSet<&Label>, CompileErrors) {
     let mut labels = HashSet::new();
     let mut errors = CompileErrors::none();
     for stmt in body {
-        if let SourceStatement::Label(label) = stmt {
+        if let Statement::Label(label) = stmt {
             // insert returns false if the value was already present
             if !labels.insert(label) {
                 errors.push(CompileError::DuplicateLabel(label.clone()));
@@ -177,7 +175,7 @@ fn collect_labels(
 /// Collects all the validation errors in all the instructions in the body.
 fn validate_body(
     hardware_spec: &HardwareSpec,
-    body: &[SourceStatement],
+    body: &[Statement],
 ) -> CompileErrors {
     let (labels, errors) = collect_labels(body);
     let context = Context {
@@ -190,7 +188,7 @@ fn validate_body(
         .fold(errors, |acc, stmt| acc.chain(stmt.validate(&context)))
 }
 
-impl Compiler<SourceProgram> {
+impl Compiler<Program> {
     /// Performs all possible static validation on the program. The
     /// hardware is needed to determine what values and references
     /// are valid. If any errors occur, `Err` will be returned with all the
@@ -198,7 +196,7 @@ impl Compiler<SourceProgram> {
     pub fn validate(
         self,
         hardware_spec: &HardwareSpec,
-    ) -> Result<Compiler<SourceProgram>, CompileErrors> {
+    ) -> Result<Compiler<Program>, CompileErrors> {
         validate_body(hardware_spec, &self.0.body)?;
         Ok(Compiler(self.0))
     }

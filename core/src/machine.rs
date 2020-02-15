@@ -1,7 +1,7 @@
 use crate::{
     ast::{
-        Instruction, Jump, LangValue, Operator, RegisterRef, StackIdentifier,
-        ValueSource,
+        compiled::{Instruction, Program},
+        Jump, LangValue, Operator, RegisterRef, StackIdentifier, ValueSource,
     },
     consts::MAX_CYCLE_COUNT,
     debug,
@@ -27,7 +27,7 @@ pub struct Machine {
     // serialization. We store these ourselves instead of keeping references
     // to the originals because it just makes life a lot easier.
     #[serde(skip)]
-    program: Vec<Instruction>,
+    program: Program,
     #[serde(skip)]
     expected_output: Vec<LangValue>,
     #[serde(skip)]
@@ -59,7 +59,7 @@ impl Machine {
     pub fn new(
         hardware_spec: &HardwareSpec,
         program_spec: &ProgramSpec,
-        program: Vec<Instruction>,
+        program: Program,
     ) -> Self {
         Self {
             // Static data
@@ -174,6 +174,7 @@ impl Machine {
 
         let instr = *self
             .program
+            .instructions
             .get(self.program_counter)
             .ok_or(RuntimeError::ProgramTerminated)?;
 
@@ -280,7 +281,7 @@ impl Machine {
 
     /// Checks if this machine has finished executing.
     pub fn is_complete(&self) -> bool {
-        self.program_counter >= self.program.len()
+        self.program_counter >= self.program.instructions.len()
     }
 
     /// Checks if this machine has completed successfully. The criteria are:
