@@ -12,7 +12,7 @@ use diesel::{
     PgConnection,
 };
 use failure::Fallible;
-use gdlk::{compile, HardwareSpec, ProgramSpec};
+use gdlk::{compile_and_allocate, HardwareSpec, ProgramSpec};
 use std::{fs, path::PathBuf, process};
 use structopt::StructOpt;
 
@@ -101,7 +101,8 @@ fn run(opt: Opt) -> Fallible<()> {
             let source = fs::read_to_string(source_path)?;
 
             // Compile and execute
-            let mut machine = compile(&hardware_spec, &program_spec, source)?;
+            let mut machine =
+                compile_and_allocate(&hardware_spec, &program_spec, source)?;
             let success = machine.execute_all()?;
 
             println!(

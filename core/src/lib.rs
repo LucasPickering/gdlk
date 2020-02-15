@@ -5,7 +5,7 @@
 //! [ProgramSpec](ProgramSpec), which defines the inputs and expected outputs.
 //!
 //! ```
-//! use gdlk::{HardwareSpec, ProgramSpec, compile};
+//! use gdlk::{HardwareSpec, ProgramSpec, compile_and_allocate};
 //!
 //! let hardware_spec = HardwareSpec {
 //!     num_registers: 1,
@@ -22,7 +22,7 @@
 //! WRITE RX0
 //! ";
 //!
-//! let mut machine = compile(
+//! let mut machine = compile_and_allocate(
 //!     &hardware_spec,
 //!     &program_spec,
 //!     source.into(),
@@ -56,18 +56,15 @@ use ast::compiled::Program;
 use std::fmt::Debug;
 use validator::Validate;
 
-/// Compiles the given source program, with the given specs, into a
-/// [Machine](Machine). The returned machine can then be executed.
+/// Compiles a source program, under the constraints of a hardware spec. Returns
+/// the compiled program, or any errors that occurred.
 pub fn compile(
     hardware_spec: &HardwareSpec,
-    program_spec: &ProgramSpec,
     source: String,
-) -> Result<Machine, CompileErrors> {
-    // Validate the specs, so we know that shit is clean
+) -> Result<Program, CompileErrors> {
     hardware_spec
         .validate()
         .map_err(CompileError::InvalidSpec)?;
-    program_spec.validate().map_err(CompileError::InvalidSpec)?;
 
     Ok(Compiler::new(source)
         .debug()
@@ -77,7 +74,23 @@ pub fn compile(
         .debug()
         .delabel()
         .debug()
-        .compile(hardware_spec, program_spec))
+        .0)
+}
+
+/// Compiles a source program, under a hardware spec. Then, allocates a new
+/// <Machine> to execute that program. The returned machine can then be
+/// executed.
+pub fn compile_and_allocate(
+    hardware_spec: &HardwareSpec,
+    program_spec: &ProgramSpec,
+    source: String,
+) -> Result<Machine, CompileErrors> {
+    program_spec.validate().map_err(CompileError::InvalidSpec)?;
+    Ok(Machine::new(
+        hardware_spec,
+        program_spec,
+        compile(hardware_spec, source)?,
+    ))
 }
 
 /// Struct to contain all compiler pipeline steps. By having this on a struct,
@@ -111,19 +124,5 @@ impl Compiler<String> {
     /// a fresh compiler pipeline.
     pub fn new(source: String) -> Self {
         Compiler(source)
-    }
-}
-
-impl Compiler<Program> {
-    /// Alocates a <Machine> for a compiled program. This takes a hardware spec,
-    /// which the program will execute on, and a program spec, which the
-    /// program will try to match, and builds a machine around the program so
-    /// that it can be executed.
-    pub fn compile(
-        self,
-        hardware_spec: &HardwareSpec,
-        program_spec: &ProgramSpec,
-    ) -> Machine {
-        Machine::new(hardware_spec, program_spec, self.0)
     }
 }
