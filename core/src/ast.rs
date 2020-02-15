@@ -1,5 +1,5 @@
 //! This module holds all the different types that can appear in our ASTs. There
-//! should be little to no functionality implemented here, just basic structs.
+//! is no functionality implemented here, just basic types.
 
 use crate::consts::{REG_INPUT_LEN, REG_STACK_LEN_PREFIX, REG_USER_PREFIX};
 use serde::Serialize;
@@ -110,33 +110,49 @@ pub enum Jump {
     Jgz(ValueSource),
 }
 
-/// A statement is one complete parseable element. Generally, each statement
-/// goes on its own line in the source.
-#[derive(Clone, Debug, PartialEq)]
-pub enum SourceStatement {
-    Label(Label),
-    Operator(Operator),
-    /// Jump to the given label
-    Jump(Jump, Label),
+/// All types unique to the source AST live here
+pub mod source {
+    use super::*;
+
+    /// A statement is one complete parseable element. Generally, each statement
+    /// goes on its own line in the source.
+    #[derive(Clone, Debug, PartialEq)]
+    pub enum Statement {
+        Label(Label),
+        Operator(Operator),
+        /// Jump to the given label
+        Jump(Jump, Label),
+    }
+
+    /// A parsed and untransformed program
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Program {
+        pub body: Vec<Statement>,
+    }
 }
 
-/// A parsed and untransformed program
-#[derive(Clone, Debug, PartialEq)]
-pub struct SourceProgram {
-    pub body: Vec<SourceStatement>,
-}
+/// All types unique to the compiled AST live here
+pub mod compiled {
+    use super::*;
 
-/// An executable instruction. These are the instructions that machines actually
-/// execute.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Instruction {
-    Operator(Operator),
-    /// These jumps are relative: In `Jmp(n)`, `n` is relative to the current
-    /// program counter.
-    /// - `Jmp(-1)` repeats the previous instruction
-    /// - `Jmp(0)` repeats this instruction (so create an infinite loop)
-    /// - `Jmp(1)` goes to the next instruction (a no-op)
-    /// - `Jmp(2)` skips the next instruction
-    /// - etc...
-    Jump(Jump, isize),
+    /// An executable instruction. These are the instructions that machines
+    /// actually execute.
+    #[derive(Copy, Clone, Debug, PartialEq)]
+    pub enum Instruction {
+        Operator(Operator),
+        /// These jumps are relative: In `Jmp(n)`, `n` is relative to the
+        /// current program counter.
+        /// - `Jmp(-1)` repeats the previous instruction
+        /// - `Jmp(0)` repeats this instruction (so create an infinite loop)
+        /// - `Jmp(1)` goes to the next instruction (a no-op)
+        /// - `Jmp(2)` skips the next instruction
+        /// - etc...
+        Jump(Jump, isize),
+    }
+
+    /// A compiled program, ready to be executed
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Program {
+        pub instructions: Vec<Instruction>,
+    }
 }
