@@ -7,6 +7,7 @@ import itertools
 import os
 import socketserver
 import subprocess
+import sys
 
 DB_SERVICE = "db"
 API_SERVICE = "api"
@@ -244,7 +245,11 @@ def main():
     argd = vars(args)
     func = argd.pop("func")
     argd.pop("cmd")  # Don't need this one
-    func(**argd)
+    try:
+        func(**argd)
+    except subprocess.CalledProcessError as e:
+        print(str(e), file=sys.stderr)
+        exit(e.returncode)
 
 
 if __name__ == "__main__":
