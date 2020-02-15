@@ -3,7 +3,7 @@
 //! outcome.
 
 use gdlk::{
-    ast::LangValue, compile, HardwareSpec, Machine, ProgramSpec,
+    ast::LangValue, compile_and_allocate, HardwareSpec, Machine, ProgramSpec,
     MAX_CYCLE_COUNT,
 };
 
@@ -17,7 +17,8 @@ fn execute_expect_success(
 ) -> Machine {
     // Compile from hardware+src
     let mut machine =
-        compile(&hardware_spec, &program_spec, src.into()).unwrap();
+        compile_and_allocate(&hardware_spec, &program_spec, src.into())
+            .unwrap();
 
     // Execute to completion
     let success = machine.execute_all().unwrap();

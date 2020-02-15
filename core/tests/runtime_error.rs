@@ -1,7 +1,7 @@
 //! Integration tests for GDLK that expect compile errors. The programs in
 //! these tests should all fail during compilation.
 
-use gdlk::{compile, HardwareSpec, ProgramSpec};
+use gdlk::{compile_and_allocate, HardwareSpec, ProgramSpec};
 
 /// Compiles the program for the given hardware, executes it under the given
 /// program spec, and expects a runtime error. Panics if the program executes
@@ -14,7 +14,8 @@ fn expect_runtime_error(
 ) {
     // Compile from hardware+src
     let mut machine =
-        compile(&hardware_spec, &program_spec, src.into()).unwrap();
+        compile_and_allocate(&hardware_spec, &program_spec, src.into())
+            .unwrap();
 
     // Execute to completion
     let actual_error = machine.execute_all().unwrap_err();

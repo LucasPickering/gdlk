@@ -4,7 +4,8 @@ use actix_web::{get, web, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
 use diesel::{prelude::*, PgConnection};
 use gdlk::{
-    compile, CompileErrors, HardwareSpec, Machine, ProgramSpec, RuntimeError,
+    compile_and_allocate, CompileErrors, HardwareSpec, Machine, ProgramSpec,
+    RuntimeError,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -135,7 +136,7 @@ impl ProgramWebsocket {
         Ok(match socket_msg {
             IncomingEvent::Compile { source } => {
                 // Compile the program into a machine
-                self.machine = Some(compile(
+                self.machine = Some(compile_and_allocate(
                     &self.hardware_spec,
                     &self.program_spec,
                     source,
