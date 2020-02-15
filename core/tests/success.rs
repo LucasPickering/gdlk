@@ -135,17 +135,12 @@ fn test_cmp() {
 
 #[test]
 fn test_jumps() {
-    let hw_spec = HardwareSpec {
-        num_registers: 1,
-        num_stacks: 0,
-        max_stack_length: 0,
-    };
     let program_spec = ProgramSpec {
         input: vec![],
         expected_output: vec![1],
     };
     execute_expect_success(
-        hw_spec.clone(),
+        HardwareSpec::default(),
         program_spec.clone(),
         "
         JMP GOOD
@@ -156,7 +151,7 @@ fn test_jumps() {
         ",
     );
     execute_expect_success(
-        hw_spec.clone(),
+        HardwareSpec::default(),
         program_spec.clone(),
         "
         JEZ 0 GOOD
@@ -168,7 +163,7 @@ fn test_jumps() {
         ",
     );
     execute_expect_success(
-        hw_spec.clone(),
+        HardwareSpec::default(),
         program_spec.clone(),
         "
         JNZ 1 GOOD
@@ -180,7 +175,7 @@ fn test_jumps() {
         ",
     );
     execute_expect_success(
-        hw_spec.clone(),
+        HardwareSpec::default(),
         program_spec.clone(),
         "
         JLZ -10 GOOD
@@ -192,7 +187,7 @@ fn test_jumps() {
         ",
     );
     execute_expect_success(
-        hw_spec,
+        HardwareSpec::default(),
         program_spec,
         "
         JGZ 3 GOOD

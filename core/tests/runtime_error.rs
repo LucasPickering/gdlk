@@ -22,8 +22,51 @@ fn expect_runtime_error(
 }
 
 #[test]
+fn test_stack_overflow() {
+    expect_runtime_error(
+        HardwareSpec {
+            num_registers: 1,
+            num_stacks: 1,
+            max_stack_length: 3,
+        },
+        ProgramSpec::default(),
+        "
+        SET RX0 4
+        START:
+        PUSH RX0 S0
+        SUB RX0 1
+        JGZ RX0 START
+        ",
+        "Overflow on stack S0",
+    );
+}
+
+#[test]
+fn test_empty_input() {
+    expect_runtime_error(
+        HardwareSpec::default(),
+        ProgramSpec::default(),
+        "READ RX0",
+        "No input available to read",
+    );
+}
+
+#[test]
+fn test_empty_stack() {
+    expect_runtime_error(
+        HardwareSpec {
+            num_registers: 1,
+            num_stacks: 1,
+            max_stack_length: 3,
+        },
+        ProgramSpec::default(),
+        "POP S0 RX0",
+        "Cannot pop from empty stack S0",
+    );
+}
+
+#[test]
 fn test_exceed_max_cycle_count() {
-    // We can exit successfully with exactly the maximum number of cycles
     expect_runtime_error(
         HardwareSpec::default(),
         ProgramSpec {
