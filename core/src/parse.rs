@@ -235,8 +235,7 @@ fn line_comment(input: &str) -> ParseResult<'_, &str> {
     )(input)
 }
 
-/// Parses one source statement. This consumes surrounding spaces/comments, but
-/// not the line ending.
+/// Parses one source statement, not including surrounding whitespace.
 fn statement(input: &str) -> ParseResult<'_, Statement> {
     context("Statement", alt((label_stmt, operator_stmt, jump_stmt)))(input)
 }
