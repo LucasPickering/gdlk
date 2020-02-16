@@ -17,19 +17,6 @@ fn expect_compile_errors(
 }
 
 #[test]
-fn test_parse_empty_file() {
-    expect_compile_errors(
-        HardwareSpec {
-            num_registers: 1,
-            num_stacks: 0,
-            max_stack_length: 0,
-        },
-        "",
-        &["Parse error: 0: in Alpha, got empty input\n\n"],
-    );
-}
-
-#[test]
 fn test_parse_no_newline_after_inst() {
     // TODO: make this error nicer
     expect_compile_errors(
@@ -39,7 +26,7 @@ fn test_parse_no_newline_after_inst() {
             max_stack_length: 0,
         },
         "READ RX1 WRITE RX2",
-        &["Parse error: Invalid keyword:  WRITE RX2"],
+        &["Parse error: Invalid keyword: WRITE RX2"],
     );
 }
 
