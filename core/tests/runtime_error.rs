@@ -14,8 +14,7 @@ fn expect_runtime_error(
 ) {
     // Compile from hardware+src
     let mut machine =
-        compile_and_allocate(&hardware_spec, &program_spec, src.into())
-            .unwrap();
+        compile_and_allocate(&hardware_spec, &program_spec, src).unwrap();
 
     // Execute to completion
     let actual_error = machine.execute_all().unwrap_err();
@@ -38,7 +37,7 @@ fn test_stack_overflow() {
         SUB RX0 1
         JGZ RX0 START
         ",
-        "Overflow on stack S0",
+        "Overflow on stack @ 4:18 to 4:20",
     );
 }
 
@@ -62,7 +61,7 @@ fn test_empty_stack() {
         },
         ProgramSpec::default(),
         "POP S0 RX0",
-        "Cannot pop from empty stack S0",
+        "Cannot pop from empty stack @ 1:5 to 1:7",
     );
 }
 

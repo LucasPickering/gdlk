@@ -139,7 +139,7 @@ impl ProgramWebsocket {
                 self.machine = Some(compile_and_allocate(
                     &self.hardware_spec,
                     &self.program_spec,
-                    source,
+                    &source,
                 )?);
 
                 // we need this fuckery cause lol borrow checker

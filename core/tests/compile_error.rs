@@ -12,7 +12,7 @@ fn expect_compile_errors(
     expected_errors: &[&str],
 ) {
     // Compile from hardware+src
-    let actual_errors = compile(&hardware_spec, src.into()).unwrap_err();
+    let actual_errors = compile(&hardware_spec, src).unwrap_err();
     assert_eq!(format!("{}", actual_errors), expected_errors.join("\n"));
 }
 
@@ -49,14 +49,14 @@ fn test_invalid_user_reg_ref() {
         POP S0 RX8
         ",
         &[
-            "Invalid reference to register RX1",
-            "Invalid reference to register RX2",
-            "Invalid reference to register RX3",
-            "Invalid reference to register RX4",
-            "Invalid reference to register RX5",
-            "Invalid reference to register RX6",
-            "Invalid reference to register RX7",
-            "Invalid reference to register RX8",
+            "Invalid reference to register @ 2:14 to 2:17",
+            "Invalid reference to register @ 3:15 to 3:18",
+            "Invalid reference to register @ 4:13 to 4:16",
+            "Invalid reference to register @ 5:13 to 5:16",
+            "Invalid reference to register @ 6:13 to 6:16",
+            "Invalid reference to register @ 7:13 to 7:16",
+            "Invalid reference to register @ 8:14 to 8:17",
+            "Invalid reference to register @ 9:16 to 9:19",
         ],
     );
 }
@@ -72,7 +72,7 @@ fn test_invalid_stack_reg_ref() {
         "
         SET RX0 RS1
         ",
-        &["Invalid reference to register RS1"],
+        &["Invalid reference to register @ 2:17 to 2:20"],
     );
 }
 
@@ -89,8 +89,8 @@ fn test_invalid_stack_ref() {
         POP S2 RX0
         ",
         &[
-            "Invalid reference to stack S1",
-            "Invalid reference to stack S2",
+            "Invalid reference to stack @ 2:16 to 2:18",
+            "Invalid reference to stack @ 3:13 to 3:15",
         ],
     );
 }
@@ -108,8 +108,8 @@ fn test_unwritable_reg() {
         SET RS0 5
         ",
         &[
-            "Cannot write to read-only register RLI",
-            "Cannot write to read-only register RS0",
+            "Cannot write to read-only register @ 2:13 to 2:16",
+            "Cannot write to read-only register @ 3:13 to 3:16",
         ],
     );
 }
