@@ -1,4 +1,4 @@
-use crate::ast::{Label, RegisterRef, StackIdentifier};
+use crate::ast::{source::LabelDecl, Label, RegisterRef, SpanNode, StackRef};
 use failure::Fail;
 use serde::Serialize;
 use std::{
@@ -6,6 +6,8 @@ use std::{
     ops::Try,
 };
 use validator::ValidationErrors;
+
+// TODO re-work these error messages
 
 /// An error that occurs during compilation of a program. The error will be
 /// due to a flaw in the program. This indicates a user error, _not_ an internal
@@ -22,24 +24,24 @@ pub enum CompileError {
     ParseError(String),
 
     /// Referenced a user register with an invalid identifier
-    #[fail(display = "Invalid reference to register {}", 0)]
-    InvalidRegisterRef(RegisterRef),
+    #[fail(display = "Invalid reference to register @ {}", 0)]
+    InvalidRegisterRef(SpanNode<RegisterRef>),
 
     /// Referenced a stack with an invalid identifier
-    #[fail(display = "Invalid reference to stack S{}", 0)]
-    InvalidStackRef(StackIdentifier),
+    #[fail(display = "Invalid reference to stack @ {}", 0)]
+    InvalidStackRef(SpanNode<StackRef>),
 
     /// Tried to write to a read-only register
-    #[fail(display = "Cannot write to read-only register {}", 0)]
-    UnwritableRegister(RegisterRef),
+    #[fail(display = "Cannot write to read-only register @ {}", 0)]
+    UnwritableRegister(SpanNode<RegisterRef>),
 
     /// Defined a label more than once
-    #[fail(display = "Duplicate label {}", 0)]
-    DuplicateLabel(Label),
+    #[fail(display = "Duplicate label @ {}", 0)]
+    DuplicateLabel(SpanNode<LabelDecl>),
 
     /// Referenced a label that wasn't defined
-    #[fail(display = "Invalid reference to label {}", 0)]
-    InvalidLabel(Label),
+    #[fail(display = "Invalid reference to label @ {}", 0)]
+    InvalidLabel(SpanNode<Label>),
 }
 
 /// An error that occurs during execution of a program. The error will be
@@ -48,16 +50,16 @@ pub enum CompileError {
 #[derive(Debug, PartialEq, Fail, Serialize)]
 pub enum RuntimeError {
     /// Tried to push onto stack that is at capacity
-    #[fail(display = "Overflow on stack S{}", 0)]
-    StackOverflow(StackIdentifier),
+    #[fail(display = "Overflow on stack @ {}", 0)]
+    StackOverflow(SpanNode<StackRef>),
 
     /// READ attempted while input is empty
     #[fail(display = "No input available to read")]
     EmptyInput,
 
     /// POP attempted while stack is empty
-    #[fail(display = "Cannot pop from empty stack S{}", 0)]
-    EmptyStack(StackIdentifier),
+    #[fail(display = "Cannot pop from empty stack @ {}", 0)]
+    EmptyStack(SpanNode<StackRef>),
 
     /// Too many cycles in the program
     #[fail(display = "The maximum number of cycles has been reached")]

@@ -17,8 +17,7 @@ fn execute_expect_success(
 ) -> Machine {
     // Compile from hardware+src
     let mut machine =
-        compile_and_allocate(&hardware_spec, &program_spec, src.into())
-            .unwrap();
+        compile_and_allocate(&hardware_spec, &program_spec, src).unwrap();
 
     // Execute to completion
     let success = machine.execute_all().unwrap();

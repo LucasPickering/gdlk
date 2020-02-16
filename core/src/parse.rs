@@ -1,10 +1,9 @@
 use crate::{
     ast::{
-        source::{Program, Statement},
-        Jump, Label, LangValue, Operator, RegisterRef, StackIdentifier,
-        UserRegisterIdentifier, ValueSource,
+        source::{LabelDecl, Program, Statement},
+        Jump, Label, LangValue, Node, Operator, RegisterRef, Span, SpanNode,
+        StackId, StackRef, UserRegisterId, ValueSource,
     },
-    consts::{REG_INPUT_LEN, REG_STACK_LEN_PREFIX, REG_USER_PREFIX},
     error::CompileError,
     Compiler,
 };
@@ -13,18 +12,229 @@ use nom::{
     bytes::complete::{is_not, tag, tag_no_case, take_while1},
     character::complete::{char, digit1, line_ending, space0, space1},
     combinator::{all_consuming, cut, map, map_res, opt, recognize},
-    error::{
-        context, convert_error, ErrorKind, ParseError, VerboseError,
-        VerboseErrorKind,
-    },
+    error::{context, ErrorKind, ParseError, VerboseError, VerboseErrorKind},
     lib::std::ops::RangeTo,
     multi::many0,
-    sequence::{delimited, preceded, terminated, tuple},
-    AsChar, Compare, IResult, InputTake, InputTakeAtPosition, Slice,
+    sequence::{delimited, preceded, separated_pair, terminated, tuple},
+    AsChar, Compare, IResult, InputTake, InputTakeAtPosition, Offset, Slice,
 };
+use nom_locate::{position, LocatedSpan};
 use std::iter;
 
-type ParseResult<'a, T> = IResult<&'a str, T, VerboseError<&'a str>>;
+type RawSpan<'a> = LocatedSpan<&'a str>;
+type ParseResult<'a, T> = IResult<RawSpan<'a>, T, VerboseError<RawSpan<'a>>>;
+
+/// A trait for parsing into AST nodes. Any AST node that can be parsed from the
+/// source should implement this trait.
+trait Parse<'a>: Sized {
+    /// Attempt to parse the input into the AST node. This is generally not
+    /// called directly, only from `parse_node`. Generally, this does NOT parse
+    /// any surrounding whitespace, just the minimum amount of the input to
+    /// complete the node.
+    fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self>;
+
+    /// Attempt to parse the input into the AST node, and include source span
+    /// metadata as well.
+    fn parse_node(input: RawSpan<'a>) -> ParseResult<'a, SpanNode<Self>> {
+        let new_input = input; // need to copy so we can compare old pos vs new
+        let (i, value) = Self::parse(new_input)?;
+
+        let index = input.offset(&i);
+        let raw_span = input.slice(..index);
+        let (i, end_position) = position(i)?;
+
+        let span = Span {
+            start_line: raw_span.location_line() as usize,
+            start_col: raw_span.get_column(),
+            end_line: end_position.location_line() as usize,
+            end_col: end_position.get_column(),
+        };
+        Ok((i, Node(value, span)))
+    }
+}
+
+// covers StackId and UserRegisterId
+impl<'a> Parse<'a> for usize {
+    fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
+        map_res(digit1, |s: RawSpan| s.fragment().parse::<usize>())(input)
+    }
+}
+
+// covers StackId and UserRegisterId
+impl<'a> Parse<'a> for LangValue {
+    fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
+        map_res(recognize(tuple((opt(char('-')), digit1))), |s: RawSpan| {
+            s.fragment().parse::<LangValue>()
+        })(input)
+    }
+}
+
+impl<'a> Parse<'a> for Label {
+    fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
+        context(
+            "Label",
+            map(
+                take_while1(|c: char| c.is_alphanumeric() || c == '_'),
+                |s: RawSpan| Label::from(*s.fragment()),
+            ),
+        )(input)
+    }
+}
+
+impl<'a> Parse<'a> for LabelDecl {
+    fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
+        map(terminated(Label::parse, tag(":")), LabelDecl)(input)
+    }
+}
+
+impl<'a> Parse<'a> for StackRef {
+    fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
+        context(
+            "Stack",
+            map(preceded(tag_no_case("S"), StackId::parse), StackRef),
+        )(input)
+    }
+}
+
+impl<'a> Parse<'a> for RegisterRef {
+    fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
+        context(
+            "Register",
+            alt((
+                // "RLI" => RegisterRef::InputLength
+                map(tag_no_case("RLI"), |_| RegisterRef::InputLength),
+                // "RSx" => RegisterRef::StackLength(x)
+                map(
+                    preceded(tag_no_case("RS"), cut(StackId::parse)),
+                    RegisterRef::StackLength,
+                ),
+                // "RXx" => RegisterRef::User(x)
+                map(
+                    preceded(tag_no_case("RX"), cut(UserRegisterId::parse)),
+                    RegisterRef::User,
+                ),
+            )),
+        )(input)
+    }
+}
+
+impl<'a> Parse<'a> for ValueSource<Span> {
+    fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
+        alt((
+            // "1" => const value
+            map(LangValue::parse_node, ValueSource::Const),
+            // "RX1" => register
+            map(RegisterRef::parse_node, ValueSource::Register),
+        ))(input)
+    }
+}
+
+impl<'a> Parse<'a> for Operator<Span> {
+    fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
+        alt((
+            tag_with_args(
+                "READ",
+                one_arg(RegisterRef::parse_node),
+                Operator::Read,
+            ),
+            tag_with_args(
+                "WRITE",
+                one_arg(ValueSource::parse_node),
+                Operator::Write,
+            ),
+            tag_with_args(
+                "SET",
+                two_args(RegisterRef::parse_node, ValueSource::parse_node),
+                |(dst, src)| Operator::Set(dst, src),
+            ),
+            tag_with_args(
+                "ADD",
+                two_args(RegisterRef::parse_node, ValueSource::parse_node),
+                |(dst, src)| Operator::Add(dst, src),
+            ),
+            tag_with_args(
+                "SUB",
+                two_args(RegisterRef::parse_node, ValueSource::parse_node),
+                |(dst, src)| Operator::Sub(dst, src),
+            ),
+            tag_with_args(
+                "MUL",
+                two_args(RegisterRef::parse_node, ValueSource::parse_node),
+                |(dst, src)| Operator::Mul(dst, src),
+            ),
+            tag_with_args(
+                "CMP",
+                three_args(
+                    RegisterRef::parse_node,
+                    ValueSource::parse_node,
+                    ValueSource::parse_node,
+                ),
+                |(dst, src_1, src_2)| Operator::Cmp(dst, src_1, src_2),
+            ),
+            tag_with_args(
+                "PUSH",
+                two_args(ValueSource::parse_node, StackRef::parse_node),
+                |(src, stack)| Operator::Push(src, stack),
+            ),
+            tag_with_args(
+                "POP",
+                two_args(StackRef::parse_node, RegisterRef::parse_node),
+                |(stack, dst)| Operator::Pop(stack, dst),
+            ),
+        ))(input)
+    }
+}
+
+impl<'a> Parse<'a> for Jump<Span> {
+    fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
+        alt((
+            map(tag_no_case("JMP"), |_| Jump::Jmp),
+            tag_with_args("JEZ", one_arg(ValueSource::parse_node), Jump::Jez),
+            tag_with_args("JNZ", one_arg(ValueSource::parse_node), Jump::Jnz),
+            tag_with_args("JGZ", one_arg(ValueSource::parse_node), Jump::Jgz),
+            tag_with_args("JLZ", one_arg(ValueSource::parse_node), Jump::Jlz),
+        ))(input)
+    }
+}
+
+impl<'a> Parse<'a> for Statement<Span> {
+    fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
+        context(
+            "Statement",
+            alt((
+                map(LabelDecl::parse_node, Statement::Label),
+                map(Operator::parse_node, Statement::Operator),
+                // semi-hack, necessary because of how the AST is organized to
+                // share code between source and compiled
+                map(
+                    // TODO make the arg parser more generic for this
+                    separated_pair(Jump::parse_node, space1, Label::parse_node),
+                    |(jmp, lbl)| Statement::Jump(jmp, lbl),
+                ),
+            )),
+        )(input)
+    }
+}
+
+impl<'a> Parse<'a> for Program<Span> {
+    fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
+        map(
+            // separated_list doesn't work properly so we have to do this
+            all_consuming(tuple((
+                many0(terminated(line, line_ending)),
+                opt(line),
+            ))),
+            // filter out None lines
+            |(lines, last_line)| Program {
+                body: lines
+                    .into_iter()
+                    .chain(iter::once(last_line.unwrap_or(None)))
+                    .filter_map(std::convert::identity)
+                    .collect(),
+            },
+        )(input)
+    }
+}
 
 // ===== Combinators =====
 
@@ -96,177 +306,27 @@ where
 
 // ===== Parsers =====
 
-/// Parses a register identifer, something like "RX0". Does not parse any
-/// whitespace around it.
-fn reg_ident(input: &str) -> ParseResult<'_, RegisterRef> {
-    let (input, val) = context(
-        "Register",
-        alt((
-            // "RLI" => RegisterRef::InputLength
-            map(tag_no_case(REG_INPUT_LEN), |_| RegisterRef::InputLength),
-            // "RSx" => RegisterRef::StackLength(x)
-            preceded(
-                tag_no_case(REG_STACK_LEN_PREFIX),
-                cut(map_res(digit1, |s: &str| {
-                    s.parse::<StackIdentifier>().map(RegisterRef::StackLength)
-                })),
-            ),
-            // "RXx" => RegisterRef::User(x)
-            preceded(
-                tag_no_case(REG_USER_PREFIX),
-                cut(map_res(digit1, |s: &str| {
-                    s.parse::<UserRegisterIdentifier>().map(RegisterRef::User)
-                })),
-            ),
-        )),
-    )(input)?;
-    Ok((input, val))
-}
-
-/// Parses a stack identifier, like "S1", not including surrounding  whitespace.
-fn stack_ident(input: &str) -> ParseResult<'_, StackIdentifier> {
-    preceded(
-        tag_no_case("S"),
-        map_res(digit1, |s: &str| s.parse::<StackIdentifier>()),
-    )(input)
-}
-
-/// Parses a `LangValue`, like "10" or "-3", not including any surrounding
-/// whitespace.
-fn lang_value(input: &str) -> ParseResult<'_, LangValue> {
-    map_res(recognize(tuple((opt(char('-')), digit1))), |s: &str| {
-        s.parse::<LangValue>()
-    })(input)
-}
-
-/// Parses either a `LangValue` or `Register`.
-fn value_source(input: &str) -> ParseResult<'_, ValueSource> {
-    alt((
-        // "1" => ValueSource::Const(1)
-        map(lang_value, ValueSource::Const),
-        // "RX1" => ValueSource::Register(1)
-        map(reg_ident, ValueSource::Register),
-    ))(input)
-}
-
-/// Parses a label (either declaration or usage), NOT including the trailing
-/// colon.
-fn label(input: &str) -> ParseResult<'_, Label> {
-    map(
-        take_while1(|c: char| c.is_alphanumeric() || c == '_'),
-        Label::from,
-    )(input)
-}
-
-/// Matches a label statement (i.e. label declaration).
-fn label_stmt(input: &str) -> ParseResult<'_, Statement> {
-    map(terminated(label, tag(":")), Statement::Label)(input)
-}
-
-fn operator_stmt(input: &str) -> ParseResult<'_, Statement> {
-    map(
-        alt((
-            tag_with_args("READ", one_arg(reg_ident), Operator::Read),
-            tag_with_args("WRITE", one_arg(value_source), Operator::Write),
-            tag_with_args(
-                "SET",
-                two_args(reg_ident, value_source),
-                |(dst, src)| Operator::Set(dst, src),
-            ),
-            tag_with_args(
-                "ADD",
-                two_args(reg_ident, value_source),
-                |(dst, src)| Operator::Add(dst, src),
-            ),
-            tag_with_args(
-                "SUB",
-                two_args(reg_ident, value_source),
-                |(dst, src)| Operator::Sub(dst, src),
-            ),
-            tag_with_args(
-                "MUL",
-                two_args(reg_ident, value_source),
-                |(dst, src)| Operator::Mul(dst, src),
-            ),
-            tag_with_args(
-                "CMP",
-                three_args(reg_ident, value_source, value_source),
-                |(dst, src_1, src_2)| Operator::Cmp(dst, src_1, src_2),
-            ),
-            tag_with_args(
-                "PUSH",
-                two_args(value_source, stack_ident),
-                |(src, stack)| Operator::Push(src, stack),
-            ),
-            tag_with_args(
-                "POP",
-                two_args(stack_ident, reg_ident),
-                |(stack, dst)| Operator::Pop(stack, dst),
-            ),
-        )),
-        Statement::Operator,
-    )(input)
-}
-
-fn jump_stmt(input: &str) -> ParseResult<'_, Statement> {
-    alt((
-        tag_with_args("JMP", one_arg(label), |l| Statement::Jump(Jump::Jmp, l)),
-        tag_with_args("JEZ", two_args(value_source, label), |(src, l)| {
-            Statement::Jump(Jump::Jez(src), l)
-        }),
-        tag_with_args("JNZ", two_args(value_source, label), |(src, l)| {
-            Statement::Jump(Jump::Jnz(src), l)
-        }),
-        tag_with_args("JGZ", two_args(value_source, label), |(src, l)| {
-            Statement::Jump(Jump::Jgz(src), l)
-        }),
-        tag_with_args("JLZ", two_args(value_source, label), |(src, l)| {
-            Statement::Jump(Jump::Jlz(src), l)
-        }),
-    ))(input)
-}
-
 /// Parses a line comment, which starts with a ; and runs to the end of the
 /// line. This terminates at the line ending, but does _not_ consume it.
-fn line_comment(input: &str) -> ParseResult<'_, &str> {
+fn line_comment(input: RawSpan) -> ParseResult<'_, ()> {
     map(
         context("Comment", preceded(char(';'), many0(is_not("\r\n")))),
-        |_| "", // throw the comment away
+        |_| (), // throw the comment away
     )(input)
-}
-
-/// Parses one source statement, not including surrounding whitespace.
-fn statement(input: &str) -> ParseResult<'_, Statement> {
-    context("Statement", alt((label_stmt, operator_stmt, jump_stmt)))(input)
 }
 
 /// Parse a single line, not including the line ending.
-fn line(input: &str) -> ParseResult<'_, Option<Statement>> {
-    context(
-        "Line",
-        delimited(space0, opt(statement), tuple((space0, opt(line_comment)))),
+fn line(input: RawSpan) -> ParseResult<'_, Option<SpanNode<Statement<Span>>>> {
+    delimited(
+        space0,
+        opt(Statement::parse_node),
+        tuple((space0, opt(line_comment))),
     )(input)
 }
 
-/// Parse a full program
-fn parse_gdlk(input: &str) -> ParseResult<'_, Vec<Statement>> {
-    map(
-        // separated_list doesn't work properly so we have to do this
-        all_consuming(tuple((many0(terminated(line, line_ending)), opt(line)))),
-        // filter out None lines
-        |(lines, last_line)| {
-            lines
-                .into_iter()
-                .chain(iter::once(last_line.unwrap_or(None)))
-                .filter_map(std::convert::identity)
-                .collect()
-        },
-    )(input)
-}
-
-fn parse(input: &str) -> Result<Vec<Statement>, CompileError> {
-    match parse_gdlk(input) {
-        Ok((_, body)) => Ok(body),
+fn parse(input: &str) -> Result<Program<Span>, CompileError> {
+    match Program::parse(RawSpan::new(input)) {
+        Ok((_, program)) => Ok(program),
         Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
             match e.errors.as_slice() {
                 [(substring, VerboseErrorKind::Nom(ErrorKind::Eof)), ..] => {
@@ -280,20 +340,19 @@ fn parse(input: &str) -> Result<Vec<Statement>, CompileError> {
                         substring
                     )))
                 }
-                _ => Err(CompileError::ParseError(convert_error(&input, e))),
+                // _ => Err(CompileError::ParseError(convert_error(&input, e))),
+                _ => Err(CompileError::ParseError("asdf".into())),
             }
         }
-        Err(nom::Err::Incomplete(_needed)) => {
-            // TODO: better ass
-            Err(CompileError::ParseError("ass".to_string()))
-        }
+        // only in for streaming mode
+        Err(nom::Err::Incomplete(_needed)) => unreachable!(),
     }
 }
 
-impl Compiler<String> {
+impl<'a> Compiler<&'a str> {
     /// Parses source code from the given input, into an abstract syntax tree.
-    pub fn parse(self) -> Result<Compiler<Program>, CompileError> {
-        parse(&self.0).map(|stmts| Compiler(Program { body: stmts }))
+    pub fn parse(self) -> Result<Compiler<Program<Span>>, CompileError> {
+        parse(self.0).map(Compiler)
     }
 }
 
@@ -301,329 +360,550 @@ impl Compiler<String> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_parse_line() {
-        assert_eq!(line(""), Ok(("", None)));
-        assert_eq!(line("    "), Ok(("", None)));
-        assert_eq!(line(" ; comment"), Ok(("", None)));
-        assert_eq!(
-            line("  READ RX0 ;comment"),
-            Ok((
-                "",
-                Some(Statement::Operator(Operator::Read(RegisterRef::User(0))))
-            ))
-        );
-        assert_eq!(line(" ; comment\nMORE"), Ok(("\nMORE", None)));
+    // Helper to make it a bit easier to create spans for tests
+    fn span(
+        start_line: usize,
+        start_col: usize,
+        end_line: usize,
+        end_col: usize,
+    ) -> Span {
+        Span {
+            start_line,
+            start_col,
+            end_line,
+            end_col,
+        }
     }
 
     #[test]
     fn test_whitespace() {
-        assert_eq!(parse(""), Ok(vec![]));
-        assert_eq!(parse("\n\n\n"), Ok(vec![]));
-        assert_eq!(parse("  "), Ok(vec![]));
-        assert_eq!(parse("  \n  "), Ok(vec![]));
+        assert_eq!(parse("").unwrap().body, vec![]);
+        assert_eq!(parse("\n\n\n").unwrap().body, vec![]);
+        assert_eq!(parse("  ").unwrap().body, vec![]);
+        assert_eq!(parse("  \n  ").unwrap().body, vec![]);
     }
 
     #[test]
     fn test_parse_labels() {
         assert_eq!(
-            parse_gdlk(
+            parse(
                 "
                 LBL:
                 LBL1:
                 LBL_WITH_UNDERSCORE:
                 1LBL:
                 "
-            ),
-            Ok((
-                "",
-                vec![
-                    Statement::Label("LBL".into()),
-                    Statement::Label("LBL1".into()),
-                    Statement::Label("LBL_WITH_UNDERSCORE".into()),
-                    Statement::Label("1LBL".into())
-                ]
-            ))
-        )
+            )
+            .unwrap()
+            .body,
+            vec![
+                Node(
+                    Statement::Label(Node(
+                        LabelDecl("LBL".into()),
+                        span(2, 17, 2, 21)
+                    )),
+                    span(2, 17, 2, 21)
+                ),
+                Node(
+                    Statement::Label(Node(
+                        LabelDecl("LBL1".into()),
+                        span(3, 17, 3, 22)
+                    )),
+                    span(3, 17, 3, 22)
+                ),
+                Node(
+                    Statement::Label(Node(
+                        LabelDecl("LBL_WITH_UNDERSCORE".into()),
+                        span(4, 17, 4, 37)
+                    )),
+                    span(4, 17, 4, 37)
+                ),
+                Node(
+                    Statement::Label(Node(
+                        LabelDecl("1LBL".into()),
+                        span(5, 17, 5, 22)
+                    )),
+                    span(5, 17, 5, 22)
+                ),
+            ]
+        );
     }
 
     #[test]
     fn test_parse_read_write() {
         assert_eq!(
-            parse_gdlk(
+            parse(
                 "
                 ReAd RX0
                 WrItE RX0
                 "
-            ),
-            Ok((
-                "",
-                vec![
-                    Statement::Operator(Operator::Read(RegisterRef::User(0))),
-                    Statement::Operator(Operator::Write(
-                        ValueSource::Register(RegisterRef::User(0))
-                    ))
-                ]
-            ))
-        )
+            )
+            .unwrap()
+            .body,
+            vec![
+                Node(
+                    Statement::Operator(Node(
+                        Operator::Read(Node(
+                            RegisterRef::User(0),
+                            span(2, 22, 2, 25)
+                        ),),
+                        span(2, 17, 2, 25)
+                    )),
+                    span(2, 17, 2, 25)
+                ),
+                Node(
+                    Statement::Operator(Node(
+                        Operator::Write(Node(
+                            ValueSource::Register(Node(
+                                RegisterRef::User(0),
+                                span(3, 23, 3, 26)
+                            )),
+                            span(3, 23, 3, 26)
+                        )),
+                        span(3, 17, 3, 26)
+                    )),
+                    span(3, 17, 3, 26)
+                )
+            ]
+        );
     }
 
     #[test]
     fn test_set_and_registers() {
         assert_eq!(
-            parse_gdlk(
+            parse(
                 "
                 Set RX1 4
                 SET RX1 RLI
                 SET RX1 RS0
                 "
-            ),
-            Ok((
-                "",
-                vec![
-                    Statement::Operator(Operator::Set(
-                        RegisterRef::User(1),
-                        ValueSource::Const(4)
-                    )),
-                    Statement::Operator(Operator::Set(
-                        RegisterRef::User(1),
-                        ValueSource::Register(RegisterRef::InputLength),
-                    )),
-                    Statement::Operator(Operator::Set(
-                        RegisterRef::User(1),
-                        ValueSource::Register(RegisterRef::StackLength(0)),
-                    )),
-                ]
-            ))
-        )
+            )
+            .unwrap()
+            .body,
+            vec![
+                Node(
+                    Statement::Operator(Node(
+                        Operator::Set(
+                            Node(RegisterRef::User(1), span(2, 21, 2, 24)),
+                            Node(
+                                ValueSource::Const(Node(4, span(2, 25, 2, 26))),
+                                span(2, 25, 2, 26)
+                            )
+                        ),
+                        span(2, 17, 2, 26)
+                    ),),
+                    span(2, 17, 2, 26)
+                ),
+                Node(
+                    Statement::Operator(Node(
+                        Operator::Set(
+                            Node(RegisterRef::User(1), span(3, 21, 3, 24)),
+                            Node(
+                                ValueSource::Register(Node(
+                                    RegisterRef::InputLength,
+                                    span(3, 25, 3, 28)
+                                ),),
+                                span(3, 25, 3, 28)
+                            )
+                        ),
+                        span(3, 17, 3, 28)
+                    ),),
+                    span(3, 17, 3, 28)
+                ),
+                Node(
+                    Statement::Operator(Node(
+                        Operator::Set(
+                            Node(RegisterRef::User(1), span(4, 21, 4, 24)),
+                            Node(
+                                ValueSource::Register(Node(
+                                    RegisterRef::StackLength(0),
+                                    span(4, 25, 4, 28)
+                                ),),
+                                span(4, 25, 4, 28)
+                            )
+                        ),
+                        span(4, 17, 4, 28)
+                    ),),
+                    span(4, 17, 4, 28)
+                ),
+            ]
+        );
     }
 
     #[test]
     fn test_add() {
         assert_eq!(
-            parse_gdlk("Add RX1 RX4"),
-            Ok((
-                "",
-                vec![Statement::Operator(Operator::Add(
-                    RegisterRef::User(1),
-                    ValueSource::Register(RegisterRef::User(4))
-                ))]
-            ))
-        )
+            parse("Add RX1 RX4").unwrap().body,
+            vec![Node(
+                Statement::Operator(Node(
+                    Operator::Add(
+                        Node(RegisterRef::User(1), span(1, 5, 1, 8)),
+                        Node(
+                            ValueSource::Register(Node(
+                                RegisterRef::User(4),
+                                span(1, 9, 1, 12)
+                            )),
+                            span(1, 9, 1, 12)
+                        )
+                    ),
+                    span(1, 1, 1, 12)
+                )),
+                span(1, 1, 1, 12)
+            )]
+        );
     }
 
     #[test]
     fn test_neg_literal() {
         assert_eq!(
-            parse_gdlk("Add RX1 -10"),
-            Ok((
-                "",
-                vec![Statement::Operator(Operator::Add(
-                    RegisterRef::User(1),
-                    ValueSource::Const(-10)
-                ))]
-            ))
-        )
+            parse("Add RX1 -10").unwrap().body,
+            vec![Node(
+                Statement::Operator(Node(
+                    Operator::Add(
+                        Node(RegisterRef::User(1), span(1, 5, 1, 8)),
+                        Node(
+                            ValueSource::Const(Node(-10, span(1, 9, 1, 12))),
+                            span(1, 9, 1, 12)
+                        )
+                    ),
+                    span(1, 1, 1, 12)
+                )),
+                span(1, 1, 1, 12)
+            )]
+        );
     }
 
     #[test]
     fn test_parse_lang_val_max() {
         let source = format!("Add RX1 {}", std::i32::MAX);
         assert_eq!(
-            parse_gdlk(source.as_str()),
-            Ok((
-                "",
-                vec![Statement::Operator(Operator::Add(
-                    RegisterRef::User(1),
-                    ValueSource::Const(std::i32::MAX)
-                ))]
-            ))
-        )
+            parse(&source).unwrap().body,
+            vec![Node(
+                Statement::Operator(Node(
+                    Operator::Add(
+                        Node(RegisterRef::User(1), span(1, 5, 1, 8)),
+                        Node(
+                            ValueSource::Const(Node(
+                                std::i32::MAX,
+                                span(1, 9, 1, 19)
+                            )),
+                            span(1, 9, 1, 19)
+                        )
+                    ),
+                    span(1, 1, 1, 19)
+                )),
+                span(1, 1, 1, 19)
+            )]
+        );
     }
 
     #[test]
     fn test_parse_lang_val_min() {
         let source = format!("Add RX1 {}", std::i32::MIN);
         assert_eq!(
-            parse_gdlk(source.as_str()),
-            Ok((
-                "",
-                vec![Statement::Operator(Operator::Add(
-                    RegisterRef::User(1),
-                    ValueSource::Const(std::i32::MIN)
-                ))]
-            ))
-        )
+            parse(&source).unwrap().body,
+            vec![Node(
+                Statement::Operator(Node(
+                    Operator::Add(
+                        Node(RegisterRef::User(1), span(1, 5, 1, 8)),
+                        Node(
+                            ValueSource::Const(Node(
+                                std::i32::MIN,
+                                span(1, 9, 1, 20)
+                            )),
+                            span(1, 9, 1, 20)
+                        )
+                    ),
+                    span(1, 1, 1, 20)
+                )),
+                span(1, 1, 1, 20)
+            )]
+        );
     }
 
     #[test]
     fn test_sub() {
         assert_eq!(
-            parse_gdlk("Sub RX1 RX4"),
-            Ok((
-                "",
-                vec![Statement::Operator(Operator::Sub(
-                    RegisterRef::User(1),
-                    ValueSource::Register(RegisterRef::User(4))
-                ))]
-            ))
-        )
+            parse("Sub RX1 RX4").unwrap().body,
+            vec![Node(
+                Statement::Operator(Node(
+                    Operator::Sub(
+                        Node(RegisterRef::User(1), span(1, 5, 1, 8)),
+                        Node(
+                            ValueSource::Register(Node(
+                                RegisterRef::User(4),
+                                span(1, 9, 1, 12)
+                            )),
+                            span(1, 9, 1, 12)
+                        )
+                    ),
+                    span(1, 1, 1, 12)
+                )),
+                span(1, 1, 1, 12)
+            )]
+        );
     }
 
     #[test]
     fn test_mul() {
         assert_eq!(
-            parse_gdlk("Mul rx1 rx0"),
-            Ok((
-                "",
-                vec![Statement::Operator(Operator::Mul(
-                    RegisterRef::User(1),
-                    ValueSource::Register(RegisterRef::User(0))
-                ))]
-            ))
-        )
+            parse("Mul RX1 RX4").unwrap().body,
+            vec![Node(
+                Statement::Operator(Node(
+                    Operator::Mul(
+                        Node(RegisterRef::User(1), span(1, 5, 1, 8)),
+                        Node(
+                            ValueSource::Register(Node(
+                                RegisterRef::User(4),
+                                span(1, 9, 1, 12)
+                            )),
+                            span(1, 9, 1, 12)
+                        )
+                    ),
+                    span(1, 1, 1, 12)
+                )),
+                span(1, 1, 1, 12)
+            )]
+        );
     }
 
     #[test]
     fn test_cmp() {
         assert_eq!(
-            parse_gdlk("CMP RX0 5 10"),
-            Ok((
-                "",
-                vec![Statement::Operator(Operator::Cmp(
-                    RegisterRef::User(0),
-                    ValueSource::Const(5),
-                    ValueSource::Const(10),
-                ))]
-            ))
-        )
+            parse("CMP RX0 5 10").unwrap().body,
+            vec![Node(
+                Statement::Operator(Node(
+                    Operator::Cmp(
+                        Node(RegisterRef::User(0), span(1, 5, 1, 8)),
+                        Node(
+                            ValueSource::Const(Node(5, span(1, 9, 1, 10))),
+                            span(1, 9, 1, 10)
+                        ),
+                        Node(
+                            ValueSource::Const(Node(10, span(1, 11, 1, 13))),
+                            span(1, 11, 1, 13)
+                        )
+                    ),
+                    span(1, 1, 1, 13)
+                )),
+                span(1, 1, 1, 13)
+            )]
+        );
     }
 
     #[test]
     fn test_push() {
         assert_eq!(
-            parse_gdlk("Push RX2 S4"),
-            Ok((
-                "",
-                vec![Statement::Operator(Operator::Push(
-                    ValueSource::Register(RegisterRef::User(2)),
-                    4
-                ))]
-            ))
-        )
+            parse("Push RX2 S4").unwrap().body,
+            vec![Node(
+                Statement::Operator(Node(
+                    Operator::Push(
+                        Node(
+                            ValueSource::Register(Node(
+                                RegisterRef::User(2),
+                                span(1, 6, 1, 9)
+                            )),
+                            span(1, 6, 1, 9)
+                        ),
+                        Node(StackRef(4), span(1, 10, 1, 12))
+                    ),
+                    span(1, 1, 1, 12)
+                )),
+                span(1, 1, 1, 12)
+            )]
+        );
     }
 
     #[test]
     fn test_pop() {
         assert_eq!(
-            parse_gdlk("Pop S4 RX2"),
-            Ok((
-                "",
-                vec![Statement::Operator(Operator::Pop(
-                    4,
-                    RegisterRef::User(2)
-                ))]
-            ))
-        )
+            parse("Pop S4 RX2").unwrap().body,
+            vec![Node(
+                Statement::Operator(Node(
+                    Operator::Pop(
+                        Node(StackRef(4), span(1, 5, 1, 7)),
+                        Node(RegisterRef::User(2), span(1, 8, 1, 11)),
+                    ),
+                    span(1, 1, 1, 11)
+                )),
+                span(1, 1, 1, 11)
+            )]
+        );
     }
 
     #[test]
     fn test_jumps() {
         assert_eq!(
-            parse_gdlk(
-                "JMP LBL
+            parse(
+                "
+                JMP LBL
                 JEZ RX0 LBL
                 JNZ RX0 LBL
                 JLZ RX0 LBL
                 JGZ RX0 LBL
                 "
-            ),
-            Ok((
-                "",
-                vec![
-                    Statement::Jump(Jump::Jmp, "LBL".into()),
+            )
+            .unwrap()
+            .body,
+            vec![
+                Node(
                     Statement::Jump(
-                        Jump::Jez(ValueSource::Register(RegisterRef::User(0))),
-                        "LBL".into()
+                        Node(Jump::Jmp, span(2, 17, 2, 20)),
+                        Node("LBL".into(), span(2, 21, 2, 24)),
                     ),
+                    span(2, 17, 2, 24)
+                ),
+                Node(
                     Statement::Jump(
-                        Jump::Jnz(ValueSource::Register(RegisterRef::User(0))),
-                        "LBL".into()
+                        Node(
+                            Jump::Jez(Node(
+                                ValueSource::Register(Node(
+                                    RegisterRef::User(0),
+                                    span(3, 21, 3, 24)
+                                )),
+                                span(3, 21, 3, 24)
+                            )),
+                            span(3, 17, 3, 24)
+                        ),
+                        Node("LBL".into(), span(3, 25, 3, 28)),
                     ),
+                    span(3, 17, 3, 28)
+                ),
+                Node(
                     Statement::Jump(
-                        Jump::Jlz(ValueSource::Register(RegisterRef::User(0))),
-                        "LBL".into()
+                        Node(
+                            Jump::Jnz(Node(
+                                ValueSource::Register(Node(
+                                    RegisterRef::User(0),
+                                    span(4, 21, 4, 24)
+                                )),
+                                span(4, 21, 4, 24)
+                            )),
+                            span(4, 17, 4, 24)
+                        ),
+                        Node("LBL".into(), span(4, 25, 4, 28)),
                     ),
+                    span(4, 17, 4, 28)
+                ),
+                Node(
                     Statement::Jump(
-                        Jump::Jgz(ValueSource::Register(RegisterRef::User(0))),
-                        "LBL".into()
+                        Node(
+                            Jump::Jlz(Node(
+                                ValueSource::Register(Node(
+                                    RegisterRef::User(0),
+                                    span(5, 21, 5, 24)
+                                )),
+                                span(5, 21, 5, 24)
+                            )),
+                            span(5, 17, 5, 24)
+                        ),
+                        Node("LBL".into(), span(5, 25, 5, 28)),
                     ),
-                ]
-            ))
+                    span(5, 17, 5, 28)
+                ),
+                Node(
+                    Statement::Jump(
+                        Node(
+                            Jump::Jgz(Node(
+                                ValueSource::Register(Node(
+                                    RegisterRef::User(0),
+                                    span(6, 21, 6, 24)
+                                )),
+                                span(6, 21, 6, 24)
+                            )),
+                            span(6, 17, 6, 24)
+                        ),
+                        Node("LBL".into(), span(6, 25, 6, 28)),
+                    ),
+                    span(6, 17, 6, 28)
+                ),
+            ]
         )
     }
 
     #[test]
     fn test_comments() {
         assert_eq!(
-            parse_gdlk("; comment over here\n Add RX1 RX4 ; comment here\n"),
-            Ok((
-                "",
-                vec![Statement::Operator(Operator::Add(
-                    RegisterRef::User(1),
-                    ValueSource::Register(RegisterRef::User(4))
-                ))]
-            ))
-        )
+            parse(
+                "
+                ; comment over here
+                Add RX1 RX4 ; comment here
+                "
+            )
+            .unwrap()
+            .body,
+            vec![Node(
+                Statement::Operator(Node(
+                    Operator::Add(
+                        Node(RegisterRef::User(1), span(3, 21, 3, 24)),
+                        Node(
+                            ValueSource::Register(Node(
+                                RegisterRef::User(4),
+                                span(3, 25, 3, 28)
+                            )),
+                            span(3, 25, 3, 28)
+                        )
+                    ),
+                    span(3, 17, 3, 28)
+                )),
+                span(3, 17, 3, 28)
+            )]
+        );
     }
 
     #[test]
     fn test_parse_simple_file() {
         assert_eq!(
-            parse_gdlk(
-                ";comment start
-            Read RX0
-            ; comment poop
-            Set RX0 2 ;comment more poop
-            Write RX0
-            Read RX1
-            Set RX1 3
-            Write RX1
-            Read RX2
-            Set RX2 4
-            Write RX2
-            ; comment pog
-        "
-            ),
-            Ok((
-                "",
-                vec![
-                    Statement::Operator(Operator::Read(RegisterRef::User(0))),
-                    Statement::Operator(Operator::Set(
-                        RegisterRef::User(0),
-                        ValueSource::Const(2)
+            parse(
+                "
+                ;comment start
+                Read RX0
+                ; comment poop
+                Set RX0 2 ;comment more poop
+                Write RX0
+                ; comment pog
+                "
+            )
+            .unwrap()
+            .body,
+            vec![
+                Node(
+                    Statement::Operator(Node(
+                        Operator::Read(Node(
+                            RegisterRef::User(0),
+                            span(3, 22, 3, 25)
+                        )),
+                        span(3, 17, 3, 25)
                     )),
-                    Statement::Operator(Operator::Write(
-                        ValueSource::Register(RegisterRef::User(0))
+                    span(3, 17, 3, 25)
+                ),
+                Node(
+                    Statement::Operator(Node(
+                        Operator::Set(
+                            Node(RegisterRef::User(0), span(5, 21, 5, 24)),
+                            Node(
+                                ValueSource::Const(Node(2, span(5, 25, 5, 26))),
+                                span(5, 25, 5, 26)
+                            )
+                        ),
+                        span(5, 17, 5, 26)
+                    ),),
+                    span(5, 17, 5, 26)
+                ),
+                Node(
+                    Statement::Operator(Node(
+                        Operator::Write(Node(
+                            ValueSource::Register(Node(
+                                RegisterRef::User(0),
+                                span(6, 23, 6, 26)
+                            )),
+                            span(6, 23, 6, 26)
+                        )),
+                        span(6, 17, 6, 26)
                     )),
-                    Statement::Operator(Operator::Read(RegisterRef::User(1))),
-                    Statement::Operator(Operator::Set(
-                        RegisterRef::User(1),
-                        ValueSource::Const(3)
-                    )),
-                    Statement::Operator(Operator::Write(
-                        ValueSource::Register(RegisterRef::User(1))
-                    )),
-                    Statement::Operator(Operator::Read(RegisterRef::User(2))),
-                    Statement::Operator(Operator::Set(
-                        RegisterRef::User(2),
-                        ValueSource::Const(4)
-                    )),
-                    Statement::Operator(Operator::Write(
-                        ValueSource::Register(RegisterRef::User(2))
-                    ))
-                ]
-            ))
-        )
+                    span(6, 17, 6, 26)
+                )
+            ]
+        );
     }
 }

@@ -1,7 +1,8 @@
 use crate::{
     ast::{
         compiled::{Instruction, Program},
-        Jump, LangValue, Operator, RegisterRef, StackIdentifier, ValueSource,
+        Jump, LangValue, Node, Operator, RegisterRef, Span, SpanNode, StackRef,
+        ValueSource,
     },
     consts::MAX_CYCLE_COUNT,
     debug,
@@ -27,7 +28,7 @@ pub struct Machine {
     // serialization. We store these ourselves instead of keeping references
     // to the originals because it just makes life a lot easier.
     #[serde(skip)]
-    program: Program,
+    program: Program<Span>,
     #[serde(skip)]
     expected_output: Vec<LangValue>,
     #[serde(skip)]
@@ -59,7 +60,7 @@ impl Machine {
     pub fn new(
         hardware_spec: &HardwareSpec,
         program_spec: &ProgramSpec,
-        program: Program,
+        program: Program<Span>,
     ) -> Self {
         Self {
             // Static data
@@ -91,18 +92,18 @@ impl Machine {
     /// If the value is a constant, just return that. If it's a register,
     /// return the value from that register. Panics if the register reference is
     /// invalid (shouldn't be possible because of validation).
-    fn get_val_from_src(&self, src: &ValueSource) -> LangValue {
-        match src {
-            ValueSource::Const(val) => *val,
-            ValueSource::Register(reg) => self.get_reg(reg),
+    fn get_val_from_src(&self, src: &SpanNode<ValueSource<Span>>) -> LangValue {
+        match src.value() {
+            ValueSource::Const(Node(val, _)) => *val,
+            ValueSource::Register(reg_ref) => self.get_reg(reg_ref),
         }
     }
 
     /// Gets the value from the given register. The register reference is
     /// assumed to be valid (should be validated at build time). Will panic if
     /// it isn't valid.
-    fn get_reg(&self, reg: &RegisterRef) -> LangValue {
-        match reg {
+    fn get_reg(&self, reg: &SpanNode<RegisterRef>) -> LangValue {
+        match reg.value() {
             // These conversion unwraps are safe because we know that input
             // and stack lengths are bounded by validation rules to fit into an
             // i32 (max length is 256 at the time of writing this)
@@ -117,12 +118,12 @@ impl Machine {
     /// Sets the register to the given value. The register reference is
     /// assumed to be valid and writable (should be validated at build time).
     /// Will panic if it isn't valid/writable.
-    fn set_reg(&mut self, reg: &RegisterRef, value: LangValue) {
-        match reg {
+    fn set_reg(&mut self, reg: &SpanNode<RegisterRef>, value: LangValue) {
+        match reg.value() {
             RegisterRef::User(reg_id) => {
                 self.registers[*reg_id] = value;
             }
-            _ => panic!("Unwritable register {}", reg),
+            _ => panic!("Unwritable register {:?}", reg),
         }
     }
 
@@ -131,16 +132,16 @@ impl Machine {
     /// reference is invalid, will panic (should be validated at build time).
     fn push_stack(
         &mut self,
-        stack_id: StackIdentifier,
+        stack_ref: &SpanNode<StackRef>,
         value: LangValue,
     ) -> Result<(), RuntimeError> {
         // Have to access this first cause borrow checker
         let max_stack_length = self.max_stack_length;
-        let stack = &mut self.stacks[stack_id];
+        let stack = &mut self.stacks[stack_ref.value().0];
 
         // If the stack is capacity, make sure we're not over it
         if stack.len() >= max_stack_length {
-            return Err(RuntimeError::StackOverflow(stack_id));
+            return Err(RuntimeError::StackOverflow(*stack_ref));
         }
 
         stack.push(value);
@@ -153,14 +154,14 @@ impl Machine {
     /// build time).
     fn pop_stack(
         &mut self,
-        stack_id: StackIdentifier,
+        stack_ref: &SpanNode<StackRef>,
     ) -> Result<LangValue, RuntimeError> {
-        let stack = &mut self.stacks[stack_id];
+        let stack = &mut self.stacks[stack_ref.value().0];
 
         if let Some(val) = stack.pop() {
             Ok(val)
         } else {
-            Err(RuntimeError::EmptyStack(stack_id))
+            Err(RuntimeError::EmptyStack(*stack_ref))
         }
     }
 
@@ -176,13 +177,14 @@ impl Machine {
             .program
             .instructions
             .get(self.program_counter)
-            .ok_or(RuntimeError::ProgramTerminated)?;
+            .ok_or(RuntimeError::ProgramTerminated)?
+            .value();
 
         // Execute the instruction. For most instructions, the number of
         // instructions to consume is just 1. For jumps though, it can vary.
         let instrs_to_consume: isize = match instr {
             // Operators
-            Instruction::Operator(op) => {
+            Instruction::Operator(Node(op, _)) => {
                 match op {
                     Operator::Read(reg) => match self.input.pop_front() {
                         Some(val) => {
@@ -230,11 +232,14 @@ impl Machine {
                         };
                         self.set_reg(&dst, cmp);
                     }
-                    Operator::Push(src, stack_id) => {
-                        self.push_stack(stack_id, self.get_val_from_src(&src))?;
+                    Operator::Push(src, stack_ref) => {
+                        self.push_stack(
+                            &stack_ref,
+                            self.get_val_from_src(&src),
+                        )?;
                     }
-                    Operator::Pop(stack_id, dst) => {
-                        let popped = self.pop_stack(stack_id)?;
+                    Operator::Pop(stack_ref, dst) => {
+                        let popped = self.pop_stack(&stack_ref)?;
                         self.set_reg(&dst, popped);
                     }
                 }
@@ -242,7 +247,7 @@ impl Machine {
             }
 
             // Jumps
-            Instruction::Jump(jump, offset) => {
+            Instruction::Jump(Node(jump, _), offset) => {
                 let should_jump = match jump {
                     Jump::Jmp => true,
                     Jump::Jez(src) => self.get_val_from_src(&src) == 0,

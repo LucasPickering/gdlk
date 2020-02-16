@@ -71,7 +71,7 @@ fn run(opt: Opt) -> Fallible<()> {
             // Read the source code from the file
             let source = fs::read_to_string(source_path)?;
             // Compile and execute
-            compile(&hw_spec, source)?;
+            compile(&hw_spec, &source)?;
         }
 
         // Compile and build the given program
@@ -89,7 +89,7 @@ fn run(opt: Opt) -> Fallible<()> {
 
             // Compile and execute
             let mut machine =
-                compile_and_allocate(&hw_spec, &program_spec, source)?;
+                compile_and_allocate(&hw_spec, &program_spec, &source)?;
             let success = machine.execute_all()?;
 
             println!(

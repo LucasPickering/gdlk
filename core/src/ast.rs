@@ -1,21 +1,77 @@
 //! This module holds all the different types that can appear in our ASTs. There
-//! is no functionality implemented here, just basic types.
+//! is no functionality implemented here, just basic types. Every AST node type
+//! is generic and can hold an extra value. This is useful to carry metadata
+//! along with the AST (e.g. source spans).
 
-use crate::consts::{REG_INPUT_LEN, REG_STACK_LEN_PREFIX, REG_USER_PREFIX};
 use serde::Serialize;
-use std::fmt::{self, Display, Formatter};
+use std::fmt::{self, Debug, Display, Formatter};
+
+// TODO: do we need Serialize on everything?
 
 /// The type of every value in our language
 pub type LangValue = i32;
 
 /// A symbol used to identify a certain user register
-pub type UserRegisterIdentifier = usize;
+pub type UserRegisterId = usize;
 
 /// A symbol used to identify a certain stack
-pub type StackIdentifier = usize;
+pub type StackId = usize;
 
 /// A label for a certain point in the code
 pub type Label = String;
+
+/// A generic AST node container. This holds the AST node data itself, as well
+/// as some metadata (e.g. source span).
+#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
+pub struct Node<T, M>(pub T, pub M);
+
+impl<T, M> Node<T, M> {
+    /// Get the data for this node.
+    pub fn value(&self) -> &T {
+        &self.0
+    }
+
+    /// Create a new `Node` by mapping the data field using the given function.
+    /// The metadata for the new node will remain the same.
+    pub fn map<U>(self, mapper: impl Fn(T) -> U) -> Node<U, M> {
+        Node(mapper(self.0), self.1)
+    }
+}
+
+impl<T, M: Display> Display for Node<T, M> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.1)
+    }
+}
+
+/// The the source location for an AST node. Line and column numberes both start
+/// at 1.
+#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
+pub struct Span {
+    pub start_line: usize,
+    pub start_col: usize,
+    pub end_line: usize,
+    pub end_col: usize,
+}
+
+impl Display for Span {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}:{} to {}:{}",
+            self.start_line, self.start_col, self.end_line, self.end_col
+        )
+    }
+}
+
+/// An alias for the node type that we use most commonly throughout the
+/// compiler. Pairs each AST node with the original source that created it.
+pub type SpanNode<T> = Node<T, Span>;
+
+/// A reference to a stack, e.g. "S0". This should NOT be used for other uses
+/// of a stack ID, e.g. in the register "RS0".
+#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
+pub struct StackRef(pub StackId);
 
 /// A reference to a register. Registers can be readonly (in which case the
 /// value is a reflection of some other part of state), or read-write, which
@@ -27,32 +83,19 @@ pub enum RegisterRef {
     InputLength,
     /// Read-only register that provides the current length of (i.e. the number
     /// of elements stored in) the referenced stack
-    StackLength(StackIdentifier),
+    StackLength(StackId),
     /// User-writable register to be used for arbitrary computations
-    User(UserRegisterIdentifier),
-}
-
-// Need this impl so we can embed this type in error
-impl Display for RegisterRef {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::InputLength => write!(f, "{}", REG_INPUT_LEN),
-            Self::StackLength(stack_id) => {
-                write!(f, "{}{}", REG_STACK_LEN_PREFIX, stack_id)
-            }
-            Self::User(reg_id) => write!(f, "{}{}", REG_USER_PREFIX, reg_id),
-        }
-    }
+    User(UserRegisterId),
 }
 
 /// Something that can produce a <LangValue> idempotently. The value
 /// can be read (repeatedly if necessary), but cannot be written to.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum ValueSource {
+#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
+pub enum ValueSource<T> {
     /// A static value, fixed at build time
-    Const(LangValue),
+    Const(Node<LangValue, T>),
     /// A register, which can be read from to get a value
-    Register(RegisterRef),
+    Register(Node<RegisterRef, T>),
 }
 
 /// An operator is a special type of instruction that is guaranteed to be the
@@ -65,69 +108,77 @@ pub enum ValueSource {
 /// instruction.
 ///
 /// NOTE: All arithmetic operations are wrapping (for overflow/underflow).
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Operator {
+#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
+pub enum Operator<T> {
     /// Reads one value from the input buffer to a register
-    Read(RegisterRef),
+    Read(Node<RegisterRef, T>),
     /// Writes a value to the output buffer
-    Write(ValueSource),
+    Write(Node<ValueSource<T>, T>),
     /// Sets a register to a value
-    Set(RegisterRef, ValueSource),
+    Set(Node<RegisterRef, T>, Node<ValueSource<T>, T>),
     /// Adds two values. Puts the result in the first argument.
-    Add(RegisterRef, ValueSource),
+    Add(Node<RegisterRef, T>, Node<ValueSource<T>, T>),
     /// Subtracts the second value from the first. Puts the result in the
     /// first argument.
-    Sub(RegisterRef, ValueSource),
+    Sub(Node<RegisterRef, T>, Node<ValueSource<T>, T>),
     /// Multiplies the two values. Puts the result in the first argument.
-    Mul(RegisterRef, ValueSource),
+    Mul(Node<RegisterRef, T>, Node<ValueSource<T>, T>),
     /// Compares the last two arguments, and stores the comparison result in
     /// the first register. Result is -1 if the first value is less than the
     /// second, 0 if they are equal, and 1 if the first value is greater. The
     /// result will **never** be any value other than -1, 0, or 1.
     ///
     /// TODO: maybe we should remove this op?
-    Cmp(RegisterRef, ValueSource, ValueSource),
+    Cmp(
+        Node<RegisterRef, T>,
+        Node<ValueSource<T>, T>,
+        Node<ValueSource<T>, T>,
+    ),
     /// Pushes the value in a register onto the given stack
-    Push(ValueSource, StackIdentifier),
+    Push(Node<ValueSource<T>, T>, Node<StackRef, T>),
     /// Pops the top value off the given stack into a register
-    Pop(StackIdentifier, RegisterRef),
+    Pop(Node<StackRef, T>, Node<RegisterRef, T>),
 }
 
 /// The different types of jumps. This just holds the jump type and conditional
 /// value, not the jump target. That should be held by the parent, because the
 /// target type can vary (label vs offset).
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Jump {
+#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
+pub enum Jump<T> {
     /// Jumps unconditionally
     Jmp,
     /// Jumps if the value == 0
-    Jez(ValueSource),
+    Jez(Node<ValueSource<T>, T>),
     /// Jumps if the value != 0
-    Jnz(ValueSource),
+    Jnz(Node<ValueSource<T>, T>),
     /// Jumps if the value > 0
-    Jlz(ValueSource),
+    Jlz(Node<ValueSource<T>, T>),
     /// Jumps if the value < 0
-    Jgz(ValueSource),
+    Jgz(Node<ValueSource<T>, T>),
 }
 
 /// All types unique to the source AST live here
 pub mod source {
     use super::*;
 
+    /// A label declaration, e.g. "LABEL:".
+    #[derive(Clone, Debug, PartialEq, Serialize)]
+    pub struct LabelDecl(pub Label);
+
     /// A statement is one complete parseable element. Generally, each statement
     /// goes on its own line in the source.
     #[derive(Clone, Debug, PartialEq)]
-    pub enum Statement {
-        Label(Label),
-        Operator(Operator),
+    pub enum Statement<T> {
+        Label(Node<LabelDecl, T>),
+        Operator(Node<Operator<T>, T>),
         /// Jump to the given label
-        Jump(Jump, Label),
+        Jump(Node<Jump<T>, T>, Node<Label, T>),
     }
 
     /// A parsed and untransformed program
     #[derive(Clone, Debug, PartialEq)]
-    pub struct Program {
-        pub body: Vec<Statement>,
+    pub struct Program<T> {
+        pub body: Vec<Node<Statement<T>, T>>,
     }
 }
 
@@ -138,8 +189,8 @@ pub mod compiled {
     /// An executable instruction. These are the instructions that machines
     /// actually execute.
     #[derive(Copy, Clone, Debug, PartialEq)]
-    pub enum Instruction {
-        Operator(Operator),
+    pub enum Instruction<T> {
+        Operator(Node<Operator<T>, T>),
         /// These jumps are relative: In `Jmp(n)`, `n` is relative to the
         /// current program counter.
         /// - `Jmp(-1)` repeats the previous instruction
@@ -147,12 +198,12 @@ pub mod compiled {
         /// - `Jmp(1)` goes to the next instruction (a no-op)
         /// - `Jmp(2)` skips the next instruction
         /// - etc...
-        Jump(Jump, isize),
+        Jump(Node<Jump<T>, T>, isize),
     }
 
     /// A compiled program, ready to be executed
     #[derive(Clone, Debug, PartialEq)]
-    pub struct Program {
-        pub instructions: Vec<Instruction>,
+    pub struct Program<T> {
+        pub instructions: Vec<Node<Instruction<T>, T>>,
     }
 }

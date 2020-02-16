@@ -52,7 +52,7 @@ pub use error::*;
 pub use machine::*;
 pub use models::*;
 
-use ast::compiled::Program;
+use ast::{compiled::Program, Span};
 use std::fmt::Debug;
 use validator::Validate;
 
@@ -60,8 +60,8 @@ use validator::Validate;
 /// the compiled program, or any errors that occurred.
 pub fn compile(
     hardware_spec: &HardwareSpec,
-    source: String,
-) -> Result<Program, CompileErrors> {
+    source: &str,
+) -> Result<Program<Span>, CompileErrors> {
     hardware_spec
         .validate()
         .map_err(CompileError::InvalidSpec)?;
@@ -83,7 +83,7 @@ pub fn compile(
 pub fn compile_and_allocate(
     hardware_spec: &HardwareSpec,
     program_spec: &ProgramSpec,
-    source: String,
+    source: &str,
 ) -> Result<Machine, CompileErrors> {
     program_spec.validate().map_err(CompileError::InvalidSpec)?;
     Ok(Machine::new(
@@ -119,10 +119,10 @@ impl<T: Debug> Compiler<T> {
     }
 }
 
-impl Compiler<String> {
+impl<'a> Compiler<&'a str> {
     /// Constructs a new compiler with no internal state. This is how you start
     /// a fresh compiler pipeline.
-    pub fn new(source: String) -> Self {
+    pub fn new(source: &'a str) -> Self {
         Compiler(source)
     }
 }

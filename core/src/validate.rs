@@ -1,7 +1,8 @@
 use crate::{
     ast::{
         source::{Program, Statement},
-        Jump, Label, Operator, RegisterRef, StackIdentifier, ValueSource,
+        Jump, Label, Node, Operator, RegisterRef, Span, SpanNode, StackId,
+        StackRef, ValueSource,
     },
     error::{CompileError, CompileErrors},
     models::HardwareSpec,
@@ -19,9 +20,9 @@ trait Validate {
     fn validate(&self, context: &Context) -> CompileErrors;
 }
 
-impl Validate for Label {
+impl Validate for SpanNode<Label> {
     fn validate(&self, context: &Context) -> CompileErrors {
-        if context.labels.contains(self) {
+        if context.labels.contains(&self.value()) {
             CompileErrors::none()
         } else {
             CompileError::InvalidLabel(self.clone()).into()
@@ -29,51 +30,47 @@ impl Validate for Label {
     }
 }
 
-impl Validate for RegisterRef {
+impl Validate for SpanNode<RegisterRef> {
     /// Ensures the register reference refers to a real register in the
     /// hardware.
     fn validate(&self, context: &Context) -> CompileErrors {
-        match self {
+        match self.value() {
             RegisterRef::InputLength => CompileErrors::none(),
-            RegisterRef::StackLength(stack_id) => {
-                if is_stack_ref_valid(context.hardware_spec, *stack_id) {
+            RegisterRef::StackLength(stack_ref) => {
+                if is_stack_id_valid(context.hardware_spec, *stack_ref) {
                     CompileErrors::none()
                 } else {
-                    CompileError::InvalidRegisterRef(RegisterRef::StackLength(
-                        *stack_id,
-                    ))
-                    .into()
+                    CompileError::InvalidRegisterRef(*self).into()
                 }
             }
-            RegisterRef::User(reg_id) => {
-                if *reg_id >= context.hardware_spec.num_registers {
-                    CompileError::InvalidRegisterRef(RegisterRef::User(*reg_id))
-                        .into()
-                } else {
+            RegisterRef::User(reg_ref) => {
+                if *reg_ref < context.hardware_spec.num_registers {
                     CompileErrors::none()
+                } else {
+                    CompileError::InvalidRegisterRef(*self).into()
                 }
             }
         }
     }
 }
 
-impl Validate for ValueSource {
+impl Validate for SpanNode<ValueSource<Span>> {
     /// Ensures the given ValueSource is valid. All constants are valid, but
     /// register references need to be validated to make sure they refer to real
     /// registers.
     fn validate(&self, context: &Context) -> CompileErrors {
-        match self {
+        match self.value() {
             ValueSource::Const(_) => CompileErrors::none(),
             ValueSource::Register(reg) => reg.validate(context),
         }
     }
 }
 
-impl Validate for StackIdentifier {
+impl Validate for SpanNode<StackRef> {
     /// Ensures the stack ID refers to a real stack in the hardware, i.e.
     /// makes sure it's in bounds.
     fn validate(&self, context: &Context) -> CompileErrors {
-        if is_stack_ref_valid(context.hardware_spec, *self) {
+        if is_stack_id_valid(context.hardware_spec, self.value().0) {
             CompileErrors::none()
         } else {
             CompileError::InvalidStackRef(*self).into()
@@ -81,9 +78,9 @@ impl Validate for StackIdentifier {
     }
 }
 
-impl Validate for Operator {
+impl Validate for SpanNode<Operator<Span>> {
     fn validate(&self, context: &Context) -> CompileErrors {
-        match self {
+        match self.value() {
             Operator::Read(reg_ref) => {
                 reg_ref.validate(context).chain(validate_writable(reg_ref))
             }
@@ -114,9 +111,9 @@ impl Validate for Operator {
     }
 }
 
-impl Validate for Jump {
+impl Validate for SpanNode<Jump<Span>> {
     fn validate(&self, context: &Context) -> CompileErrors {
-        match self {
+        match self.value() {
             Jump::Jmp => CompileErrors::none(),
             Jump::Jez(val_src)
             | Jump::Jnz(val_src)
@@ -126,9 +123,9 @@ impl Validate for Jump {
     }
 }
 
-impl Validate for Statement {
+impl Validate for SpanNode<Statement<Span>> {
     fn validate(&self, context: &Context) -> CompileErrors {
-        match self {
+        match self.value() {
             Statement::Label(_) => CompileErrors::none(),
             Statement::Operator(op) => op.validate(context),
             Statement::Jump(jump, label) => {
@@ -140,32 +137,31 @@ impl Validate for Statement {
 
 /// Helper method to change if a stack reference is in range. This is used for
 /// mutliple error types so the comparison logic is pulled out here.
-fn is_stack_ref_valid(
-    hardware_spec: &HardwareSpec,
-    stack_id: StackIdentifier,
-) -> bool {
+fn is_stack_id_valid(hardware_spec: &HardwareSpec, stack_id: StackId) -> bool {
     stack_id < hardware_spec.num_stacks
 }
 
 /// Ensures the register reference refers to a writable register.
-fn validate_writable(reg: &RegisterRef) -> CompileErrors {
+fn validate_writable(reg_ref: &SpanNode<RegisterRef>) -> CompileErrors {
     // Only User registers are writable, all others cause an error.
-    match reg {
+    match reg_ref.value() {
         RegisterRef::User(_) => CompileErrors::none(),
-        _ => CompileError::UnwritableRegister(*reg).into(),
+        _ => CompileError::UnwritableRegister(*reg_ref).into(),
     }
 }
 
 /// Collect all labels in the program into a set. Returns errors for any
 /// duplicate labels.
-fn collect_labels(body: &[Statement]) -> (HashSet<&Label>, CompileErrors) {
+fn collect_labels<'a>(
+    body: &'a [SpanNode<Statement<Span>>],
+) -> (HashSet<&'a Label>, CompileErrors) {
     let mut labels = HashSet::new();
     let mut errors = CompileErrors::none();
     for stmt in body {
-        if let Statement::Label(label) = stmt {
+        if let Node(Statement::Label(label_node), _) = stmt {
             // insert returns false if the value was already present
-            if !labels.insert(label) {
-                errors.push(CompileError::DuplicateLabel(label.clone()));
+            if !labels.insert(&label_node.value().0) {
+                errors.push(CompileError::DuplicateLabel(label_node.clone()));
             }
         }
     }
@@ -175,7 +171,7 @@ fn collect_labels(body: &[Statement]) -> (HashSet<&Label>, CompileErrors) {
 /// Collects all the validation errors in all the instructions in the body.
 fn validate_body(
     hardware_spec: &HardwareSpec,
-    body: &[Statement],
+    body: &[SpanNode<Statement<Span>>],
 ) -> CompileErrors {
     let (labels, errors) = collect_labels(body);
     let context = Context {
@@ -188,7 +184,7 @@ fn validate_body(
         .fold(errors, |acc, stmt| acc.chain(stmt.validate(&context)))
 }
 
-impl Compiler<Program> {
+impl Compiler<Program<Span>> {
     /// Performs all possible static validation on the program. The
     /// hardware is needed to determine what values and references
     /// are valid. If any errors occur, `Err` will be returned with all the
@@ -196,7 +192,7 @@ impl Compiler<Program> {
     pub fn validate(
         self,
         hardware_spec: &HardwareSpec,
-    ) -> Result<Compiler<Program>, CompileErrors> {
+    ) -> Result<Compiler<Program<Span>>, CompileErrors> {
         validate_body(hardware_spec, &self.0.body)?;
         Ok(Compiler(self.0))
     }
