@@ -7,9 +7,17 @@ authors = [
 ]
 edition = "2018"
 
+
 [dependencies]
 failure = "0.1"
 nom = "5.0"
 serde = { version = "1.0", features = ["derive"] }
 validator = "0.10.0"
 validator_derive = "0.10.0"
+# bin-only deps -- can make this cleaner with https://github.com/rust-lang/cargo/issues/1982
+structopt = "0.3"
+serde_json = "1.0"
+
+[[bin]]
+name = "gdlk_cli"
+path = "src/bin.rs"
