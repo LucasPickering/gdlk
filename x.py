@@ -73,7 +73,9 @@ def run_in_docker_service(service, cmd, env={}):
     service. This will turn the service into a container name, then run the cmd.
     """
     # create an iter of each env var, e.g. ['-e', 'k1=v1', '-e', 'k2=v2']
-    env_vars = itertools.chain.from_iterable(["-e", f"{k}={v}"] for k, v in env.items())
+    env_vars = itertools.chain.from_iterable(
+        ["-e", f"{k}={v}"] for k, v in env.items()
+    )
     run_cmd(["docker", "exec", "-t", *env_vars, f"gdlk_{service}_1", *cmd])
 
 
@@ -90,7 +92,9 @@ class Migrate(Command):
         # We can only revert one migration at a time, so run until it fails
         try:
             while True:
-                run_in_docker_service(API_SERVICE, ["diesel", "migration", "revert"])
+                run_in_docker_service(
+                    API_SERVICE, ["diesel", "migration", "revert"]
+                )
         except subprocess.CalledProcessError:
             pass
 
@@ -225,7 +229,9 @@ class Docs(Command):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Utility script for task execution")
+    parser = argparse.ArgumentParser(
+        description="Utility script for task execution"
+    )
     subparsers = parser.add_subparsers(
         help="sub-command help", dest="cmd", required=True
     )

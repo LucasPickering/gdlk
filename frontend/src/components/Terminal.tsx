@@ -18,20 +18,20 @@ type CommandFunction = (args: CommandArgs, wasmFs?: WasmFs) => Promise<string>;
 const fetchCommandHandler = async (
   commandName: string
 ): Promise<CommandFunction | void> => {
-  if (commandName === 'callback-command') {
-    return async (options: CommandArgs, wasmFs: WasmFs): Promise<string> => {
-      return `Callback Command Working! Options: ${options}, fs: ${wasmFs}`;
-    };
-  } else if (commandName === 'echo') {
-    return async (options: CommandArgs): Promise<string> => {
-      // first index is the 'echo' ignore that
-      return options.args.slice(1).join(' ');
-    };
-  } else if (commandName === 'gdlk') {
-    return async (options: CommandArgs): Promise<string> => {
-      const gdlk = await import('gdlk_wasm');
-      return gdlk.greet(options.args.slice(1).join(' '));
-    };
+  switch (commandName) {
+    case 'callback-command':
+      return async (options: CommandArgs, wasmFs: WasmFs): Promise<string> => {
+        return `Callback Command Working! Options: ${options}, fs: ${wasmFs}`;
+      };
+    case 'echo':
+      return async (options: CommandArgs): Promise<string> => {
+        const gdlk = await import('gdlk_wasm');
+        return gdlk.greet(options.args.slice(1).join(' '));
+      };
+    default:
+      return async (options: CommandArgs): Promise<string> => {
+        return `command ${options.args[0]} not found`;
+      };
   }
 };
 
