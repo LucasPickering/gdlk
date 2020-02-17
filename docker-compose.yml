@@ -3,8 +3,10 @@ version: "3"
 # Use these instead of the local directory for building the projects
 # to prevent the containers from fighting with external build tools
 volumes:
-  core_build:
   api_build:
+  core_build:
+  wasm_build:
+  frontend_node_modules:
 
 services:
   db:
@@ -37,3 +39,19 @@ services:
       DATABASE_URL: postgres://root:root@db/gdlk
     ports:
       - "8000:8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+    command: sh -c "npm install && npm start | cat" # pipe into cat so console does not get reset
+    tty: true # Colorize output
+    volumes:
+      - ./core:/app/core:rw
+      - ./wasm:/app/wasm:rw
+      - ./frontend:/app/frontend:rw
+      - core_build:/app/core/target
+      - wasm_build:/app/wasm/target
+      - frontend_node_modules:/app/frontend/node_modules
+    ports:
+      - "3000:3000"
