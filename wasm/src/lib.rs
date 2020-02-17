@@ -8,5 +8,5 @@ extern "C" {
 
 #[wasm_bindgen]
 pub fn greet(name: &str) -> String {
-    format!("Hello, {}!", name)
+    format!("suh, {}!", name)
 }

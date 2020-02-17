@@ -1,5 +1,5 @@
 const path = require("path");
-
+const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
 module.exports = function override(config, env) {
   const wasmExtensionRegExp = /\.wasm$/;
 
@@ -20,6 +20,15 @@ module.exports = function override(config, env) {
     include: path.resolve(__dirname, "src"),
     use: [{ loader: require.resolve("wasm-loader"), options: {} }]
   });
+
+  config.plugins.push(
+    new WasmPackPlugin({
+      crateDirectory: path.resolve(__dirname, "../wasm"),
+      outDir: path.resolve(__dirname, "../wasm/pkg"),
+      outName: "gdlk_wasm",
+      watchDirectories: [path.resolve(__dirname, "../wasm/src")]
+    })
+  );
 
   return config;
 };

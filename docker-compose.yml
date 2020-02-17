@@ -37,3 +37,17 @@ services:
       DATABASE_URL: postgres://root:root@db/gdlk
     ports:
       - "8000:8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+    command: sh -c "npm start | cat" # pipe into cat so console does not get reset
+    tty: true # Colorize output
+    volumes:
+      - ./core:/app/core:rw
+      - ./wasm:/app/wasm:rw
+      - ./frontend:/app/frontend:rw
+      - core_build:/app/core/target
+    ports:
+      - "3000:3000"
