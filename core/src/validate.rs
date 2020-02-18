@@ -6,6 +6,7 @@ use crate::{
     },
     error::{CompileError, CompileErrors},
     models::HardwareSpec,
+    util::Valid,
     Compiler,
 };
 use std::collections::HashSet;
@@ -191,9 +192,9 @@ impl Compiler<Program<Span>> {
     /// errors in a collection.
     pub fn validate(
         self,
-        hardware_spec: &HardwareSpec,
+        hardware_spec: &Valid<HardwareSpec>,
     ) -> Result<Compiler<Program<Span>>, CompileErrors> {
-        validate_body(hardware_spec, &self.0.body)?;
+        validate_body(hardware_spec.inner(), &self.0.body)?;
         Ok(Compiler(self.0))
     }
 }

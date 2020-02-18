@@ -1,7 +1,7 @@
 //! Integration tests for GDLK that expect compile errors. The programs in
 //! these tests should all fail during compilation.
 
-use gdlk::{compile, HardwareSpec};
+use gdlk::{compile, HardwareSpec, Valid};
 
 /// Compiles the program for the given hardware, expecting compile error(s).
 /// Panics if the program compiles successfully, or if the wrong set of
@@ -12,7 +12,8 @@ fn expect_compile_errors(
     expected_errors: &[&str],
 ) {
     // Compile from hardware+src
-    let actual_errors = compile(&hardware_spec, src).unwrap_err();
+    let actual_errors =
+        compile(&Valid::validate(hardware_spec).unwrap(), src).unwrap_err();
     assert_eq!(format!("{}", actual_errors), expected_errors.join("\n"));
 }
 

@@ -21,7 +21,7 @@ pub struct HardwareSpec {
     pub max_stack_length: usize,
 }
 
-// Useful for creating this type in tests
+// Useful for tests and prototyping
 impl Default for HardwareSpec {
     fn default() -> Self {
         Self {
@@ -47,7 +47,7 @@ pub struct ProgramSpec {
     pub expected_output: Vec<LangValue>,
 }
 
-// Useful for creating this type in tests
+// Useful for tests and prototyping
 impl Default for ProgramSpec {
     fn default() -> Self {
         Self {

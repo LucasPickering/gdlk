@@ -5,17 +5,17 @@
 //! [ProgramSpec](ProgramSpec), which defines the inputs and expected outputs.
 //!
 //! ```
-//! use gdlk::{HardwareSpec, ProgramSpec, compile_and_allocate};
+//! use gdlk::{HardwareSpec, ProgramSpec, Valid, compile_and_allocate};
 //!
-//! let hardware_spec = HardwareSpec {
+//! let hardware_spec = Valid::validate(HardwareSpec {
 //!     num_registers: 1,
 //!     num_stacks: 0,
 //!     max_stack_length: 0,
-//! };
-//! let program_spec = ProgramSpec {
+//! }).unwrap();
+//! let program_spec = Valid::validate(ProgramSpec {
 //!     input: vec![1],
 //!     expected_output: vec![2],
-//! };
+//! }).unwrap();
 //! let source = "
 //! READ RX0
 //! ADD RX0 1
@@ -51,21 +51,18 @@ pub use consts::MAX_CYCLE_COUNT;
 pub use error::*;
 pub use machine::*;
 pub use models::*;
+pub use util::Valid;
+pub use validator; // Consumers may need this
 
 use ast::{compiled::Program, Span};
 use std::fmt::Debug;
-use validator::Validate;
 
 /// Compiles a source program, under the constraints of a hardware spec. Returns
 /// the compiled program, or any errors that occurred.
 pub fn compile(
-    hardware_spec: &HardwareSpec,
+    hardware_spec: &Valid<HardwareSpec>,
     source: &str,
 ) -> Result<Program<Span>, CompileErrors> {
-    hardware_spec
-        .validate()
-        .map_err(CompileError::InvalidSpec)?;
-
     Ok(Compiler::new(source)
         .debug()
         .parse()?
@@ -81,11 +78,10 @@ pub fn compile(
 /// <Machine> to execute that program. The returned machine can then be
 /// executed.
 pub fn compile_and_allocate(
-    hardware_spec: &HardwareSpec,
-    program_spec: &ProgramSpec,
+    hardware_spec: &Valid<HardwareSpec>,
+    program_spec: &Valid<ProgramSpec>,
     source: &str,
 ) -> Result<Machine, CompileErrors> {
-    program_spec.validate().map_err(CompileError::InvalidSpec)?;
     Ok(Machine::new(
         hardware_spec,
         program_spec,
