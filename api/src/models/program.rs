@@ -10,9 +10,9 @@ use diesel::{
     sql_types::{Int4, Text},
     Identifiable, Queryable,
 };
-use gdlk::ast::LangValue;
+use gdlk::{ast::LangValue, Valid};
 use std::convert::TryFrom;
-use validator::{Validate, ValidationErrors};
+use validator::ValidationErrors;
 
 /// Inner join between program_specs and hardware_specs
 type InnerJoinSpecs =
@@ -77,16 +77,14 @@ impl ProgramSpec {
     }
 }
 
-impl TryFrom<ProgramSpec> for gdlk::ProgramSpec {
+impl TryFrom<ProgramSpec> for Valid<gdlk::ProgramSpec> {
     type Error = ValidationErrors;
 
     fn try_from(other: ProgramSpec) -> Result<Self, Self::Error> {
-        let val = Self {
+        Valid::validate(gdlk::ProgramSpec {
             input: other.input,
             expected_output: other.expected_output,
-        };
-        val.validate()?;
-        Ok(val)
+        })
     }
 }
 

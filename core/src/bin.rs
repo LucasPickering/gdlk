@@ -1,10 +1,11 @@
 #![deny(clippy::all, unused_must_use, unused_imports)]
 
 use failure::Fallible;
-use gdlk::{compile, compile_and_allocate, HardwareSpec, ProgramSpec};
+use gdlk::{compile, compile_and_allocate, HardwareSpec, ProgramSpec, Valid};
 use serde::de::DeserializeOwned;
 use std::{fs, path::PathBuf, process};
 use structopt::StructOpt;
+use validator::Validate;
 
 /// The sub-command to execute.
 #[derive(Debug, StructOpt)]
@@ -48,14 +49,14 @@ struct Opt {
 
 /// Loads a hardware or program spec from a file. If the path is None, returns
 /// the default value instead.
-fn load_spec<T: Default + DeserializeOwned>(
+fn load_spec<T: Default + DeserializeOwned + Validate>(
     path_opt: &Option<PathBuf>,
-) -> Fallible<T> {
+) -> Fallible<Valid<T>> {
     match path_opt {
-        None => Ok(T::default()),
+        None => Ok(Valid::validate(T::default())?),
         Some(path) => {
             let spec_str = fs::read_to_string(path)?;
-            Ok(serde_json::from_str(&spec_str)?)
+            Ok(Valid::validate(serde_json::from_str(&spec_str)?)?)
         }
     }
 }
@@ -67,7 +68,7 @@ fn run(opt: Opt) -> Fallible<()> {
             hardware_spec_path,
             source_path,
         } => {
-            let hw_spec: HardwareSpec = load_spec(&hardware_spec_path)?;
+            let hw_spec: Valid<HardwareSpec> = load_spec(&hardware_spec_path)?;
             // Read the source code from the file
             let source = fs::read_to_string(source_path)?;
             // Compile and execute
@@ -81,8 +82,9 @@ fn run(opt: Opt) -> Fallible<()> {
             source_path,
         } => {
             // Read and parse the hw spec and program spec from JSON files
-            let hw_spec: HardwareSpec = load_spec(&hardware_spec_path)?;
-            let program_spec: ProgramSpec = load_spec(&program_spec_path)?;
+            let hw_spec: Valid<HardwareSpec> = load_spec(&hardware_spec_path)?;
+            let program_spec: Valid<ProgramSpec> =
+                load_spec(&program_spec_path)?;
 
             // Read the source code from the file
             let source = fs::read_to_string(source_path)?;

@@ -3,6 +3,7 @@ use diesel::{
     dsl, expression::bound::Bound, prelude::*, query_builder::InsertStatement,
     sql_types::Text, Identifiable, Queryable,
 };
+use gdlk::Valid;
 use std::convert::TryFrom;
 use validator::{Validate, ValidationErrors};
 
@@ -55,6 +56,21 @@ impl TryFrom<HardwareSpec> for gdlk::HardwareSpec {
         };
         val.validate()?;
         Ok(val)
+    }
+}
+
+impl TryFrom<HardwareSpec> for Valid<gdlk::HardwareSpec> {
+    type Error = ValidationErrors;
+
+    fn try_from(other: HardwareSpec) -> Result<Self, Self::Error> {
+        Valid::validate(gdlk::HardwareSpec {
+            // These conversions are safe because of the validate() call.
+            // The validation _should_ never fail because of the DB constraints,
+            // but we validate here just to be safe.
+            num_registers: other.num_registers as usize,
+            num_stacks: other.num_stacks as usize,
+            max_stack_length: other.max_stack_length as usize,
+        })
     }
 }
 

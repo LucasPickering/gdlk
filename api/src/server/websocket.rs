@@ -5,7 +5,7 @@ use actix_web_actors::ws;
 use diesel::{prelude::*, PgConnection};
 use gdlk::{
     compile_and_allocate, CompileErrors, HardwareSpec, Machine, ProgramSpec,
-    RuntimeError,
+    RuntimeError, Valid,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -13,6 +13,7 @@ use std::{
     convert::TryInto,
     time::{Duration, Instant},
 };
+use validator::ValidationErrors;
 
 /// How often heartbeat pings are sent
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
@@ -85,6 +86,12 @@ impl<'a> From<serde_json::Error> for OutgoingEvent<'a> {
     }
 }
 
+impl<'a> From<ValidationErrors> for OutgoingEvent<'a> {
+    fn from(other: ValidationErrors) -> Self {
+        OutgoingEvent::MalformedMessage(format!("{}", other))
+    }
+}
+
 impl<'a> From<CompileErrors> for OutgoingEvent<'a> {
     fn from(errors: CompileErrors) -> Self {
         OutgoingEvent::CompileError(errors)
@@ -100,9 +107,9 @@ impl<'a> From<RuntimeError> for OutgoingEvent<'a> {
 /// The controlling struct for a single websocket instance
 struct ProgramWebsocket {
     /// "Hardware" to build/execute the program under, pulled from the DB
-    hardware_spec: HardwareSpec,
+    hardware_spec: Valid<HardwareSpec>,
     /// Specs for the program execution
-    program_spec: ProgramSpec,
+    program_spec: Valid<ProgramSpec>,
     /// Track the last time we pinged/ponged the client, if this exceeds
     /// CLIENT_TIMEOUT, drop the connection
     heartbeat: Instant,
@@ -112,7 +119,10 @@ struct ProgramWebsocket {
 }
 
 impl ProgramWebsocket {
-    fn new(hardware_spec: HardwareSpec, program_spec: ProgramSpec) -> Self {
+    fn new(
+        hardware_spec: Valid<HardwareSpec>,
+        program_spec: Valid<ProgramSpec>,
+    ) -> Self {
         ProgramWebsocket {
             hardware_spec,
             program_spec,

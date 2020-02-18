@@ -5,7 +5,6 @@ use std::{
     fmt::{self, Display, Formatter},
     ops::Try,
 };
-use validator::ValidationErrors;
 
 // TODO re-work these error messages
 
@@ -14,11 +13,6 @@ use validator::ValidationErrors;
 /// compiler error. Compiler bugs will always cause a panic.
 #[derive(Debug, PartialEq, Fail, Serialize)]
 pub enum CompileError {
-    /// Validation failed on a [HardwareSpec](crate::HardwareSpec) or
-    /// [ProgramSpec](crate::ProgramSpec)
-    #[fail(display = "Invalid spec: {}", 0)]
-    InvalidSpec(ValidationErrors),
-
     /// Failed to parse the program
     #[fail(display = "Parse error: {}", 0)]
     ParseError(String),

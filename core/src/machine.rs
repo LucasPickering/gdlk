@@ -8,6 +8,7 @@ use crate::{
     debug,
     error::RuntimeError,
     models::{HardwareSpec, ProgramSpec},
+    util::Valid,
 };
 use serde::Serialize;
 use std::{
@@ -58,29 +59,31 @@ pub struct Machine {
 impl Machine {
     /// Creates a new machine, ready to be executed.
     pub fn new(
-        hardware_spec: &HardwareSpec,
-        program_spec: &ProgramSpec,
+        hardware_spec: &Valid<HardwareSpec>,
+        program_spec: &Valid<ProgramSpec>,
         program: Program<Span>,
     ) -> Self {
+        let hw_spec_inner = hardware_spec.inner();
+        let prog_spec_inner = program_spec.inner();
         Self {
             // Static data
             program,
-            expected_output: program_spec.expected_output.clone(),
-            max_stack_length: hardware_spec.max_stack_length,
+            expected_output: prog_spec_inner.expected_output.clone(),
+            max_stack_length: hw_spec_inner.max_stack_length,
 
             // Runtime state
             program_counter: 0,
-            input: VecDeque::from_iter(program_spec.input.iter().copied()),
+            input: VecDeque::from_iter(prog_spec_inner.input.iter().copied()),
             output: Vec::new(),
             registers: iter::repeat(0)
-                .take(hardware_spec.num_registers)
+                .take(hw_spec_inner.num_registers)
                 .collect(),
             // Initialize `num_stacks` new stacks. Set an initial capacity
             // for each one to prevent grows during program operation
             stacks: iter::repeat_with(|| {
-                Vec::with_capacity(hardware_spec.max_stack_length)
+                Vec::with_capacity(hw_spec_inner.max_stack_length)
             })
-            .take(hardware_spec.num_stacks)
+            .take(hw_spec_inner.num_stacks)
             .collect(),
 
             // Performance stats

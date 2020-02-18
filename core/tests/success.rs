@@ -4,7 +4,7 @@
 
 use gdlk::{
     ast::LangValue, compile_and_allocate, HardwareSpec, Machine, ProgramSpec,
-    MAX_CYCLE_COUNT,
+    Valid, MAX_CYCLE_COUNT,
 };
 
 /// Compiles the program for the given hardware, and executes it against the
@@ -15,9 +15,14 @@ fn execute_expect_success(
     program_spec: ProgramSpec,
     src: &str,
 ) -> Machine {
+    let valid_program_spec = Valid::validate(program_spec).unwrap();
     // Compile from hardware+src
-    let mut machine =
-        compile_and_allocate(&hardware_spec, &program_spec, src).unwrap();
+    let mut machine = compile_and_allocate(
+        &Valid::validate(hardware_spec).unwrap(),
+        &valid_program_spec,
+        src,
+    )
+    .unwrap();
 
     // Execute to completion
     let success = machine.execute_all().unwrap();
@@ -25,7 +30,7 @@ fn execute_expect_success(
     // Make sure program terminated successfully
     // Check each bit of state individually to make debugging easier
     assert_eq!(machine.input, Vec::new() as Vec<LangValue>);
-    assert_eq!(machine.output, program_spec.expected_output);
+    assert_eq!(machine.output, valid_program_spec.inner().expected_output);
     // Final sanity check, in case we change the criteria for success
     assert!(success);
     machine
