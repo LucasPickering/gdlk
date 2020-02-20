@@ -1,8 +1,6 @@
-/target
-**/*.rs.bk
 *.gdlk
-.vscode/
-pkg/*
-node_modules/*
-*/target/*
 *.json
+.vscode/
+pkg/
+node_modules/
+target/
