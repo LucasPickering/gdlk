@@ -27,8 +27,8 @@ services:
     command: cargo watch -x "run -- server"
     tty: true # Colorize output
     volumes:
-      - ./core:/app/core:rw
-      - ./api:/app/api:rw
+      - ./core:/app/core:ro
+      - ./api:/app/api:ro
       - core_build:/app/core/target
       - api_build:/app/api/target
     depends_on:
@@ -47,9 +47,9 @@ services:
     command: sh -c "npm install && npm start | cat" # pipe into cat so console does not get reset
     tty: true # Colorize output
     volumes:
-      - ./core:/app/core:rw
-      - ./wasm:/app/wasm:rw
-      - ./frontend:/app/frontend:rw
+      - ./core:/app/core:ro
+      - ./wasm:/app/wasm:ro
+      - ./frontend:/app/frontend:ro
       - core_build:/app/core/target
       - wasm_build:/app/wasm/target
       - frontend_node_modules:/app/frontend/node_modules
