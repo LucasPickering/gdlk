@@ -4,8 +4,8 @@ version: "3"
 # to prevent the containers from fighting with external build tools
 volumes:
   api_build:
-  core_build:
-  wasm_build:
+  frontend_core_build:
+  frontend_wasm_build:
   frontend_node_modules:
 
 services:
@@ -19,18 +19,12 @@ services:
       - "5432:5432"
 
   api:
-    build:
-      context: .
-      dockerfile: ./api/Dockerfile
-      args:
-        install_cargo_watch: 1
+    image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-api:latest
     command: cargo watch -x "run -- server"
     tty: true # Colorize output
     volumes:
-      - ./core:/app/core:ro
-      - ./api:/app/api:ro
-      - core_build:/app/core/target
-      - api_build:/app/api/target
+      - ./:/app:rw
+      - api_build:/app/target
     depends_on:
       - db
     environment:
@@ -41,17 +35,13 @@ services:
       - "8000:8000"
 
   frontend:
-    build:
-      context: .
-      dockerfile: ./frontend/Dockerfile
+    image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-frontend:latest
     command: sh -c "npm install && npm start | cat" # pipe into cat so console does not get reset
     tty: true # Colorize output
     volumes:
-      - ./core:/app/core:ro
-      - ./wasm:/app/wasm:ro
-      - ./frontend:/app/frontend:ro
-      - core_build:/app/core/target
-      - wasm_build:/app/wasm/target
+      - ./:/app:rw
+      - frontend_core_build:/app/target
+      - frontend_wasm_build:/app/wasm/target
       - frontend_node_modules:/app/frontend/node_modules
     ports:
       - "3000:3000"

@@ -2,6 +2,7 @@
 members = [
     "api",
     "cli",
-    "core",
-    "wasm"
+    "core"
 ]
+# This is excluded because cargo doesn't build it directly
+exclude = ["wasm"]

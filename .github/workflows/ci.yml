@@ -6,17 +6,30 @@ on:
       - master
   pull_request:
 
+env:
+  COMPOSE_FILE: docker-compose.ci.yml
+
 jobs:
   lint:
-    name: Clippy and Rustfmt
+    name: "[ALL] Clippy and Rustfmt"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('Cargo.lock') }}
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('Cargo.lock') }}
       - name: Cache cargo build
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('Cargo.lock') }}
       - name: Install dependencies
         run: |
           sudo apt-get install -y libpq-dev
@@ -29,27 +42,80 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
+
   test-core:
-    name: Test core crate
+    name: "[CORE] Test"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('Cargo.lock') }}
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('Cargo.lock') }}
       - name: Cache cargo build
         uses: actions/cache@v1
         with:
-          path: core/target
-          key: ${{ runner.os }}-cargo-build-target-core-${{ hashFiles('**/Cargo.lock') }}
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('Cargo.lock') }}
       - name: Run test
         uses: actions-rs/cargo@v1
         with:
           command: test
           args: -p gdlk
+
   test-api:
-    name: Test API crate
+    name: "[API] Test"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('Cargo.lock') }}
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('Cargo.lock') }}
+      - name: Cache cargo build
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('Cargo.lock') }}
+      - name: Docker login
+        run: |-
+          docker login -u lucaspickering -p ${{ secrets.GITHUB_TOKEN }} docker.pkg.github.com
       - name: Build API image
-        run: docker-compose -f docker-compose.ci.yml build api
+        run: |-
+          docker-compose pull api
+          docker-compose build api
       - name: Test API
-        run: docker-compose -f docker-compose.ci.yml run api ./docker/run_tests.sh
+        run: docker-compose run api ./docker/run_tests.sh
+      - name: Push API image
+        if: github.ref == 'refs/heads/master'
+        run: |-
+          docker-compose push api
+
+  test-frontend:
+    name: "[FE] Test"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: Docker login
+        run: |-
+          docker login -u lucaspickering -p ${{ secrets.GITHUB_TOKEN }} docker.pkg.github.com
+      - name: Build Frontend image
+        run: |-
+          docker-compose pull frontend
+          docker-compose build frontend
+      - name: Push Frontend image
+        if: github.ref == 'refs/heads/master'
+        run: |-
+          docker-compose push frontend

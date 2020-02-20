@@ -1,26 +1,22 @@
-FROM rustlang/rust:nightly-slim
-ARG install_cargo_watch=0
-
-# This should be built with the repo root dir as the context
+# Version doesn't matter here, we're just going to install our own toolchain
+FROM rust:1.41.1-slim
 
 ENV DOCKERIZE_VERSION v0.6.1
 
 RUN apt-get update && \
     apt-get install -y \
+    curl \
     libpq-dev \
     pkg-config \
     && \
     rm -rf /var/lib/apt/lists/*
 
-ADD https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz .
-RUN tar -C /usr/local/bin -xzvf dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz && \
-    rm dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz
+RUN curl -sSL https://github.com/jwilder/dockerize/releases/download/${DOCKERIZE_VERSION}/dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
+    | tar xzv -C /usr/local/bin
 
-# # Need to do this first so we pick up the rust-toolchain file
-COPY .clippy.toml rust-toolchain .rustfmt.toml /app/
-COPY ./api /app/api
-COPY ./core /app/core
-WORKDIR /app/api
+WORKDIR /app
+COPY rust-toolchain ./
 RUN cargo install diesel_cli --no-default-features --features=postgres && \
-    cargo build && \
-    if [ $install_cargo_watch = 1 ]; then cargo install cargo-watch; fi
+    cargo install cargo-watch
+
+WORKDIR /app/api
