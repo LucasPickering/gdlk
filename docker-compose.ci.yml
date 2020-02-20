@@ -1,4 +1,4 @@
-version: "3"
+version: "3.2"
 
 services:
   db:
@@ -12,8 +12,21 @@ services:
     build:
       context: .
       dockerfile: ./api/Dockerfile
+      cache_from:
+        - docker.pkg.github.com/lucaspickering/gdlk/gdlk-api:${DOCKER_TAG}
+    image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-api:${DOCKER_TAG}
+    volumes:
+      - ./:/app:rw
     depends_on:
       - db
     environment:
       RUST_BACKTRACE: 1
       DATABASE_URL: postgres://root:root@db/gdlk
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+      cache_from:
+        - docker.pkg.github.com/lucaspickering/gdlk/gdlk-frontend:${DOCKER_TAG}
+    image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-frontend:${DOCKER_TAG}

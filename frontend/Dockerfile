@@ -1,24 +1,22 @@
-FROM node:12.6.0-slim
+# If you update this, make sure you update .nvmrc too
+FROM node:12.16.0-slim
 
-# This should be built with the repo root dir as the context
+ENV PATH="/root/.cargo/bin:${PATH}"
+
 RUN apt-get update && \
     apt-get install -y \
-    curl build-essential
-# RUN apk update && apk upgrade && \
-#     apk add --no-cache curl
+    build-essential \
+    curl \
+    && \
+    rm -rf /var/lib/apt/lists/*
 
-COPY rust-toolchain ./wasm /app/
-COPY ./wasm /app/wasm
-COPY ./frontend /app/frontend
+# Install rustup and wasm-pack
+RUN curl -sSLf https://sh.rustup.rs | sh -s -- -y --default-toolchain none && \
+    curl -sSLf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
 
-WORKDIR /app/wasm
-
-# install rust and wasm-pack
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain none
-ENV PATH="/root/.cargo/bin:${PATH}"
-RUN curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-RUN wasm-pack build
+# Install correct rust toolchain
+WORKDIR /app
+COPY rust-toolchain ./
+RUN sh -c "rustup toolchain install $(cat rust-toolchain)"
 
 WORKDIR /app/frontend
-RUN npm install
-
