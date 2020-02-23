@@ -1,34 +1,36 @@
-//! This module holds all the different types that can appear in our ASTs. There
-//! is no functionality implemented here, just basic types. Every AST node type
-//! is generic and can hold an extra value. This is useful to carry metadata
-//! along with the AST (e.g. source spans).
+//! All the different types that can appear in the different GDLK Abstract
+//! Syntax Trees. There is no functionality implemented here, just basic types.
+//! Every AST node type is generic and can hold an extra value. This is useful
+//! to carry metadata along with the AST (e.g. [Span]).
 
-use serde::Serialize;
-use std::fmt::{self, Debug, Display, Formatter};
+use crate::util::Span;
 
-// TODO: do we need Serialize on everything?
-
-/// The type of every value in our language
+/// The type of every value in our language.
 pub type LangValue = i32;
 
-/// A symbol used to identify a certain user register
+/// A symbol used to identify a certain user register.
 pub type UserRegisterId = usize;
 
-/// A symbol used to identify a certain stack
+/// A symbol used to identify a certain stack.
 pub type StackId = usize;
 
-/// A label for a certain point in the code
+/// A label for a certain point in the code.
 pub type Label = String;
 
 /// A generic AST node container. This holds the AST node data itself, as well
 /// as some metadata (e.g. source span).
-#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Node<T, M>(pub T, pub M);
 
 impl<T, M> Node<T, M> {
     /// Get the data for this node.
     pub fn value(&self) -> &T {
         &self.0
+    }
+
+    /// Get the metadata for this node.
+    pub fn metadata(&self) -> &M {
+        &self.1
     }
 
     /// Create a new `Node` by mapping the data field using the given function.
@@ -38,45 +40,19 @@ impl<T, M> Node<T, M> {
     }
 }
 
-impl<T, M: Display> Display for Node<T, M> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.1)
-    }
-}
-
-/// The the source location for an AST node. Line and column numberes both start
-/// at 1.
-#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
-pub struct Span {
-    pub start_line: usize,
-    pub start_col: usize,
-    pub end_line: usize,
-    pub end_col: usize,
-}
-
-impl Display for Span {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}:{} to {}:{}",
-            self.start_line, self.start_col, self.end_line, self.end_col
-        )
-    }
-}
-
 /// An alias for the node type that we use most commonly throughout the
 /// compiler. Pairs each AST node with the original source that created it.
-pub type SpanNode<T> = Node<T, Span>;
+pub(crate) type SpanNode<T> = Node<T, Span>;
 
 /// A reference to a stack, e.g. "S0". This should NOT be used for other uses
 /// of a stack ID, e.g. in the register "RS0".
-#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct StackRef(pub StackId);
 
 /// A reference to a register. Registers can be readonly (in which case the
 /// value is a reflection of some other part of state), or read-write, which
 /// means the user can read and write freely from/to it.
-#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum RegisterRef {
     /// Read-only register that provides the number of elements remaining
     /// in the input buffer
@@ -88,9 +64,9 @@ pub enum RegisterRef {
     User(UserRegisterId),
 }
 
-/// Something that can produce a <LangValue> idempotently. The value
+/// Something that can produce a [LangValue] idempotently. The value
 /// can be read (repeatedly if necessary), but cannot be written to.
-#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ValueSource<T> {
     /// A static value, fixed at build time
     Const(Node<LangValue, T>),
@@ -108,7 +84,7 @@ pub enum ValueSource<T> {
 /// instruction.
 ///
 /// NOTE: All arithmetic operations are wrapping (for overflow/underflow).
-#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Operator<T> {
     /// Reads one value from the input buffer to a register
     Read(Node<RegisterRef, T>),
@@ -143,7 +119,7 @@ pub enum Operator<T> {
 /// The different types of jumps. This just holds the jump type and conditional
 /// value, not the jump target. That should be held by the parent, because the
 /// target type can vary (label vs offset).
-#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Jump<T> {
     /// Jumps unconditionally
     Jmp,
@@ -157,32 +133,34 @@ pub enum Jump<T> {
     Jgz(Node<ValueSource<T>, T>),
 }
 
-/// All types unique to the source AST live here
+/// All types unique to the source AST live here.
 pub mod source {
     use super::*;
 
     /// A label declaration, e.g. "LABEL:".
-    #[derive(Clone, Debug, PartialEq, Serialize)]
+    #[derive(Clone, Debug, PartialEq)]
     pub struct LabelDecl(pub Label);
 
     /// A statement is one complete parseable element. Generally, each statement
     /// goes on its own line in the source.
     #[derive(Clone, Debug, PartialEq)]
     pub enum Statement<T> {
+        /// A label declaration
         Label(Node<LabelDecl, T>),
+        /// See [Operator]
         Operator(Node<Operator<T>, T>),
         /// Jump to the given label
         Jump(Node<Jump<T>, T>, Node<Label, T>),
     }
 
-    /// A parsed and untransformed program
+    /// A parsed and untransformed program.
     #[derive(Clone, Debug, PartialEq)]
     pub struct Program<T> {
         pub body: Vec<Node<Statement<T>, T>>,
     }
 }
 
-/// All types unique to the compiled AST live here
+/// All types unique to the compiled AST live here.
 pub mod compiled {
     use super::*;
 
@@ -190,6 +168,7 @@ pub mod compiled {
     /// actually execute.
     #[derive(Copy, Clone, Debug, PartialEq)]
     pub enum Instruction<T> {
+        /// See [Operator]
         Operator(Node<Operator<T>, T>),
         /// These jumps are relative: In `Jmp(n)`, `n` is relative to the
         /// current program counter.
@@ -201,7 +180,7 @@ pub mod compiled {
         Jump(Node<Jump<T>, T>, isize),
     }
 
-    /// A compiled program, ready to be executed
+    /// A compiled program, ready to be executed.
     #[derive(Clone, Debug, PartialEq)]
     pub struct Program<T> {
         pub instructions: Vec<Node<Instruction<T>, T>>,

@@ -1,7 +1,7 @@
 #![deny(clippy::all, unused_must_use, unused_imports)]
 
 use failure::Fallible;
-use gdlk::{compile, compile_and_allocate, HardwareSpec, ProgramSpec, Valid};
+use gdlk::{Compiler, HardwareSpec, ProgramSpec, Valid};
 use serde::de::DeserializeOwned;
 use std::{fs, path::PathBuf, process};
 use structopt::StructOpt;
@@ -23,8 +23,8 @@ enum Command {
     },
 
     /// Compile and execute source code.
-    #[structopt(name = "execute")]
-    Execute {
+    #[structopt(name = "run")]
+    Run {
         /// Path to the hardware spec file, in JSON format. If not provided, a
         /// default hardware spec will be used.
         #[structopt(parse(from_os_str), long = "hardware")]
@@ -71,12 +71,12 @@ fn run(opt: Opt) -> Fallible<()> {
             let hw_spec: Valid<HardwareSpec> = load_spec(&hardware_spec_path)?;
             // Read the source code from the file
             let source = fs::read_to_string(source_path)?;
-            // Compile and execute
-            compile(&hw_spec, &source)?;
+            // Compile
+            Compiler::compile(source, hw_spec)?;
         }
 
         // Compile and build the given program
-        Command::Execute {
+        Command::Run {
             hardware_spec_path,
             program_spec_path,
             source_path,
@@ -91,12 +91,13 @@ fn run(opt: Opt) -> Fallible<()> {
 
             // Compile and execute
             let mut machine =
-                compile_and_allocate(&hw_spec, &program_spec, &source)?;
+                Compiler::compile(source, hw_spec)?.allocate(&program_spec);
             let success = machine.execute_all()?;
 
             println!(
-                "Program completed with {}",
-                if success { "success" } else { "failure" }
+                "{}\nProgram completed with {}",
+                serde_json::to_string_pretty(&machine)?,
+                if success { "success" } else { "failure" },
             );
         }
     }
@@ -107,7 +108,7 @@ fn main() {
     let exit_code = match run(Opt::from_args()) {
         Ok(_) => 0,
         Err(err) => {
-            eprintln!("{}", err);
+            eprintln!("{:#}", err);
             1
         }
     };

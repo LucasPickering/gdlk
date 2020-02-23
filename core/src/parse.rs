@@ -1,10 +1,11 @@
 use crate::{
     ast::{
         source::{LabelDecl, Program, Statement},
-        Jump, Label, LangValue, Node, Operator, RegisterRef, Span, SpanNode,
-        StackId, StackRef, UserRegisterId, ValueSource,
+        Jump, Label, LangValue, Node, Operator, RegisterRef, SpanNode, StackId,
+        StackRef, UserRegisterId, ValueSource,
     },
-    error::CompileError,
+    error::{CompileError, SourceErrorWrapper, WithSource},
+    util::Span,
     Compiler,
 };
 use nom::{
@@ -12,7 +13,7 @@ use nom::{
     bytes::complete::{is_not, tag, tag_no_case, take_while1},
     character::complete::{char, digit1, line_ending, space0, space1},
     combinator::{all_consuming, cut, map, map_res, opt, recognize},
-    error::{context, ErrorKind, ParseError, VerboseError, VerboseErrorKind},
+    error::{context, convert_error, ParseError, VerboseError},
     lib::std::ops::RangeTo,
     multi::many0,
     sequence::{delimited, preceded, separated_pair, terminated, tuple},
@@ -44,6 +45,8 @@ trait Parse<'a>: Sized {
         let (i, end_position) = position(i)?;
 
         let span = Span {
+            offset: raw_span.location_offset(),
+            length: raw_span.fragment().len(),
             start_line: raw_span.location_line() as usize,
             start_col: raw_span.get_column(),
             end_line: end_position.location_line() as usize,
@@ -315,7 +318,7 @@ fn line_comment(input: RawSpan) -> ParseResult<'_, ()> {
     )(input)
 }
 
-/// Parse a single line, not including the line ending.
+/// Parse a single line, up to but not including the line ending.
 fn line(input: RawSpan) -> ParseResult<'_, Option<SpanNode<Statement<Span>>>> {
     delimited(
         space0,
@@ -324,35 +327,54 @@ fn line(input: RawSpan) -> ParseResult<'_, Option<SpanNode<Statement<Span>>>> {
     )(input)
 }
 
-fn parse(input: &str) -> Result<Program<Span>, CompileError> {
+fn parse(
+    input: &str,
+) -> Result<Program<Span>, Vec<SourceErrorWrapper<CompileError>>> {
     match Program::parse(RawSpan::new(input)) {
         Ok((_, program)) => Ok(program),
         Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
-            match e.errors.as_slice() {
-                [(substring, VerboseErrorKind::Nom(ErrorKind::Eof)), ..] => {
-                    // If the error is EOF that means there was remaining
-                    // input that was not parsed
-                    // so they put in a bad keyword
-                    // TODO: need to make this custom error look more like
-                    // how convert_error outputs
-                    Err(CompileError::ParseError(format!(
-                        "Invalid keyword: {}",
-                        substring
-                    )))
-                }
-                // _ => Err(CompileError::ParseError(convert_error(&input, e))),
-                _ => Err(CompileError::ParseError("asdf".into())),
-            }
+            let new_error: VerboseError<&str> = VerboseError {
+                errors: e
+                    .errors
+                    .into_iter()
+                    .map(|(raw_span, error_kind)| {
+                        (*raw_span.fragment(), error_kind)
+                    })
+                    .collect(),
+            };
+            // TODO make this less shit
+            Err(vec![SourceErrorWrapper::new(
+                CompileError::ParseError(convert_error(input, new_error)),
+                Span {
+                    offset: 0,
+                    length: 0,
+                    start_line: 1,
+                    start_col: 1,
+                    end_line: 1,
+                    end_col: 1,
+                },
+                input,
+            )])
         }
-        // only in for streaming mode
+        // only possible in streaming mode
         Err(nom::Err::Incomplete(_needed)) => unreachable!(),
     }
 }
 
-impl<'a> Compiler<&'a str> {
+impl Compiler<()> {
     /// Parses source code from the given input, into an abstract syntax tree.
-    pub fn parse(self) -> Result<Compiler<Program<Span>>, CompileError> {
-        parse(self.0).map(Compiler)
+    pub(crate) fn parse(
+        self,
+    ) -> Result<Compiler<Program<Span>>, WithSource<CompileError>> {
+        match parse(&self.source) {
+            // Ok(program) => Ok(self.replace_ast(program)),
+            Ok(program) => Ok(Compiler {
+                source: self.source,
+                hardware_spec: self.hardware_spec,
+                ast: program,
+            }),
+            Err(errors) => Err(WithSource::new(errors, self.source)),
+        }
     }
 }
 
@@ -368,6 +390,10 @@ mod tests {
         end_col: usize,
     ) -> Span {
         Span {
+            // The test implementation of PartialEq doesn't check these fields
+            offset: 0,
+            length: 0,
+
             start_line,
             start_col,
             end_line,

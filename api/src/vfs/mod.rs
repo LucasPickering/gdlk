@@ -85,7 +85,7 @@ pub struct NodePermissions {
 
 impl NodePermissions {
     /// Check if these permissions permit reads. If not, return a
-    /// <ServerError::PermissionDenied>.
+    /// [ServerError::PermissionDenied].
     pub fn require_read(self) -> Result<()> {
         if self.read {
             Ok(())
@@ -95,7 +95,7 @@ impl NodePermissions {
     }
 
     /// Check if these permissions permit writes. If not, return a
-    /// <ServerError::PermissionDenied>.
+    /// [ServerError::PermissionDenied].
     pub fn require_write(self) -> Result<()> {
         if self.write {
             Ok(())
@@ -121,11 +121,11 @@ const PERMS_RW: NodePermissions = NodePermissions {
 /// reference. In those cases, the only operation that is possible is `create`,
 /// which will create the corresponding node.
 ///
-/// To get a reference to a node, you can use <VirtualFileSystem::get_node>.
+/// To get a reference to a node, you can use [VirtualFileSystem::get_node].
 ///
-/// This type needs to be able to outlive the <VirtualFileSystem> that creates
+/// This type needs to be able to outlive the [VirtualFileSystem] that creates
 /// it, so that it can be passed around for GraphQL purposes. Because of that,
-/// it owns its own copy of <Context>, and that copy holds <Rc>s instead of
+/// it owns its own copy of [Context], and that copy holds [Rc]s instead of
 /// references.
 #[derive(Clone)]
 pub struct NodeReference {
@@ -233,7 +233,7 @@ impl NodeReference {
     /// Create a persistent node for this dangling reference. This function
     /// creates a physical entry for the reference node, so that the reference
     /// is no longer a dangling reference. If this reference is _not_ dangling,
-    /// then this operation should fail with a <ServerError::AlreadyExists>.
+    /// then this operation should fail with a [ServerError::AlreadyExists].
     fn create(&self) -> Result<()> {
         self.vnode.handler.create_node(
             &self.context,
@@ -395,7 +395,7 @@ impl NodeMutation {
 /// might be needed to serve file paths, e.g. DB connections.
 ///
 /// This struct is useful for getting references to particular nodes (see
-/// <Self::get_node>). Once you have a <NodeReference>, you can run
+/// [Self::get_node]). Once you have a [NodeReference], you can run
 /// file operations on it.
 pub struct VirtualFileSystem {
     db_conn: Rc<PooledConnection>,

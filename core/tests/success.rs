@@ -3,8 +3,8 @@
 //! outcome.
 
 use gdlk::{
-    ast::LangValue, compile_and_allocate, HardwareSpec, Machine, ProgramSpec,
-    Valid, MAX_CYCLE_COUNT,
+    ast::LangValue, Compiler, HardwareSpec, Machine, ProgramSpec, Valid,
+    MAX_CYCLE_COUNT,
 };
 
 /// Compiles the program for the given hardware, and executes it against the
@@ -17,12 +17,10 @@ fn execute_expect_success(
 ) -> Machine {
     let valid_program_spec = Valid::validate(program_spec).unwrap();
     // Compile from hardware+src
-    let mut machine = compile_and_allocate(
-        &Valid::validate(hardware_spec).unwrap(),
-        &valid_program_spec,
-        src,
-    )
-    .unwrap();
+    let mut machine =
+        Compiler::compile(src.into(), Valid::validate(hardware_spec).unwrap())
+            .unwrap()
+            .allocate(&valid_program_spec);
 
     // Execute to completion
     let success = machine.execute_all().unwrap();

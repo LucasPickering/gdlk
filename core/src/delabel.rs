@@ -2,8 +2,9 @@ use crate::{
     ast::{
         compiled::{Instruction, Program as CompiledProgram},
         source::{LabelDecl, Program as SourceProgram, Statement},
-        Label, Node, Span, SpanNode,
+        Label, Node, SpanNode,
     },
+    util::Span,
     Compiler,
 };
 use std::collections::HashMap;
@@ -46,11 +47,11 @@ fn map_statement(
 impl Compiler<SourceProgram<Span>> {
     /// Removes labels from the source, replacing their references with relative
     /// index offsets.
-    pub fn delabel(self) -> Compiler<CompiledProgram<Span>> {
-        let label_map = map_labels(&self.0.body);
+    pub(crate) fn delabel(self) -> Compiler<CompiledProgram<Span>> {
+        let label_map = map_labels(&self.ast.body);
 
         let instructions: Vec<Node<Instruction<_>, _>> = self
-            .0
+            .ast
             .body
             .into_iter()
             // Need to filter FIRST so labels don't get tracked in the
@@ -62,19 +63,29 @@ impl Compiler<SourceProgram<Span>> {
             .enumerate()
             .map(|(i, stmt_node)| map_statement(&label_map, i, stmt_node))
             .collect();
-        Compiler(CompiledProgram { instructions })
+        Compiler {
+            source: self.source,
+            hardware_spec: self.hardware_spec,
+            ast: CompiledProgram { instructions },
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::{Jump, Operator, RegisterRef};
+    use crate::{
+        ast::{Jump, Operator, RegisterRef},
+        models::HardwareSpec,
+        util::Valid,
+    };
 
     #[test]
     fn test_delabel() {
         // Dummy span for comparisons
         let span = Span {
+            offset: 0,
+            length: 0,
             start_line: 0,
             start_col: 0,
             end_line: 0,
@@ -122,9 +133,13 @@ mod tests {
             ),
             Node(Statement::Label(Node(LabelDecl("END".into()), span)), span),
         ];
-        let compiler = Compiler(SourceProgram { body });
+        let compiler = Compiler {
+            source: "".into(),
+            hardware_spec: Valid::validate(HardwareSpec::default()).unwrap(),
+            ast: SourceProgram { body },
+        };
         assert_eq!(
-            compiler.delabel().0.instructions,
+            compiler.delabel().ast.instructions,
             vec![
                 Node(Instruction::Jump(Node(Jump::Jmp, span), 0), span),
                 Node(
