@@ -1,7 +1,7 @@
 //! Integration tests for GDLK that expect compile errors. The programs in
 //! these tests should all fail during compilation.
 
-use gdlk::{compile_and_allocate, HardwareSpec, ProgramSpec, Valid};
+use gdlk::{Compiler, HardwareSpec, ProgramSpec, Valid};
 
 /// Compiles the program for the given hardware, executes it under the given
 /// program spec, and expects a runtime error. Panics if the program executes
@@ -13,12 +13,10 @@ fn expect_runtime_error(
     expected_error: &str,
 ) {
     // Compile from hardware+src
-    let mut machine = compile_and_allocate(
-        &Valid::validate(hardware_spec).unwrap(),
-        &Valid::validate(program_spec).unwrap(),
-        src,
-    )
-    .unwrap();
+    let mut machine =
+        Compiler::compile(src.into(), Valid::validate(hardware_spec).unwrap())
+            .unwrap()
+            .allocate(&Valid::validate(program_spec).unwrap());
 
     // Execute to completion
     let actual_error = machine.execute_all().unwrap_err();
@@ -41,7 +39,7 @@ fn test_stack_overflow() {
         SUB RX0 1
         JGZ RX0 START
         ",
-        "Overflow on stack @ 4:18 to 4:20",
+        "Error on line 4: Overflow on stack `S0`",
     );
 }
 
@@ -51,7 +49,7 @@ fn test_empty_input() {
         HardwareSpec::default(),
         ProgramSpec::default(),
         "READ RX0",
-        "No input available to read",
+        "Error on line 1: Read attempted while input is empty",
     );
 }
 
@@ -65,7 +63,7 @@ fn test_empty_stack() {
         },
         ProgramSpec::default(),
         "POP S0 RX0",
-        "Cannot pop from empty stack @ 1:5 to 1:7",
+        "Error on line 1: Cannot pop from empty stack `S0`",
     );
 }
 
@@ -81,6 +79,7 @@ fn test_exceed_max_cycle_count() {
         START:
         JMP START
         ",
-        "The maximum number of cycles has been reached",
+        "Error on line 3: Maximum number of cycles reached, \
+        cannot execute instruction `JMP START`",
     );
 }

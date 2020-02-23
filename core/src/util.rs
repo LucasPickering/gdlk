@@ -1,8 +1,67 @@
+use serde::Serialize;
+use std::{
+    fmt::{self, Formatter},
+    iter,
+};
 use validator::{Validate, ValidationErrors};
 
+/// A definition of a span of source code. This doesn't actually hold the code
+/// itself (or any reference to it), it just defines parameters that can be used
+/// to find the source span.
+#[derive(Copy, Clone, Debug, Serialize)]
+pub struct Span {
+    /// Distance into the source at which this span starts. Starts at `0`.
+    pub offset: usize,
+    /// Number of characters that this span includes.
+    pub length: usize,
+    /// The line number that this span starts on, starting at `1`.
+    pub start_line: usize,
+    /// The column that this span starts at, starting at `1`.
+    pub start_col: usize,
+    /// The line number that this span ends on, starting at `1`.
+    pub end_line: usize,
+    /// The column that this span ends at, starting at `1`.
+    pub end_col: usize,
+}
+
+impl Span {
+    /// Determine if a line number intersects with this span.
+    pub fn includes_line(&self, line_num: usize) -> bool {
+        self.start_line <= line_num && line_num <= self.end_line
+    }
+
+    /// Get the start and end column of this span for a particular line. For the
+    /// first line in the span, the start is the span's start column. For the
+    /// last line, the end is the span's end column. For any other line, the
+    /// start is `1` and the end is the given line length.
+    pub fn get_cols_for_line(
+        &self,
+        line_num: usize,
+        line_len: usize,
+    ) -> (usize, usize) {
+        let start_col = if line_num <= self.start_line {
+            self.start_col
+        } else {
+            1
+        };
+        let end_col = if line_num >= self.end_line {
+            self.end_col
+        } else {
+            line_len
+        };
+        (start_col, end_col)
+    }
+
+    /// Find the spanned portion of source within the full source code. Returns
+    /// a sub-slice of the given string that corresponds to this span.
+    pub fn get_source_slice<'a>(&self, src: &'a str) -> &'a str {
+        &src[self.offset..(self.offset + self.length)]
+    }
+}
+
 /// A small wrapper struct to indicate that the wrapped value has been
-/// validated. Built on top of <validate>. This struct cannot be constructed
-/// except via <Self::try_from>.
+/// validated. Built on top of [validator]. This struct can only be constructed
+/// via [Valid::validate].
 ///
 /// ```
 /// use gdlk::{HardwareSpec, Valid};
@@ -14,13 +73,14 @@ use validator::{Validate, ValidationErrors};
 /// };
 /// let valid: Valid<HardwareSpec> = Valid::validate(maybe_valid).unwrap();
 /// ```
+#[derive(Clone, Debug)]
 pub struct Valid<T: Validate> {
     inner: T,
 }
 
 impl<T: Validate> Valid<T> {
-    /// Validate the given value, and if validation succeeds, wrap it in a
-    /// <Valid> to indicate it's valid.
+    /// Validate the given value. If validation succeeds, wrap it in a
+    /// [Valid] to indicate it's valid.
     pub fn validate(value: T) -> Result<Self, ValidationErrors> {
         // We can't do a blanket TryFrom<T: Validate> implementation because of
         // this bug https://github.com/rust-lang/rust/issues/50133
@@ -29,24 +89,67 @@ impl<T: Validate> Valid<T> {
         Ok(Self { inner: value })
     }
 
-    /// Get the inner value
+    /// Get the validated value.
     pub fn inner(&self) -> &T {
         &self.inner
     }
 }
 
+pub fn fmt_src_highlights(
+    f: &mut Formatter<'_>,
+    span: &Span,
+    src: &str,
+) -> fmt::Result {
+    let margin = "   ";
+    let separator = " | ";
+
+    // Span's line numbers start at 1, so include a dummy line at the
+    // beginning here to make them line up
+    let lines: Vec<&str> = iter::once("").chain(src.lines()).collect();
+    writeln!(f)?; // Blank line
+    writeln!(f, "{}{}", margin, separator)?;
+
+    // Print the the source span, plus an extra line before and after
+    let highlight_start = usize::max(span.start_line - 1, 1);
+    let highlight_end = usize::min(span.end_line + 1, lines.len() - 1);
+    for (i, line) in lines[highlight_start..=highlight_end].iter().enumerate() {
+        let line_num = highlight_start + i;
+        writeln!(f, "{:>3}{}{}", line_num, separator, line)?;
+
+        // If this line is actually in the span, do some underlining
+        if span.includes_line(line_num) {
+            // Underline the spanned columns with ^^^
+            let (start_col, end_col) =
+                span.get_cols_for_line(line_num, line.len());
+            writeln!(
+                f,
+                "{}{}{}{}",
+                margin,
+                separator,
+                iter::repeat(" ")
+                    .take(start_col - 1)
+                    .collect::<Vec<_>>()
+                    .join(""),
+                iter::repeat("^")
+                    .take(end_col - start_col)
+                    .collect::<Vec<_>>()
+                    .join("")
+            )?;
+        }
+    }
+    writeln!(f, "{}{}", margin, separator)?;
+
+    Ok(())
+}
+
 /// Macro that can wrap any body, and only executes the body if we are running
 /// in debug mode. Debug mode is enabled by setting the environment variable
-/// DEBUG=true. This compiles away to nothing when --release is used.
+/// `DEBUG=true`. This compiles away to nothing when --release is used.
 ///
-/// Example:
 /// ```
 /// use gdlk::debug;
 /// debug!(println!("Hello!"));
 /// ```
-///
-/// BTW that last assertion about --release hasn't _actually_ been confirmed,
-/// feel free to test that yourself.
 #[macro_export]
 macro_rules! debug {
     ($arg:expr) => {
@@ -61,4 +164,16 @@ macro_rules! debug {
             }
         }
     };
+}
+
+// Only needed in tests
+#[cfg(test)]
+impl PartialEq<Span> for Span {
+    fn eq(&self, other: &Self) -> bool {
+        // Skip offset and length, just to make testing a bit easier
+        self.start_line == other.start_line
+            && self.start_col == other.start_col
+            && self.end_line == other.end_line
+            && self.end_col == other.end_col
+    }
 }

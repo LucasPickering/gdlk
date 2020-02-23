@@ -1,7 +1,7 @@
 //! Integration tests for GDLK that expect compile errors. The programs in
 //! these tests should all fail during compilation.
 
-use gdlk::{compile, HardwareSpec, Valid};
+use gdlk::{Compiler, HardwareSpec, Valid};
 
 /// Compiles the program for the given hardware, expecting compile error(s).
 /// Panics if the program compiles successfully, or if the wrong set of
@@ -13,7 +13,8 @@ fn expect_compile_errors(
 ) {
     // Compile from hardware+src
     let actual_errors =
-        compile(&Valid::validate(hardware_spec).unwrap(), src).unwrap_err();
+        Compiler::compile(src.into(), Valid::validate(hardware_spec).unwrap())
+            .unwrap_err();
     assert_eq!(format!("{}", actual_errors), expected_errors.join("\n"));
 }
 
@@ -27,7 +28,8 @@ fn test_parse_no_newline_after_inst() {
             max_stack_length: 0,
         },
         "READ RX1 WRITE RX2",
-        &["Parse error: Invalid keyword: WRITE RX2"],
+        &["Error on line 1: Parse error: 0: at line 0, in Eof:\
+        \nREAD RX1 WRITE RX2\n         ^\n\n"],
     );
 }
 
@@ -50,14 +52,14 @@ fn test_invalid_user_reg_ref() {
         POP S0 RX8
         ",
         &[
-            "Invalid reference to register @ 2:14 to 2:17",
-            "Invalid reference to register @ 3:15 to 3:18",
-            "Invalid reference to register @ 4:13 to 4:16",
-            "Invalid reference to register @ 5:13 to 5:16",
-            "Invalid reference to register @ 6:13 to 6:16",
-            "Invalid reference to register @ 7:13 to 7:16",
-            "Invalid reference to register @ 8:14 to 8:17",
-            "Invalid reference to register @ 9:16 to 9:19",
+            "Error on line 2: Invalid reference to register `RX1`",
+            "Error on line 3: Invalid reference to register `RX2`",
+            "Error on line 4: Invalid reference to register `RX3`",
+            "Error on line 5: Invalid reference to register `RX4`",
+            "Error on line 6: Invalid reference to register `RX5`",
+            "Error on line 7: Invalid reference to register `RX6`",
+            "Error on line 8: Invalid reference to register `RX7`",
+            "Error on line 9: Invalid reference to register `RX8`",
         ],
     );
 }
@@ -73,7 +75,7 @@ fn test_invalid_stack_reg_ref() {
         "
         SET RX0 RS1
         ",
-        &["Invalid reference to register @ 2:17 to 2:20"],
+        &["Error on line 2: Invalid reference to register `RS1`"],
     );
 }
 
@@ -90,8 +92,8 @@ fn test_invalid_stack_ref() {
         POP S2 RX0
         ",
         &[
-            "Invalid reference to stack @ 2:16 to 2:18",
-            "Invalid reference to stack @ 3:13 to 3:15",
+            "Error on line 2: Invalid reference to stack `S1`",
+            "Error on line 3: Invalid reference to stack `S2`",
         ],
     );
 }
@@ -109,8 +111,8 @@ fn test_unwritable_reg() {
         SET RS0 5
         ",
         &[
-            "Cannot write to read-only register @ 2:13 to 2:16",
-            "Cannot write to read-only register @ 3:13 to 3:16",
+            "Error on line 2: Cannot write to read-only register `RLI`",
+            "Error on line 3: Cannot write to read-only register `RS0`",
         ],
     );
 }

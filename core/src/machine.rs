@@ -1,14 +1,14 @@
 use crate::{
     ast::{
         compiled::{Instruction, Program},
-        Jump, LangValue, Node, Operator, RegisterRef, Span, SpanNode, StackRef,
+        Jump, LangValue, Node, Operator, RegisterRef, SpanNode, StackRef,
         ValueSource,
     },
     consts::MAX_CYCLE_COUNT,
     debug,
-    error::RuntimeError,
+    error::{RuntimeError, SourceErrorWrapper, WithSource},
     models::{HardwareSpec, ProgramSpec},
-    util::Valid,
+    util::{Span, Valid},
 };
 use serde::Serialize;
 use std::{
@@ -23,11 +23,13 @@ use std::{
 /// a program. The current machine state can be obtained at any time, including
 /// execution stats (e.g. # cycles), which allows for handy visualizations of
 /// execution.
-#[derive(Debug, PartialEq, Serialize)]
+#[derive(Debug, Serialize)]
 pub struct Machine {
     // Static data - this is copied from the input and shouldn't be included in
     // serialization. We store these ourselves instead of keeping references
     // to the originals because it just makes life a lot easier.
+    #[serde(skip)]
+    source: String,
     #[serde(skip)]
     program: Program<Span>,
     #[serde(skip)]
@@ -62,12 +64,14 @@ impl Machine {
         hardware_spec: &Valid<HardwareSpec>,
         program_spec: &Valid<ProgramSpec>,
         program: Program<Span>,
+        source: String,
     ) -> Self {
         let hw_spec_inner = hardware_spec.inner();
         let prog_spec_inner = program_spec.inner();
         Self {
             // Static data
             program,
+            source,
             expected_output: prog_spec_inner.expected_output.clone(),
             max_stack_length: hw_spec_inner.max_stack_length,
 
@@ -137,14 +141,14 @@ impl Machine {
         &mut self,
         stack_ref: &SpanNode<StackRef>,
         value: LangValue,
-    ) -> Result<(), RuntimeError> {
+    ) -> Result<(), (RuntimeError, Span)> {
         // Have to access this first cause borrow checker
         let max_stack_length = self.max_stack_length;
         let stack = &mut self.stacks[stack_ref.value().0];
 
         // If the stack is capacity, make sure we're not over it
         if stack.len() >= max_stack_length {
-            return Err(RuntimeError::StackOverflow(*stack_ref));
+            return Err((RuntimeError::StackOverflow, *stack_ref.metadata()));
         }
 
         stack.push(value);
@@ -158,42 +162,45 @@ impl Machine {
     fn pop_stack(
         &mut self,
         stack_ref: &SpanNode<StackRef>,
-    ) -> Result<LangValue, RuntimeError> {
+    ) -> Result<LangValue, (RuntimeError, Span)> {
         let stack = &mut self.stacks[stack_ref.value().0];
 
         if let Some(val) = stack.pop() {
             Ok(val)
         } else {
-            Err(RuntimeError::EmptyStack(*stack_ref))
+            Err((RuntimeError::EmptyStack, *stack_ref.metadata()))
         }
     }
 
-    /// Executes the next instruction in the program. If there are no
-    /// instructions left to execute, this panics.
-    pub fn execute_next(&mut self) -> Result<(), RuntimeError> {
+    /// Internal function to execute the next instruction. The return value
+    /// is the same as [Self::execute_next], except the error needs to be
+    /// wrapped before being handed to the user.
+    fn execute_next_inner(&mut self) -> Result<bool, (RuntimeError, Span)> {
+        let instr_node: SpanNode<Instruction<Span>> =
+            match self.program.instructions.get(self.program_counter) {
+                Some(instr_node) => *instr_node,
+                // out of instructions to execute, just give up
+                None => return Ok(false),
+            };
+
         // Prevent infinite loops
         if self.cycle_count >= MAX_CYCLE_COUNT {
-            return Err(RuntimeError::TooManyCycles);
+            // Include the instruction that triggered the error
+            return Err((RuntimeError::TooManyCycles, *instr_node.metadata()));
         }
-
-        let instr = *self
-            .program
-            .instructions
-            .get(self.program_counter)
-            .ok_or(RuntimeError::ProgramTerminated)?
-            .value();
 
         // Execute the instruction. For most instructions, the number of
         // instructions to consume is just 1. For jumps though, it can vary.
+        let instr = instr_node.value();
         let instrs_to_consume: isize = match instr {
             // Operators
-            Instruction::Operator(Node(op, _)) => {
+            Instruction::Operator(Node(op, span)) => {
                 match op {
                     Operator::Read(reg) => match self.input.pop_front() {
                         Some(val) => {
                             self.set_reg(&reg, val);
                         }
-                        None => return Err(RuntimeError::EmptyInput),
+                        None => return Err((RuntimeError::EmptyInput, *span)),
                     },
                     Operator::Write(src) => {
                         self.output.push(self.get_val_from_src(&src));
@@ -259,7 +266,7 @@ impl Machine {
                     Jump::Jgz(src) => self.get_val_from_src(&src) > 0,
                 };
                 if should_jump {
-                    offset
+                    *offset
                 } else {
                     1
                 }
@@ -274,13 +281,28 @@ impl Machine {
             (self.program_counter as isize + instrs_to_consume) as usize;
         self.cycle_count += 1;
         debug!(println!("Executed {:?}\n\tState: {:?}", instr, self));
-        Ok(())
+        Ok(true)
+    }
+
+    /// Executes the next instruction in the program. Return value:
+    /// - `Ok(true)`: One instruction was executed, machine state was updated
+    /// - `Ok(false)`: No instructions left to execute, machine state was not
+    ///   changed
+    /// - `Err((error, span))`: An error occurred. The error and the span of the
+    ///   source that caused it are returned
+    pub fn execute_next(&mut self) -> Result<bool, WithSource<RuntimeError>> {
+        self.execute_next_inner().map_err(|(error, span)| {
+            WithSource::new(
+                iter::once(SourceErrorWrapper::new(error, span, &self.source)),
+                self.source.clone(),
+            )
+        })
     }
 
     /// Executes this machine until termination (or error). All instructions are
     /// executed until [is_complete](Machine::is_complete) returns true. Returns
     /// the value of [is_successful](Machine::is_successful) upon termination.
-    pub fn execute_all(&mut self) -> Result<bool, RuntimeError> {
+    pub fn execute_all(&mut self) -> Result<bool, WithSource<RuntimeError>> {
         while !self.is_complete() {
             self.execute_next()?;
         }

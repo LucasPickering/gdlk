@@ -4,8 +4,8 @@ use actix_web::{get, web, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
 use diesel::{prelude::*, PgConnection};
 use gdlk::{
-    compile_and_allocate, CompileErrors, HardwareSpec, Machine, ProgramSpec,
-    RuntimeError, Valid,
+    error::{CompileError, RuntimeError, WithSource},
+    Compiler, HardwareSpec, Machine, ProgramSpec, Valid,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -60,10 +60,10 @@ enum OutgoingEvent<'a> {
     // Error events
     /// Failed to parse websocket message
     MalformedMessage(String),
-    /// Failed to parse the sent program
-    CompileError(CompileErrors),
+    /// Failed to compile the sent program
+    CompileError(WithSource<CompileError>),
     /// Error occurred while running a program
-    RuntimeError(RuntimeError),
+    RuntimeError(WithSource<RuntimeError>),
     /// "Step" message occurred before "Compile" message
     NoCompilation,
 }
@@ -92,14 +92,14 @@ impl<'a> From<ValidationErrors> for OutgoingEvent<'a> {
     }
 }
 
-impl<'a> From<CompileErrors> for OutgoingEvent<'a> {
-    fn from(errors: CompileErrors) -> Self {
+impl<'a> From<WithSource<CompileError>> for OutgoingEvent<'a> {
+    fn from(errors: WithSource<CompileError>) -> Self {
         OutgoingEvent::CompileError(errors)
     }
 }
 
-impl<'a> From<RuntimeError> for OutgoingEvent<'a> {
-    fn from(error: RuntimeError) -> Self {
+impl<'a> From<WithSource<RuntimeError>> for OutgoingEvent<'a> {
+    fn from(error: WithSource<RuntimeError>) -> Self {
         OutgoingEvent::RuntimeError(error)
     }
 }
@@ -146,11 +146,10 @@ impl ProgramWebsocket {
         Ok(match socket_msg {
             IncomingEvent::Compile { source } => {
                 // Compile the program into a machine
-                self.machine = Some(compile_and_allocate(
-                    &self.hardware_spec,
-                    &self.program_spec,
-                    &source,
-                )?);
+                self.machine = Some(
+                    Compiler::compile(source, self.hardware_spec.clone())?
+                        .allocate(&self.program_spec),
+                );
 
                 // we need this fuckery cause lol borrow checker
                 self.machine.as_ref().unwrap().into()

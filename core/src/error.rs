@@ -1,157 +1,177 @@
-use crate::ast::{source::LabelDecl, Label, RegisterRef, SpanNode, StackRef};
+//! All error-related GDLK types.
+
+use crate::util::{self, Span};
 use failure::Fail;
 use serde::Serialize;
-use std::{
-    fmt::{self, Display, Formatter},
-    ops::Try,
-};
+use std::fmt::{self, Debug, Display, Formatter};
 
-// TODO re-work these error messages
+/// A trait for any error that originates in source code. [SourceError]s rely on
+/// having source code present in order to display themselves.
+pub trait SourceError: 'static + Send + Sync + Debug + Serialize {
+    /// Format this error into a simple message. `spanned_src` is the slice of
+    /// the source code that corresponds to this error's [Span]. This needs to
+    /// be provided by the caller in order to create a proper error message.
+    fn fmt_msg(&self, f: &mut Formatter<'_>, spanned_src: &str) -> fmt::Result;
+}
 
 /// An error that occurs during compilation of a program. The error will be
 /// due to a flaw in the program. This indicates a user error, _not_ an internal
 /// compiler error. Compiler bugs will always cause a panic.
-#[derive(Debug, PartialEq, Fail, Serialize)]
+#[derive(Debug, Serialize)]
 pub enum CompileError {
     /// Failed to parse the program
-    #[fail(display = "Parse error: {}", 0)]
     ParseError(String),
-
     /// Referenced a user register with an invalid identifier
-    #[fail(display = "Invalid reference to register @ {}", 0)]
-    InvalidRegisterRef(SpanNode<RegisterRef>),
-
+    InvalidRegisterRef,
     /// Referenced a stack with an invalid identifier
-    #[fail(display = "Invalid reference to stack @ {}", 0)]
-    InvalidStackRef(SpanNode<StackRef>),
-
+    InvalidStackRef,
     /// Tried to write to a read-only register
-    #[fail(display = "Cannot write to read-only register @ {}", 0)]
-    UnwritableRegister(SpanNode<RegisterRef>),
-
-    /// Defined a label more than once
-    #[fail(display = "Duplicate label @ {}", 0)]
-    DuplicateLabel(SpanNode<LabelDecl>),
-
+    UnwritableRegister,
+    /// Defined the same label more than once
+    DuplicateLabel { original: Span },
     /// Referenced a label that wasn't defined
-    #[fail(display = "Invalid reference to label @ {}", 0)]
-    InvalidLabel(SpanNode<Label>),
+    InvalidLabel,
+}
+
+impl SourceError for CompileError {
+    fn fmt_msg(&self, f: &mut Formatter<'_>, spanned_src: &str) -> fmt::Result {
+        match self {
+            Self::ParseError(err) => write!(f, "Parse error: {}", err),
+            Self::InvalidRegisterRef => {
+                write!(f, "Invalid reference to register `{}`", spanned_src)
+            }
+            Self::InvalidStackRef => {
+                write!(f, "Invalid reference to stack `{}`", spanned_src)
+            }
+            Self::UnwritableRegister => write!(
+                f,
+                "Cannot write to read-only register `{}`",
+                spanned_src
+            ),
+            Self::DuplicateLabel {
+                original: original_span,
+            } => write!(
+                f,
+                "Duplicate decalaration of label `{}`, \
+                    originally defined on line {}",
+                spanned_src, original_span.start_line,
+            ),
+            Self::InvalidLabel => {
+                write!(f, "Invalid reference to label `{}`", spanned_src)
+            }
+        }
+    }
 }
 
 /// An error that occurs during execution of a program. The error will be
 /// due to a flaw in the program. This indicates a user error, _not_ a bug in
 /// the interpreter. Interpreter bugs will always panic.
-#[derive(Debug, PartialEq, Fail, Serialize)]
+#[derive(Debug, Serialize)]
 pub enum RuntimeError {
-    /// Tried to push onto stack that is at capacity
-    #[fail(display = "Overflow on stack @ {}", 0)]
-    StackOverflow(SpanNode<StackRef>),
-
     /// READ attempted while input is empty
-    #[fail(display = "No input available to read")]
     EmptyInput,
-
+    /// Tried to push onto stack that is at capacity
+    StackOverflow,
     /// POP attempted while stack is empty
-    #[fail(display = "Cannot pop from empty stack @ {}", 0)]
-    EmptyStack(SpanNode<StackRef>),
-
+    EmptyStack,
     /// Too many cycles in the program
-    #[fail(display = "The maximum number of cycles has been reached")]
     TooManyCycles,
-
-    /// Instruction list has been exhausted, program is terminated
-    #[fail(display = "Program has terminated, nothing left to execute")]
-    ProgramTerminated,
 }
 
-/// A collection of compiler errors. We want to show as many errors as possible
-/// at compile time, so that the user can see everything wrong with their
-/// program at once.
+impl SourceError for RuntimeError {
+    fn fmt_msg(&self, f: &mut Formatter<'_>, spanned_src: &str) -> fmt::Result {
+        match self {
+            Self::StackOverflow => {
+                write!(f, "Overflow on stack `{}`", spanned_src)
+            }
+            Self::EmptyInput => {
+                write!(f, "Read attempted while input is empty")
+            }
+            Self::EmptyStack => {
+                write!(f, "Cannot pop from empty stack `{}`", spanned_src)
+            }
+            Self::TooManyCycles => write!(
+                f,
+                "Maximum number of cycles reached, \
+                cannot execute instruction `{}`",
+                spanned_src
+            ),
+        }
+    }
+}
+
+/// A wrapper around a [SourceError], that holds some extra data:
+/// - The [Span] of the source code that caused the error
+/// - The offending chunk of source code itself
 ///
-/// This holds an `Option<Vec<_>>` instead of just a `Vec` so that we don't
-/// have to allocate on the heap until we know we have errors. There are some
-/// methods and traits implemented to make it easier to collect errors as you
-/// go through a program.
-#[derive(Debug, PartialEq, Fail, Serialize)]
-pub struct CompileErrors(Option<Vec<CompileError>>);
+/// This type on its own can be formatted, without any external data.
+#[derive(Debug, Fail, Serialize)]
+pub struct SourceErrorWrapper<E: SourceError> {
+    error: E,
+    span: Span,
+    spanned_source: String,
+}
 
-impl CompileErrors {
-    /// Returns an empty set of errors. This will NOT allocate any heap memory.
-    pub fn none() -> Self {
-        Self(None)
-    }
-
-    /// Adds a new error to the collection
-    pub fn push(&mut self, error: CompileError) {
-        match &mut self.0 {
-            None => {
-                self.0 = Some(vec![error]);
-            }
-            Some(errs) => errs.push(error),
+impl<E: SourceError> SourceErrorWrapper<E> {
+    pub fn new(error: E, span: Span, src: &str) -> Self {
+        Self {
+            error,
+            span,
+            spanned_source: span.get_source_slice(src).into(),
         }
-    }
-
-    /// Combines this error collection with another, returning a collection with
-    /// both sets of errors.
-    pub fn chain(mut self, other: Self) -> Self {
-        // If `other` has errors:
-        if let Some(other_errs) = other.0 {
-            match &mut self.0 {
-                // We don't have errors, just return the others
-                None => return Self(Some(other_errs)),
-                // Combine the two collections
-                Some(self_errs) => {
-                    self_errs.extend(other_errs);
-                }
-            }
-        }
-        self
     }
 }
 
-// For converting a single error into a collection
-impl From<CompileError> for CompileErrors {
-    fn from(error: CompileError) -> Self {
-        Self(Some(vec![error]))
-    }
-}
-
-// Implemented so we can use `?` with this type
-impl Try for CompileErrors {
-    type Ok = ();
-    type Error = Self;
-
-    fn into_result(self) -> Result<(), CompileErrors> {
-        match self.0 {
-            Some(errs) if !errs.is_empty() => Err(Self(Some(errs))),
-            _ => Ok(()),
-        }
-    }
-
-    fn from_ok(_: ()) -> Self {
-        Self::none()
-    }
-
-    fn from_error(errs: Self) -> Self {
-        errs
-    }
-}
-
-impl Display for CompileErrors {
+impl<E: SourceError> Display for SourceErrorWrapper<E> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match &self.0 {
-            None => write!(f, "No errors"),
-            Some(errors) => {
-                // Write each error, separated by a newline
-                for (i, error) in errors.iter().enumerate() {
-                    // Prefix with a newline for all errors but the first
-                    if i > 0 {
-                        writeln!(f)?;
-                    }
-                    write!(f, "{}", error)?;
-                }
-                Ok(())
+        write!(f, "Error on line {}: ", self.span.start_line)?;
+        self.error.fmt_msg(f, &self.spanned_source)?;
+        Ok(())
+    }
+}
+
+/// A wrapper around of a collection of errors. This holds the errors as well as
+/// the source code, and can be used to render associated source code with each
+/// error.
+#[derive(Debug, Fail, Serialize)]
+pub struct WithSource<E: SourceError> {
+    errors: Vec<SourceErrorWrapper<E>>,
+    #[serde(skip)]
+    source: String,
+}
+
+impl<E: SourceError> WithSource<E> {
+    /// Wrap a collection of errors with its source code.
+    pub(crate) fn new(
+        errors: impl IntoIterator<Item = SourceErrorWrapper<E>>,
+        source: String,
+    ) -> Self {
+        Self {
+            errors: errors.into_iter().collect(),
+            source,
+        }
+    }
+
+    /// Get a reference to the errors wrapped by this type.
+    pub fn errors(&self) -> &[SourceErrorWrapper<E>] {
+        &self.errors
+    }
+}
+
+impl<E: SourceError> Display for WithSource<E> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        // Write each error, separated by a newline
+        for (i, error) in self.errors.iter().enumerate() {
+            // Prefix with a newline for all errors but the first
+            if i > 0 {
+                writeln!(f)?; // just a newline
+            }
+
+            write!(f, "{}", error)?;
+            if f.alternate() {
+                util::fmt_src_highlights(f, &error.span, &self.source)?;
             }
         }
+        Ok(())
     }
 }

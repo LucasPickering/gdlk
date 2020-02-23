@@ -5,3 +5,4 @@
 pkg/*
 node_modules/*
 */target/*
+*.json
