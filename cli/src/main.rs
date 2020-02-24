@@ -1,11 +1,13 @@
 #![deny(clippy::all, unused_must_use, unused_imports)]
 
 use failure::Fallible;
-use gdlk::{Compiler, HardwareSpec, ProgramSpec, Valid};
+use gdlk::{
+    compile, compile_and_allocate, validator::Validate, HardwareSpec,
+    ProgramSpec, Valid,
+};
 use serde::de::DeserializeOwned;
 use std::{fs, path::PathBuf, process};
 use structopt::StructOpt;
-use validator::Validate;
 
 /// The sub-command to execute.
 #[derive(Debug, StructOpt)]
