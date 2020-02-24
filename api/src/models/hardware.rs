@@ -3,9 +3,11 @@ use diesel::{
     dsl, expression::bound::Bound, prelude::*, query_builder::InsertStatement,
     sql_types::Text, Identifiable, Queryable,
 };
-use gdlk::Valid;
+use gdlk::{
+    validator::{Validate, ValidationErrors},
+    Valid,
+};
 use std::convert::TryFrom;
-use validator::{Validate, ValidationErrors};
 
 /// Eq clause to filter hardware_specs by slug
 pub type WithSlug<'a> =

@@ -10,9 +10,8 @@ use diesel::{
     sql_types::{Int4, Text},
     Identifiable, Queryable,
 };
-use gdlk::{ast::LangValue, Valid};
+use gdlk::{ast::LangValue, validator::ValidationErrors, Valid};
 use std::convert::TryFrom;
-use validator::ValidationErrors;
 
 /// Inner join between program_specs and hardware_specs
 type InnerJoinSpecs =

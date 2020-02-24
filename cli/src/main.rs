@@ -1,10 +1,7 @@
 #![deny(clippy::all, unused_must_use, unused_imports)]
 
 use failure::Fallible;
-use gdlk::{
-    compile, compile_and_allocate, validator::Validate, HardwareSpec,
-    ProgramSpec, Valid,
-};
+use gdlk::{validator::Validate, Compiler, HardwareSpec, ProgramSpec, Valid};
 use serde::de::DeserializeOwned;
 use std::{fs, path::PathBuf, process};
 use structopt::StructOpt;
