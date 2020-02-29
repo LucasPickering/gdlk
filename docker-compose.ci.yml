@@ -30,3 +30,5 @@ services:
       cache_from:
         - docker.pkg.github.com/lucaspickering/gdlk/gdlk-frontend:${DOCKER_TAG}
     image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-frontend:${DOCKER_TAG}
+    volumes:
+      - ./:/app:rw
