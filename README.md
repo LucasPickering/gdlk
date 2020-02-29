@@ -37,15 +37,23 @@ If you just want to compile and run a program without starting up the webserver,
 cargo run -- execute -e env.json -i prog.gdlk
 ```
 
-### Running the Webserver
+### Running the Web Stack
 
-In the repo root:
+Unfortunately, until [this GitHub bug](https://github.community/t5/GitHub-Actions/docker-pull-from-public-GitHub-Package-Registry-fail-with-quot/td-p/32782/page/2) is fixed, you'll have to login in to the GitHub docker registry in order to pull the images. [Go here to create a new token](https://github.com/settings/tokens), and give it these permissions:
+
+- `write:packages`
+- `read:packages`
+- `delete:packages`
+
+Then, in the repo root, run:
 
 ```sh
+docker login docker.pkg.github.com
+# Enter your username and the new token as your password
 docker-compose up
 ```
 
-Then, see the next section for initialize the DB.
+Then, see the next section to initialize the DB.
 
 ### Migrations & Seed Data
 
