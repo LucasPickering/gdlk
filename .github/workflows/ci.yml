@@ -90,8 +90,7 @@ jobs:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('Cargo.lock') }}
       - name: Docker login
-        run: |-
-          docker login -u lucaspickering -p ${{ secrets.GITHUB_TOKEN }} docker.pkg.github.com
+        run: docker login -u lucaspickering -p ${{ secrets.GITHUB_TOKEN }} docker.pkg.github.com
       - name: Build API image
         run: |-
           docker-compose pull api
@@ -100,8 +99,7 @@ jobs:
         run: docker-compose run api ./docker/run_tests.sh
       - name: Push API image
         if: github.ref == 'refs/heads/master'
-        run: |-
-          docker-compose push api
+        run: docker-compose push api
 
   test-frontend:
     name: "[FE] Test"
@@ -109,13 +107,13 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: Docker login
-        run: |-
-          docker login -u lucaspickering -p ${{ secrets.GITHUB_TOKEN }} docker.pkg.github.com
+        run: docker login -u lucaspickering -p ${{ secrets.GITHUB_TOKEN }} docker.pkg.github.com
       - name: Build Frontend image
         run: |-
           docker-compose pull frontend
           docker-compose build frontend
+      - name: Test Frontend
+        run: docker-compose run frontend ./docker/run_tests.sh
       - name: Push Frontend image
         if: github.ref == 'refs/heads/master'
-        run: |-
-          docker-compose push frontend
+        run: docker-compose push frontend
