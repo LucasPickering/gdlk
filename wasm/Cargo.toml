@@ -11,4 +11,7 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-wasm-bindgen = "0.2.58"
+gdlk = { path = "../core" }
+wasm-bindgen = {version =  "0.2.58", features = ["serde-serialize"]}
+serde = "^1.0.59"
+serde_derive = "^1.0.59"

@@ -5,9 +5,11 @@
 use crate::ast::{LangValue, RegisterRef, StackRef};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
-
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
 /// The "hardware" that a program can execute on. This defines computing
 /// constraints. This is needed both at compile time and runtime.
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, Validate)]
 pub struct HardwareSpec {
     /// Number of registers available
