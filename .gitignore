@@ -1,5 +1,4 @@
 *.gdlk
-*.json
 .vscode/
 pkg/
 node_modules/
