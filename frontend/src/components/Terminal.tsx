@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import '@wasmer/wasm-terminal/lib/xterm/xterm.css';
 import WasmTerminal from '@wasmer/wasm-terminal/lib/optimized/wasm-terminal.esm';
+import './Terminal.css';
 
 interface CommandArgs {
   args: [string];
