@@ -107,6 +107,11 @@ impl Compiler<Program<Span>> {
     pub fn allocate(self, program_spec: &Valid<ProgramSpec>) -> Machine {
         Machine::new(&self.hardware_spec, program_spec, self.ast, self.source)
     }
+
+    /// Returns the ast for the compiled program
+    pub fn program(self) -> Program<Span> {
+        self.ast
+    }
 }
 
 impl<T: Debug> Compiler<T> {
