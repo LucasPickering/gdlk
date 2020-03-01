@@ -1,31 +1,28 @@
 //! Integration tests for GDLK that expect compile errors. The programs in
-//! these tests should all fail during compilation.
+//! these tests should all fail during execution.
 
 use gdlk::{Compiler, HardwareSpec, ProgramSpec, Valid};
 
 /// Compiles the program for the given hardware, executes it under the given
 /// program spec, and expects a runtime error. Panics if the program executes
 /// successfully, or if the wrong set of errors is returned.
-fn expect_runtime_error(
-    hardware_spec: HardwareSpec,
-    program_spec: ProgramSpec,
-    src: &str,
-    expected_error: &str,
-) {
-    // Compile from hardware+src
-    let mut machine =
-        Compiler::compile(src.into(), Valid::validate(hardware_spec).unwrap())
-            .unwrap()
-            .allocate(&Valid::validate(program_spec).unwrap());
+macro_rules! assert_runtime_error {
+    ($hw_spec:expr,$program_spec:expr, $src:expr, $expected_error:expr $(,)?) => {
+        // Compile from hardware+src
+        let mut machine =
+            Compiler::compile($src.into(), Valid::validate($hw_spec).unwrap())
+                .unwrap()
+                .allocate(&Valid::validate($program_spec).unwrap());
 
-    // Execute to completion
-    let actual_error = machine.execute_all().unwrap_err();
-    assert_eq!(format!("{}", actual_error), expected_error);
+        // Execute to completion
+        let actual_error = machine.execute_all().unwrap_err();
+        assert_eq!(format!("{}", actual_error), $expected_error);
+    };
 }
 
 #[test]
 fn test_stack_overflow() {
-    expect_runtime_error(
+    assert_runtime_error!(
         HardwareSpec {
             num_registers: 1,
             num_stacks: 1,
@@ -39,23 +36,23 @@ fn test_stack_overflow() {
         SUB RX0 1
         JGZ RX0 START
         ",
-        "Error on line 4: Overflow on stack `S0`",
+        "Runtime error at 4:18: Overflow on stack `S0`",
     );
 }
 
 #[test]
 fn test_empty_input() {
-    expect_runtime_error(
+    assert_runtime_error!(
         HardwareSpec::default(),
         ProgramSpec::default(),
         "READ RX0",
-        "Error on line 1: Read attempted while input is empty",
+        "Runtime error at 1:1: Read attempted while input is empty",
     );
 }
 
 #[test]
 fn test_empty_stack() {
-    expect_runtime_error(
+    assert_runtime_error!(
         HardwareSpec {
             num_registers: 1,
             num_stacks: 1,
@@ -63,13 +60,13 @@ fn test_empty_stack() {
         },
         ProgramSpec::default(),
         "POP S0 RX0",
-        "Error on line 1: Cannot pop from empty stack `S0`",
+        "Runtime error at 1:5: Cannot pop from empty stack `S0`",
     );
 }
 
 #[test]
 fn test_exceed_max_cycle_count() {
-    expect_runtime_error(
+    assert_runtime_error!(
         HardwareSpec::default(),
         ProgramSpec {
             input: vec![],
@@ -79,7 +76,7 @@ fn test_exceed_max_cycle_count() {
         START:
         JMP START
         ",
-        "Error on line 3: Maximum number of cycles reached, \
-        cannot execute instruction `JMP START`",
+        "Runtime error at 3:9: Maximum number of cycles reached, \
+            cannot execute instruction `JMP START`",
     );
 }
