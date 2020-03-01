@@ -5,24 +5,20 @@ use crate::{
         StackRef, UserRegisterId, ValueSource,
     },
     error::{CompileError, SourceErrorWrapper, WithSource},
-    util::Span,
+    util::{RawSpan, Span},
     Compiler,
 };
 use nom::{
     branch::alt,
     bytes::complete::{is_not, tag, tag_no_case, take_while1},
     character::complete::{char, digit1, line_ending, space0, space1},
-    combinator::{all_consuming, cut, map, map_res, opt, recognize},
-    error::{context, convert_error, ParseError, VerboseError},
-    lib::std::ops::RangeTo,
+    combinator::{all_consuming, cut, map, map_res, opt, peek, recognize},
+    error::{context, ErrorKind, ParseError, VerboseError, VerboseErrorKind},
     multi::many0,
-    sequence::{delimited, preceded, separated_pair, terminated, tuple},
-    AsChar, Compare, IResult, InputTake, InputTakeAtPosition, Offset, Slice,
+    sequence::{delimited, preceded, terminated, tuple},
+    IResult, Offset, Slice,
 };
-use nom_locate::{position, LocatedSpan};
-use std::iter;
 
-type RawSpan<'a> = LocatedSpan<&'a str>;
 type ParseResult<'a, T> = IResult<RawSpan<'a>, T, VerboseError<RawSpan<'a>>>;
 
 /// A trait for parsing into AST nodes. Any AST node that can be parsed from the
@@ -42,17 +38,8 @@ trait Parse<'a>: Sized {
 
         let index = input.offset(&i);
         let raw_span = input.slice(..index);
-        let (i, end_position) = position(i)?;
 
-        let span = Span {
-            offset: raw_span.location_offset(),
-            length: raw_span.fragment().len(),
-            start_line: raw_span.location_line() as usize,
-            start_col: raw_span.get_column(),
-            end_line: end_position.location_line() as usize,
-            end_col: end_position.get_column(),
-        };
-        Ok((i, Node(value, span)))
+        Ok((i, Node(value, Span::from_raw_span(&raw_span))))
     }
 }
 
@@ -63,7 +50,6 @@ impl<'a> Parse<'a> for usize {
     }
 }
 
-// covers StackId and UserRegisterId
 impl<'a> Parse<'a> for LangValue {
     fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
         map_res(recognize(tuple((opt(char('-')), digit1))), |s: RawSpan| {
@@ -74,12 +60,9 @@ impl<'a> Parse<'a> for LangValue {
 
 impl<'a> Parse<'a> for Label {
     fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
-        context(
-            "Label",
-            map(
-                take_while1(|c: char| c.is_alphanumeric() || c == '_'),
-                |s: RawSpan| Label::from(*s.fragment()),
-            ),
+        map(
+            take_while1(|c: char| c.is_alphanumeric() || c == '_'),
+            |s: RawSpan| Label::from(*s.fragment()),
         )(input)
     }
 }
@@ -92,32 +75,26 @@ impl<'a> Parse<'a> for LabelDecl {
 
 impl<'a> Parse<'a> for StackRef {
     fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
-        context(
-            "Stack",
-            map(preceded(tag_no_case("S"), StackId::parse), StackRef),
-        )(input)
+        map(preceded(tag_no_case("S"), StackId::parse), StackRef)(input)
     }
 }
 
 impl<'a> Parse<'a> for RegisterRef {
     fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
-        context(
-            "Register",
-            alt((
-                // "RLI" => RegisterRef::InputLength
-                map(tag_no_case("RLI"), |_| RegisterRef::InputLength),
-                // "RSx" => RegisterRef::StackLength(x)
-                map(
-                    preceded(tag_no_case("RS"), cut(StackId::parse)),
-                    RegisterRef::StackLength,
-                ),
-                // "RXx" => RegisterRef::User(x)
-                map(
-                    preceded(tag_no_case("RX"), cut(UserRegisterId::parse)),
-                    RegisterRef::User,
-                ),
-            )),
-        )(input)
+        alt((
+            // "RLI" => RegisterRef::InputLength
+            map(tag_no_case("RLI"), |_| RegisterRef::InputLength),
+            // "RSx" => RegisterRef::StackLength(x)
+            map(
+                preceded(tag_no_case("RS"), cut(StackId::parse)),
+                RegisterRef::StackLength,
+            ),
+            // "RXx" => RegisterRef::User(x)
+            map(
+                preceded(tag_no_case("RX"), cut(UserRegisterId::parse)),
+                RegisterRef::User,
+            ),
+        ))(input)
     }
 }
 
@@ -135,53 +112,41 @@ impl<'a> Parse<'a> for ValueSource<Span> {
 impl<'a> Parse<'a> for Operator<Span> {
     fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
         alt((
-            tag_with_args(
-                "READ",
-                one_arg(RegisterRef::parse_node),
-                Operator::Read,
-            ),
-            tag_with_args(
-                "WRITE",
-                one_arg(ValueSource::parse_node),
-                Operator::Write,
-            ),
+            tag_with_args("READ", register_ref_arg, Operator::Read),
+            tag_with_args("WRITE", value_source_arg, Operator::Write),
             tag_with_args(
                 "SET",
-                two_args(RegisterRef::parse_node, ValueSource::parse_node),
+                tuple((register_ref_arg, value_source_arg)),
                 |(dst, src)| Operator::Set(dst, src),
             ),
             tag_with_args(
                 "ADD",
-                two_args(RegisterRef::parse_node, ValueSource::parse_node),
+                tuple((register_ref_arg, value_source_arg)),
                 |(dst, src)| Operator::Add(dst, src),
             ),
             tag_with_args(
                 "SUB",
-                two_args(RegisterRef::parse_node, ValueSource::parse_node),
+                tuple((register_ref_arg, value_source_arg)),
                 |(dst, src)| Operator::Sub(dst, src),
             ),
             tag_with_args(
                 "MUL",
-                two_args(RegisterRef::parse_node, ValueSource::parse_node),
+                tuple((register_ref_arg, value_source_arg)),
                 |(dst, src)| Operator::Mul(dst, src),
             ),
             tag_with_args(
                 "CMP",
-                three_args(
-                    RegisterRef::parse_node,
-                    ValueSource::parse_node,
-                    ValueSource::parse_node,
-                ),
+                tuple((register_ref_arg, value_source_arg, value_source_arg)),
                 |(dst, src_1, src_2)| Operator::Cmp(dst, src_1, src_2),
             ),
             tag_with_args(
                 "PUSH",
-                two_args(ValueSource::parse_node, StackRef::parse_node),
+                tuple((value_source_arg, stack_ref_arg)),
                 |(src, stack)| Operator::Push(src, stack),
             ),
             tag_with_args(
                 "POP",
-                two_args(StackRef::parse_node, RegisterRef::parse_node),
+                tuple((stack_ref_arg, register_ref_arg)),
                 |(stack, dst)| Operator::Pop(stack, dst),
             ),
         ))(input)
@@ -192,46 +157,36 @@ impl<'a> Parse<'a> for Jump<Span> {
     fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
         alt((
             map(tag_no_case("JMP"), |_| Jump::Jmp),
-            tag_with_args("JEZ", one_arg(ValueSource::parse_node), Jump::Jez),
-            tag_with_args("JNZ", one_arg(ValueSource::parse_node), Jump::Jnz),
-            tag_with_args("JGZ", one_arg(ValueSource::parse_node), Jump::Jgz),
-            tag_with_args("JLZ", one_arg(ValueSource::parse_node), Jump::Jlz),
+            tag_with_args("JEZ", value_source_arg, Jump::Jez),
+            tag_with_args("JNZ", value_source_arg, Jump::Jnz),
+            tag_with_args("JGZ", value_source_arg, Jump::Jgz),
+            tag_with_args("JLZ", value_source_arg, Jump::Jlz),
         ))(input)
     }
 }
 
 impl<'a> Parse<'a> for Statement<Span> {
     fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
-        context(
-            "Statement",
-            alt((
-                map(LabelDecl::parse_node, Statement::Label),
-                map(Operator::parse_node, Statement::Operator),
-                // semi-hack, necessary because of how the AST is organized to
-                // share code between source and compiled
-                map(
-                    // TODO make the arg parser more generic for this
-                    separated_pair(Jump::parse_node, space1, Label::parse_node),
-                    |(jmp, lbl)| Statement::Jump(jmp, lbl),
-                ),
-            )),
-        )(input)
+        alt((
+            map(LabelDecl::parse_node, Statement::Label),
+            map(Operator::parse_node, Statement::Operator),
+            // semi-hack, necessary because of how the AST is organized to
+            // share code between source and compiled
+            map(tuple((Jump::parse_node, label_arg)), |(jmp, lbl)| {
+                Statement::Jump(jmp, lbl)
+            }),
+        ))(input)
     }
 }
 
 impl<'a> Parse<'a> for Program<Span> {
     fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
         map(
-            // separated_list doesn't work properly so we have to do this
-            all_consuming(tuple((
-                many0(terminated(line, line_ending)),
-                opt(line),
-            ))),
+            all_consuming(many0(line)),
             // filter out None lines
-            |(lines, last_line)| Program {
+            |lines| Program {
                 body: lines
                     .into_iter()
-                    .chain(iter::once(last_line.unwrap_or(None)))
                     .filter_map(std::convert::identity)
                     .collect(),
             },
@@ -241,66 +196,43 @@ impl<'a> Parse<'a> for Program<Span> {
 
 // ===== Combinators =====
 
-fn one_arg<I, O, E: ParseError<I>, F>(
+fn arg<'a, O, F>(
+    context_label: &'static str,
     arg_parser: F,
-) -> impl Fn(I) -> IResult<I, O, E>
+) -> impl Fn(RawSpan<'a>) -> ParseResult<'a, O>
 where
-    I: InputTakeAtPosition,
-    <I as InputTakeAtPosition>::Item: AsChar + Clone,
-    F: Fn(I) -> IResult<I, O, E>,
+    F: Fn(RawSpan<'a>) -> ParseResult<'a, O>,
 {
-    preceded(space1, arg_parser)
-}
-
-fn two_args<I, O1, O2, E: ParseError<I>, F, G>(
-    arg_parser_one: F,
-    arg_parser_two: G,
-) -> impl Fn(I) -> IResult<I, (O1, O2), E>
-where
-    I: InputTakeAtPosition + Clone,
-    <I as InputTakeAtPosition>::Item: AsChar + Clone,
-    F: Fn(I) -> IResult<I, O1, E>,
-    G: Fn(I) -> IResult<I, O2, E>,
-{
-    tuple((one_arg(arg_parser_one), one_arg(arg_parser_two)))
-}
-
-fn three_args<I, O1, O2, O3, E: ParseError<I>, F, G, H>(
-    arg_parser_one: F,
-    arg_parser_two: G,
-    arg_parser_three: H,
-) -> impl Fn(I) -> IResult<I, (O1, O2, O3), E>
-where
-    I: InputTakeAtPosition + Clone,
-    <I as InputTakeAtPosition>::Item: AsChar + Clone,
-    F: Fn(I) -> IResult<I, O1, E>,
-    G: Fn(I) -> IResult<I, O2, E>,
-    H: Fn(I) -> IResult<I, O3, E>,
-{
-    tuple((
-        one_arg(arg_parser_one),
-        one_arg(arg_parser_two),
-        one_arg(arg_parser_three),
-    ))
+    // Include the context twice - the outer one when the arg is completely
+    // missing, and the inner one will be used when there's an error in the arg
+    // itself. Using two lets us get better error spans.
+    context(
+        context_label,
+        delimited(
+            space1,
+            context(context_label, arg_parser),
+            stmt_token_terminator,
+        ),
+    )
 }
 
 /// Parses one instruction (operator or jump) keyword and arguments. Uses the
 /// passed parser to parse the arguments, then passes those through the mapper
 /// to get a value.
-fn tag_with_args<'a, I: 'a, O, Args, ArgParser, Mapper, E>(
+fn tag_with_args<'a, O, Args, ArgParser, Mapper>(
     instr_name: &'static str,
     arg_parser: ArgParser,
     mapper: Mapper,
-) -> impl Fn(I) -> IResult<I, O, E>
+) -> impl Fn(RawSpan<'a>) -> ParseResult<'a, O>
 where
-    I: InputTake + Clone + Compare<&'static str> + Slice<RangeTo<usize>>,
-    E: ParseError<I>,
-    ArgParser: Fn(I) -> IResult<I, Args, E>,
+    ArgParser: Fn(RawSpan<'a>) -> ParseResult<'a, Args>,
     Mapper: Fn(Args) -> O,
 {
     map(
         preceded(
-            context(instr_name, tag_no_case(instr_name)),
+            // instruction name
+            terminated(tag_no_case(instr_name), stmt_token_terminator),
+            // arguments
             context(instr_name, cut(arg_parser)),
         ),
         mapper,
@@ -309,50 +241,125 @@ where
 
 // ===== Parsers =====
 
+/// Parse a [RegisterRef] argument to an instruction
+fn register_ref_arg(input: RawSpan) -> ParseResult<'_, SpanNode<RegisterRef>> {
+    arg("register reference", RegisterRef::parse_node)(input)
+}
+
+/// Parse a [StackRef] argument to an instruction
+fn stack_ref_arg(input: RawSpan) -> ParseResult<'_, SpanNode<StackRef>> {
+    arg("stack reference", StackRef::parse_node)(input)
+}
+
+/// Parse a [ValueSource] argument to an instruction
+fn value_source_arg(
+    input: RawSpan,
+) -> ParseResult<'_, SpanNode<ValueSource<Span>>> {
+    arg("value", ValueSource::parse_node)(input)
+}
+
+/// Parse a [Label] argument to an instruction
+fn label_arg(input: RawSpan) -> ParseResult<'_, SpanNode<Label>> {
+    arg("label", Label::parse_node)(input)
+}
+
+/// The terminator that always follows a token in a statement (which is an
+/// instruction, argument, or label declaration). This does not consume the
+/// terminator, just check that it exists.
+fn stmt_token_terminator(input: RawSpan) -> ParseResult<'_, RawSpan> {
+    // we don't want to eat a trailing newline, just check if it's there
+    peek(alt((space1, eol_or_eof)))(input)
+}
+
+/// Parse a line ending, or return success if the input is empty (we've reached
+/// the end of the file).
+fn eol_or_eof(input: RawSpan) -> ParseResult<'_, RawSpan> {
+    if input.fragment().is_empty() {
+        Ok((input, input))
+    } else {
+        line_ending(input)
+    }
+}
+
 /// Parses a line comment, which starts with a ; and runs to the end of the
 /// line. This terminates at the line ending, but does _not_ consume it.
 fn line_comment(input: RawSpan) -> ParseResult<'_, ()> {
     map(
-        context("Comment", preceded(char(';'), many0(is_not("\r\n")))),
+        preceded(char(';'), many0(is_not("\r\n"))),
         |_| (), // throw the comment away
     )(input)
 }
 
-/// Parse a single line, up to but not including the line ending.
-fn line(input: RawSpan) -> ParseResult<'_, Option<SpanNode<Statement<Span>>>> {
-    delimited(
+/// Parse everything that can go after a statement on a line: whitespace and
+/// an optional comment. Also parses the line ending, or up to the end of file.
+fn end_of_statement(input: RawSpan) -> ParseResult<'_, ()> {
+    // Don't include the beginning whitespace in the context
+    preceded(
         space0,
-        opt(Statement::parse_node),
-        tuple((space0, opt(line_comment))),
+        context(
+            "end of statement",
+            map(terminated(opt(line_comment), eol_or_eof), |_| ()),
+        ),
     )(input)
 }
 
+/// Parse a single line, up to and including either end of line or end of file.
+fn line(input: RawSpan) -> ParseResult<'_, Option<SpanNode<Statement<Span>>>> {
+    if input.fragment().is_empty() {
+        // many0 fails if the parser consumers nothing, so we want to fail when
+        // we normally would consume nothing
+        Err(nom::Err::Error(VerboseError::from_error_kind(
+            input,
+            ErrorKind::Eof,
+        )))
+    } else {
+        alt((
+            // These contexts are for debugging only. Any error should have
+            // a more precise context that can be shown to the user.
+            context("empty line [debug]", map(end_of_statement, |_| None)),
+            context(
+                "line w/ statement [debug]",
+                cut(map(
+                    delimited(
+                        space0,
+                        context("statement", Statement::parse_node),
+                        end_of_statement,
+                    ),
+                    Some,
+                )),
+            ),
+        ))(input)
+    }
+}
+
+/// Parse a full program
 fn parse(
     input: &str,
 ) -> Result<Program<Span>, Vec<SourceErrorWrapper<CompileError>>> {
     match Program::parse(RawSpan::new(input)) {
         Ok((_, program)) => Ok(program),
         Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
-            let new_error: VerboseError<&str> = VerboseError {
-                errors: e
-                    .errors
-                    .into_iter()
-                    .map(|(raw_span, error_kind)| {
-                        (*raw_span.fragment(), error_kind)
-                    })
-                    .collect(),
-            };
-            // TODO make this less shit
+            // Grab the first error in the chain that is a Context, which means
+            // we labelled it ourselves. Everything else is generated by nom
+            // which means it's useless.
+            let (raw_span, context) = e
+                .errors
+                .iter()
+                .filter_map(|err| match err {
+                    (span, VerboseErrorKind::Context(context)) => {
+                        Some((span, context))
+                    }
+                    _ => None,
+                })
+                .next()
+                // This indicates we're missing a context() call somewhere
+                .expect("No context errors available");
+
             Err(vec![SourceErrorWrapper::new(
-                CompileError::ParseError(convert_error(input, new_error)),
-                Span {
-                    offset: 0,
-                    length: 0,
-                    start_line: 1,
-                    start_col: 1,
-                    end_line: 1,
-                    end_col: 1,
-                },
+                CompileError::Syntax { expected: context },
+                // the actual fragment here is just the remaining source, so
+                // it's not useful - just use the position from it
+                Span::from_position(raw_span),
                 input,
             )])
         }
@@ -601,7 +608,7 @@ mod tests {
 
     #[test]
     fn test_parse_lang_val_max() {
-        let source = format!("Add RX1 {}", std::i32::MAX);
+        let source = format!("Add RX1 {}", LangValue::max_value());
         assert_eq!(
             parse(&source).unwrap().body,
             vec![Node(
@@ -610,7 +617,7 @@ mod tests {
                         Node(RegisterRef::User(1), span(1, 5, 1, 8)),
                         Node(
                             ValueSource::Const(Node(
-                                std::i32::MAX,
+                                LangValue::max_value(),
                                 span(1, 9, 1, 19)
                             )),
                             span(1, 9, 1, 19)
@@ -625,7 +632,7 @@ mod tests {
 
     #[test]
     fn test_parse_lang_val_min() {
-        let source = format!("Add RX1 {}", std::i32::MIN);
+        let source = format!("Add RX1 {}", LangValue::min_value());
         assert_eq!(
             parse(&source).unwrap().body,
             vec![Node(
@@ -634,7 +641,7 @@ mod tests {
                         Node(RegisterRef::User(1), span(1, 5, 1, 8)),
                         Node(
                             ValueSource::Const(Node(
-                                std::i32::MIN,
+                                LangValue::min_value(),
                                 span(1, 9, 1, 20)
                             )),
                             span(1, 9, 1, 20)

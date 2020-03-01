@@ -8,6 +8,9 @@ use std::fmt::{self, Debug, Display, Formatter};
 /// A trait for any error that originates in source code. [SourceError]s rely on
 /// having source code present in order to display themselves.
 pub trait SourceError: 'static + Send + Sync + Debug + Serialize {
+    /// A simple type label for this error, e.g. `"syntax"` or `"runtime"`.
+    fn type_label(&self) -> &'static str;
+
     /// Format this error into a simple message. `spanned_src` is the slice of
     /// the source code that corresponds to this error's [Span]. This needs to
     /// be provided by the caller in order to create a proper error message.
@@ -19,8 +22,10 @@ pub trait SourceError: 'static + Send + Sync + Debug + Serialize {
 /// compiler error. Compiler bugs will always cause a panic.
 #[derive(Debug, Serialize)]
 pub enum CompileError {
-    /// Failed to parse the program
-    ParseError(String),
+    /// Failed to parse the program because of a syntax error. `expected` is
+    /// the name of the type of element that was expected where the error
+    /// occured.
+    Syntax { expected: &'static str },
     /// Referenced a user register with an invalid identifier
     InvalidRegisterRef,
     /// Referenced a stack with an invalid identifier
@@ -34,9 +39,18 @@ pub enum CompileError {
 }
 
 impl SourceError for CompileError {
+    fn type_label(&self) -> &'static str {
+        match self {
+            Self::Syntax { .. } => "Syntax",
+            _ => "Validation",
+        }
+    }
+
     fn fmt_msg(&self, f: &mut Formatter<'_>, spanned_src: &str) -> fmt::Result {
         match self {
-            Self::ParseError(err) => write!(f, "Parse error: {}", err),
+            // the source span for syntax errors is just the remaining source,
+            // so not very helpful
+            Self::Syntax { expected } => write!(f, "Expected {}", expected,),
             Self::InvalidRegisterRef => {
                 write!(f, "Invalid reference to register `{}`", spanned_src)
             }
@@ -79,6 +93,10 @@ pub enum RuntimeError {
 }
 
 impl SourceError for RuntimeError {
+    fn type_label(&self) -> &'static str {
+        "Runtime"
+    }
+
     fn fmt_msg(&self, f: &mut Formatter<'_>, spanned_src: &str) -> fmt::Result {
         match self {
             Self::StackOverflow => {
@@ -124,7 +142,13 @@ impl<E: SourceError> SourceErrorWrapper<E> {
 
 impl<E: SourceError> Display for SourceErrorWrapper<E> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "Error on line {}: ", self.span.start_line)?;
+        write!(
+            f,
+            "{} error at {}:{}: ",
+            self.error.type_label(),
+            self.span.start_line,
+            self.span.start_col,
+        )?;
         self.error.fmt_msg(f, &self.spanned_source)?;
         Ok(())
     }
