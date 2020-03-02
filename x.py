@@ -162,10 +162,7 @@ class Test(Command):
         db_url = f"postgres://root:root@db/{API_TEST_DB}"
         run_in_docker_service(
             API_SERVICE,
-            ["diesel", "migration", "run"],
-            # TODO switch to this version once we have enough tables that
-            # diesel and rustfmt stop fighting over schema.rs
-            # ["diesel", "migration", "run", "--locked-schema"],
+            ["diesel", "migration", "run", "--locked-schema"],
             env={"DEBUG": str(int(debug)), "DATABASE_URL": db_url},
         )
         try:
