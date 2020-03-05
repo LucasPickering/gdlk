@@ -1,23 +1,15 @@
 use crate::schema::hardware_specs;
 use diesel::{
-    dsl, expression::bound::Bound, prelude::*, query_builder::InsertStatement,
-    sql_types::Text, Identifiable, Queryable,
+    prelude::*, query_builder::InsertStatement, Identifiable, Queryable,
 };
-use gdlk::{
-    validator::{Validate, ValidationErrors},
-    Valid,
-};
+use gdlk::{validator::ValidationErrors, Valid};
 use std::convert::TryFrom;
 use uuid::Uuid;
-
-/// Eq clause to filter hardware_specs by slug
-pub type WithSlug<'a> =
-    dsl::Eq<hardware_specs::columns::slug, Bound<Text, &'a str>>;
 
 /// A derivative of [HardwareSpec](gdlk::HardwareSpec), containing all fields.
 /// that are present on the DB table. This should only ever be constructed from
 /// a DB query.
-#[derive(Debug, PartialEq, Identifiable, Queryable)]
+#[derive(Clone, Debug, PartialEq, Identifiable, Queryable)]
 #[table_name = "hardware_specs"]
 pub struct HardwareSpec {
     /// DB row ID
@@ -33,33 +25,6 @@ pub struct HardwareSpec {
     pub num_stacks: i32,
     /// Maximum size of each stack
     pub max_stack_length: i32,
-}
-
-impl HardwareSpec {
-    /// Filters hardware specs by their slug.
-    pub fn filter_by_slug<'a>(
-        hw_spec_slug: &'a str,
-    ) -> dsl::Filter<hardware_specs::table, WithSlug<'a>> {
-        hardware_specs::dsl::hardware_specs
-            .filter(hardware_specs::dsl::slug.eq(hw_spec_slug))
-    }
-}
-
-impl TryFrom<HardwareSpec> for gdlk::HardwareSpec {
-    type Error = ValidationErrors;
-
-    fn try_from(other: HardwareSpec) -> Result<Self, Self::Error> {
-        let val = Self {
-            // These conversions are safe because of the .validate() call below.
-            // The validation _should_ never fail because of the DB constraints,
-            // but we validate here just to be safe
-            num_registers: other.num_registers as usize,
-            num_stacks: other.num_stacks as usize,
-            max_stack_length: other.max_stack_length as usize,
-        };
-        val.validate()?;
-        Ok(val)
-    }
 }
 
 impl TryFrom<HardwareSpec> for Valid<gdlk::HardwareSpec> {

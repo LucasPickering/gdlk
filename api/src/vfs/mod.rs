@@ -22,7 +22,7 @@ mod program;
 
 use crate::{
     error::{Result, ServerError},
-    gql::GqlContext,
+    gql::Context,
     models::User,
     util::PooledConnection,
     vfs::{
@@ -37,7 +37,7 @@ use crate::{
         },
     },
 };
-use juniper::{FieldResult, GraphQLEnum, GraphQLObject};
+use juniper::{ServerResult, GraphQLEnum, GraphQLObject};
 use std::rc::Rc;
 
 #[derive(Copy, Clone, Debug, PartialEq, GraphQLEnum)]
@@ -310,7 +310,7 @@ impl NodeReference {
 }
 
 // GraphQL wrappers around the file operations
-#[juniper::object(Context = GqlContext)]
+#[juniper::object(Context = Context)]
 impl NodeReference {
     /// The name of this node, i.e. the last segment in the path that refers
     /// to this node.
@@ -327,7 +327,7 @@ impl NodeReference {
 
     /// The permissions of this node (read/write/execute).
     #[graphql(name = "permissions")]
-    fn gql_permissions() -> FieldResult<NodePermissions> {
+    fn gql_permissions() -> ServerResult<NodePermissions> {
         Ok(self.permissions()?)
     }
 
@@ -335,7 +335,7 @@ impl NodeReference {
     /// no content. As such, this always returns content for files and `null`
     /// for directories.
     #[graphql(name = "content")]
-    fn gql_content() -> FieldResult<Option<String>> {
+    fn gql_content() -> ServerResult<Option<String>> {
         match self.content() {
             Ok(content) => Ok(Some(content)),
             Err(ServerError::UnsupportedFileOperation) => Ok(None),
@@ -346,7 +346,7 @@ impl NodeReference {
     /// The nested children of this node. Returns an array of the children for a
     /// directory, and `null` for a file.
     #[graphql(name = "children")]
-    fn gql_children() -> FieldResult<Option<Vec<Self>>> {
+    fn gql_children() -> ServerResult<Option<Vec<Self>>> {
         match self.children() {
             Ok(children) => Ok(Some(children)),
             Err(ServerError::UnsupportedFileOperation) => Ok(None),
@@ -366,24 +366,24 @@ impl NodeMutation {
     }
 }
 
-#[juniper::object(Context = GqlContext)]
+#[juniper::object(Context = Context)]
 impl NodeMutation {
     /// Create a new child of this node, with the given name. Fails if this node
     /// is a file, doesn't have write permissions, or the name isn't valid.
-    fn create_child(&self, name: String) -> FieldResult<NodeReference> {
+    fn create_child(&self, name: String) -> ServerResult<NodeReference> {
         Ok(self.0.create_child(name)?)
     }
 
     /// Set the contents of a file. Fails if the node is a directory or a file
     /// without write permissions.
-    fn set_content(&self, content: String) -> FieldResult<&NodeReference> {
+    fn set_content(&self, content: String) -> ServerResult<&NodeReference> {
         self.0.set_content(content)?;
         Ok(&self.0)
     }
 
     /// Delete a file or directory. Fails if the node does not have write
     /// permissions. Returns the name (_not_ the full path) of the deleted file.
-    fn delete(&self) -> FieldResult<String> {
+    fn delete(&self) -> ServerResult<String> {
         self.0.delete()?;
         Ok(self.0.name().into())
     }

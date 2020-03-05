@@ -4,33 +4,42 @@
 pub use tests::*;
 
 use diesel::{r2d2::ConnectionManager, PgConnection};
+use uuid::{parser::ParseError, Uuid};
 
 /// Type aliases for DB connections
 pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 pub type PooledConnection =
     r2d2::PooledConnection<ConnectionManager<PgConnection>>;
 
+/// Converts a UUID to a Juniper (GraphQL) ID.
+pub fn uuid_to_gql_id(uuid: &Uuid) -> juniper::ID {
+    juniper::ID::new(uuid.to_string())
+}
+
+/// Converts a Juniper (GraphQL) ID to a UUID.
+pub fn gql_id_to_uuid(id: &juniper::ID) -> Result<Uuid, ParseError> {
+    Uuid::parse_str(&id.to_string())
+}
+
+/// Converts a map to a GraphQL object. Takes in an iterator of (K, V) so that
+/// any map type can be used (HashMap, BTreeMap, etc.).
+pub fn map_to_gql_object<K: ToString, V>(
+    map: impl ExactSizeIterator<Item = (K, V)>,
+    mapper: impl Fn(V) -> juniper::Value,
+) -> juniper::Value {
+    let len = map.len();
+    let obj = map.fold(
+        juniper::Object::with_capacity(len),
+        |mut acc, (field, value)| {
+            acc.add_field(field.to_string(), mapper(value));
+            acc
+        },
+    );
+    juniper::Value::Object(obj)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use diesel::Connection;
-
-    /// Helper to create a database connection for testing. This establishes
-    /// the connection, then starts a test transaction on it so that no changes
-    /// will actually be written to the DB.
-    pub fn test_db_conn() -> PooledConnection {
-        let database_url = std::env::var("DATABASE_URL").unwrap();
-
-        // We want to build a connection pool so that we can pass into APIs
-        // that expect owned, pooled connections. The pool will also
-        // automatically close our connections for us.
-        let manager = diesel::r2d2::ConnectionManager::new(&database_url);
-        let pool = r2d2::Pool::builder().max_size(5).build(manager).unwrap();
-        let conn = pool.get().unwrap();
-
-        (&conn as &PgConnection).begin_test_transaction().unwrap();
-        conn
-    }
 
     /// Assert that the first value is an Err, and that its string form matches
     /// the second argument.

@@ -6,6 +6,8 @@
 // Diesel hasn't fully moved to Rust 2018 yet so we need this
 #[macro_use]
 extern crate diesel;
+#[macro_use]
+extern crate validator_derive;
 
 use diesel::{
     r2d2::{self, ConnectionManager},
@@ -15,14 +17,15 @@ use failure::Fallible;
 use structopt::StructOpt;
 
 mod error;
-mod gql;
 mod models;
 mod schema;
 #[cfg(debug_assertions)]
 mod seed;
 mod server;
 mod util;
-mod vfs;
+// Commenting this out so we don't have to maintain it - we may want to come
+// back to it at some point
+// mod vfs;
 
 /// The sub-command to execute.
 #[derive(Debug, StructOpt)]

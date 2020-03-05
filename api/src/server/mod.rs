@@ -1,15 +1,16 @@
 //! All code related to the webserver. Basically anything that calls Actix
 //! lives here.
 
-mod websocket;
-
 use crate::{
-    gql::{self, GqlContext, GqlSchema},
+    server::gql::{Context, GqlSchema},
     util::Pool,
 };
 use actix_web::{get, middleware, post, web, App, HttpResponse, HttpServer};
 use juniper::http::{graphiql::graphiql_source, GraphQLRequest};
 use std::{io, sync::Arc};
+
+mod gql;
+mod websocket;
 
 #[get("/graphiql")]
 pub async fn route_graphiql() -> HttpResponse {
@@ -28,7 +29,7 @@ pub async fn route_graphql(
     let user = web::block(move || {
         let res = data.execute(
             &st,
-            &GqlContext {
+            &Context {
                 pool: pool.into_inner(),
             },
         );
