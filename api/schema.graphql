@@ -1,0 +1,219 @@
+directive @juniper(
+  ownership: String = "borrowed"
+  infallible: Boolean = false
+  with_time_zone: Boolean = true
+) on FIELD_DEFINITION
+
+"""
+An opaque identifier that uniquely identifies an object within a connection.
+The cursor should be stable and unique to the object, as long as the parameters
+of the connection don't change (filter, sort, etc.), and the sequence isn't
+mutated.
+"""
+scalar Cursor
+
+schema {
+  query: Query
+}
+
+"""
+The root query.
+"""
+type Query {
+  """
+  Fetch a single node, of any type, via a UUID.
+  """
+  node(id: ID!): Node @juniper(ownership: "owned")
+  """
+  Get a single hardware spec by its slug.
+  """
+  hardwareSpec(slug: String!): HardwareSpecNode @juniper(ownership: "owned")
+  """
+  All the hardware specs in the system.
+  """
+  hardwareSpecs(first: Int, after: Cursor): HardwareSpecConnection!
+    @juniper(ownership: "owned")
+}
+
+"""
+An object with a globally unique ID.
+"""
+interface Node {
+  """
+  The ID of the object.
+  """
+  id: ID! @juniper(infallible: true, ownership: "owned")
+}
+
+"""
+A related object. Appears in a connection (i.e. a list).
+"""
+interface Edge {
+  """
+  A cursor that identifies this edge within the connection.
+  """
+  cursor: Cursor! @juniper(infallible: true)
+}
+
+"""
+A view to access a list of edges.
+"""
+interface ConnectionInterface {
+  """
+  Total number of edges in the connection, across all pages. Any relevant
+  filters will be applied to the count.
+  """
+  totalCount: Int! @juniper(ownership: "owned")
+  """
+  Metadata for the current page of data being requested.
+  """
+  pageInfo: PageInfo! @juniper(ownership: "owned")
+}
+
+"""
+Connection page metadata.
+"""
+type PageInfo {
+  """
+  The cursor of the first edge in the page. Null iff the page is empty.
+  """
+  startCursor: Cursor @juniper(infallible: true)
+  """
+  The cursor of the last edge in the page. Null iff the page is empty.
+  """
+  endCursor: Cursor @juniper(infallible: true)
+  """
+  Is there another page in the connection before this one?
+  """
+  hasPreviousPage: Boolean! @juniper(infallible: true, ownership: "owned")
+  """
+  Is there another page in the connection after this one?
+  """
+  hasNextPage: Boolean! @juniper(infallible: true, ownership: "owned")
+}
+
+"""
+A hardware spec defines the hardware parameters that a program runs under.
+This defines what resources the program has access to (registers, stacks, etc.).
+"""
+type HardwareSpecNode implements Node {
+  """
+  UUID for this node.
+  """
+  id: ID! @juniper(infallible: true, ownership: "owned")
+  """
+  Human-readable name for this spec. Unique across all hardware specs.
+  """
+  slug: String! @juniper(infallible: true)
+  """
+  Number of registers that this hardware provides to a program.
+  """
+  numRegisters: Int! @juniper(infallible: true, ownership: "owned")
+  """
+  Number of stacks that this hardware provides to a program.
+  """
+  numStacks: Int! @juniper(infallible: true, ownership: "owned")
+  """
+  The maximum length for each stack while the program is running.
+  """
+  maxStackLength: Int! @juniper(infallible: true, ownership: "owned")
+  """
+  A single program spec that runs on this hardware.
+  """
+  programSpec(slug: String!): ProgramSpecNode @juniper(ownership: "owned")
+  """
+  All the program specs that can run on this hardware spec.
+  """
+  programSpecs(first: Int, after: Cursor): ProgramSpecConnection!
+    @juniper(ownership: "owned")
+}
+
+"""
+Edge for HardwareSpecNode.
+"""
+type HardwareSpecEdge implements Edge {
+  """
+  The related node.
+  """
+  node: HardwareSpecNode! @juniper(infallible: true)
+  """
+  Identifier for this edge.
+  """
+  cursor: Cursor! @juniper(infallible: true)
+}
+
+"""
+A collection of HardwareSpecNodes.
+"""
+type HardwareSpecConnection implements ConnectionInterface {
+  """
+  See Connection definition.
+  """
+  totalCount: Int! @juniper(ownership: "owned")
+  """
+  See Connection definition.
+  """
+  pageInfo: PageInfo! @juniper(ownership: "owned")
+  """
+  The queried hardware specs.
+  """
+  edges: [HardwareSpecEdge!]! @juniper(ownership: "owned")
+}
+
+"""
+A definition of a particular program for a piece of hardware. This defines the
+parameters that a program is supposed to match. In order words, this is a single
+puzzle definition.
+"""
+type ProgramSpecNode implements Node {
+  """
+  UUID for this node.
+  """
+  id: ID! @juniper(infallible: true, ownership: "owned")
+  """
+  Human-readable name for this program spec. Unique across the program specs
+  for a particular hardware spec. Two program specs can have the same slug iff
+  they run on different hardware.
+  """
+  slug: String! @juniper(infallible: true)
+  """
+  The input to the program.
+  """
+  input: [Int!]! @juniper(infallible: true)
+  """
+  The output that the program is expected to give.
+  """
+  expectedOutput: [Int!]! @juniper(infallible: true)
+}
+
+"""
+Edge for ProgramSpecNode.
+"""
+type ProgramSpecEdge implements Edge {
+  """
+  The related node.
+  """
+  node: ProgramSpecNode! @juniper(infallible: true)
+  """
+  Identifier for this edge.
+  """
+  cursor: Cursor! @juniper(infallible: true)
+}
+
+"""
+A collection of HardwareSpecNodes.
+"""
+type ProgramSpecConnection implements ConnectionInterface {
+  """
+  See Connection definition.
+  """
+  totalCount: Int! @juniper(ownership: "owned")
+  """
+  See Connection definition.
+  """
+  pageInfo: PageInfo! @juniper(ownership: "owned")
+  """
+  The queried program specs.
+  """
+  edges: [ProgramSpecEdge!]! @juniper(ownership: "owned")
+}

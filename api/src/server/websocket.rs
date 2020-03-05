@@ -1,8 +1,13 @@
-use crate::{error::ServerError, models, server::Pool};
+use crate::{
+    error::ServerError,
+    models,
+    schema::{hardware_specs, program_specs},
+    server::Pool,
+};
 use actix::{Actor, ActorContext, AsyncContext, StreamHandler};
 use actix_web::{get, web, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
-use diesel::{prelude::*, PgConnection};
+use diesel::{associations::HasTable, prelude::*, PgConnection};
 use gdlk::{
     error::{CompileError, RuntimeError, WithSource},
     validator::ValidationErrors,
@@ -241,7 +246,10 @@ pub async fn ws_program_specs_by_slugs(
     let (program_spec, hardware_spec): (
         models::ProgramSpec,
         models::HardwareSpec,
-    ) = models::ProgramSpec::filter_by_slugs(&hw_spec_slug, &program_spec_slug)
+    ) = models::ProgramSpec::table()
+        .inner_join(models::HardwareSpec::table())
+        .filter(hardware_specs::dsl::slug.eq(&hw_spec_slug))
+        .filter(program_specs::dsl::slug.eq(&program_spec_slug))
         .get_result(conn)
         .map_err(ServerError::from)?;
     ws::start(
