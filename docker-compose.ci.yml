@@ -2,7 +2,8 @@ version: "3.2"
 
 services:
   db:
-    image: postgres:12-alpine
+    build: ./postgres
+    image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-postgres:${DOCKER_TAG}
     environment:
       POSTGRES_DB: gdlk
       POSTGRES_USER: root

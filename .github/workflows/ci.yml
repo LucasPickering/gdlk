@@ -43,6 +43,19 @@ jobs:
         with:
           command: clippy
 
+  build-db:
+    name: "[API] Test"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: Docker login
+        run: docker login -u lucaspickering -p ${{ secrets.GITHUB_TOKEN }} docker.pkg.github.com
+      - name: Build database image
+        run: docker-compose build db
+      - name: Push database image
+        if: github.ref == 'refs/heads/master'
+        run: docker-compose push db
+
   test-core:
     name: "[CORE] Test"
     runs-on: ubuntu-latest
