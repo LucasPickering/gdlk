@@ -1,6 +1,6 @@
 table! {
     hardware_specs (id) {
-        id -> Int4,
+        id -> Uuid,
         slug -> Varchar,
         num_registers -> Int4,
         num_stacks -> Int4,
@@ -10,9 +10,9 @@ table! {
 
 table! {
     program_specs (id) {
-        id -> Int4,
+        id -> Uuid,
         slug -> Varchar,
-        hardware_spec_id -> Int4,
+        hardware_spec_id -> Uuid,
         input -> Array<Int4>,
         expected_output -> Array<Int4>,
     }
@@ -20,9 +20,9 @@ table! {
 
 table! {
     user_programs (id) {
-        id -> Int4,
-        user_id -> Int4,
-        program_spec_id -> Int4,
+        id -> Uuid,
+        user_id -> Uuid,
+        program_spec_id -> Uuid,
         file_name -> Text,
         source_code -> Text,
     }
@@ -30,7 +30,7 @@ table! {
 
 table! {
     users (id) {
-        id -> Int4,
+        id -> Uuid,
         username -> Varchar,
     }
 }

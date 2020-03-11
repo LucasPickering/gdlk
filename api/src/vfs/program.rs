@@ -22,6 +22,7 @@ use diesel::{
     ExpressionMethods, QueryDsl, RunQueryDsl,
 };
 use gdlk::ast::LangValue;
+use uuid::Uuid;
 
 /// Serves all program spec directories.
 #[derive(Debug)]
@@ -182,7 +183,7 @@ impl VirtualNodeHandler for ProgramSourceNodeHandler {
         let hw_spec_slug = path_variables.get_var("hw_spec_slug");
         let program_spec_slug = path_variables.get_var("program_spec_slug");
 
-        let program_spec_id: i32 =
+        let program_spec_id: Uuid =
             ProgramSpec::filter_by_slugs(hw_spec_slug, program_spec_slug)
                 .select(program_specs::dsl::id)
                 .get_result(context.conn())?;
@@ -218,7 +219,7 @@ impl VirtualNodeHandler for ProgramSourceNodeHandler {
 
         // Diesel doesn't support updates with joins, so we have to fetch the
         // ID of the UserProgram first, then do the update in a second query.
-        let user_program_id: i32 = UserProgram::filter_by_file_name(
+        let user_program_id: Uuid = UserProgram::filter_by_file_name(
             context.user.id,
             hw_spec_slug,
             program_spec_slug,
@@ -246,7 +247,7 @@ impl VirtualNodeHandler for ProgramSourceNodeHandler {
 
         // Diesel doesn't support updates with joins, so we have to fetch the
         // ID of the UserProgram first, then do the update in a second query.
-        let user_program_id: i32 = UserProgram::filter_by_file_name(
+        let user_program_id: Uuid = UserProgram::filter_by_file_name(
             context.user.id,
             hw_spec_slug,
             program_spec_slug,

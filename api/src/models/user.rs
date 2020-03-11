@@ -3,6 +3,7 @@ use diesel::{
     dsl, expression::bound::Bound, prelude::*, query_builder::InsertStatement,
     sql_types::Text, Identifiable, Queryable,
 };
+use uuid::Uuid;
 
 /// Expression to filter users by username
 type WithUsername<'a> = dsl::Eq<users::columns::username, Bound<Text, &'a str>>;
@@ -10,7 +11,7 @@ type WithUsername<'a> = dsl::Eq<users::columns::username, Bound<Text, &'a str>>;
 #[derive(Clone, Debug, PartialEq, Identifiable, Queryable)]
 #[table_name = "users"]
 pub struct User {
-    pub id: i32,
+    pub id: Uuid,
     pub username: String,
 }
 

@@ -8,6 +8,7 @@ use gdlk::{
     Valid,
 };
 use std::convert::TryFrom;
+use uuid::Uuid;
 
 /// Eq clause to filter hardware_specs by slug
 pub type WithSlug<'a> =
@@ -20,7 +21,7 @@ pub type WithSlug<'a> =
 #[table_name = "hardware_specs"]
 pub struct HardwareSpec {
     /// DB row ID
-    pub id: i32,
+    pub id: Uuid,
     /// Unique user-friendly identifier that can be used in URLs
     pub slug: String,
 

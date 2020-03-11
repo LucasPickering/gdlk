@@ -7,11 +7,12 @@ use diesel::{
     expression::bound::Bound,
     prelude::*,
     query_builder::InsertStatement,
-    sql_types::{Int4, Text},
+    sql_types::{self, Text},
     Identifiable, Queryable,
 };
 use gdlk::{ast::LangValue, validator::ValidationErrors, Valid};
 use std::convert::TryFrom;
+use uuid::Uuid;
 
 /// Inner join between program_specs and hardware_specs
 type InnerJoinSpecs =
@@ -25,8 +26,10 @@ type WithSlugs<'a> = dsl::And<hardware::WithSlug<'a>, WithSlug<'a>>;
 
 /// Expression to filter user_programs by user ID, hardware spec slug, and
 /// program spec slug
-type WithUserAndSpecs<'a> =
-    dsl::And<WithSlugs<'a>, dsl::Eq<users::columns::id, Bound<Int4, i32>>>;
+type WithUserAndSpecs<'a> = dsl::And<
+    WithSlugs<'a>,
+    dsl::Eq<users::columns::id, Bound<sql_types::Uuid, Uuid>>,
+>;
 
 /// Expression to filter user_programs by user ID, hardware spec slug,
 /// program spec slug, and file name
@@ -40,12 +43,12 @@ type WithFileName<'a> = dsl::And<
 #[belongs_to(HardwareSpec, foreign_key = "hardware_spec_id")]
 #[table_name = "program_specs"]
 pub struct ProgramSpec {
-    pub id: i32,
+    pub id: Uuid,
     /// Space-less identifier, unique to all program specs for a particular
     /// hardware spec (i.e. unique with `hardware_spec_id`)
     pub slug: String,
     /// ID of the hardware that this program runs on
-    pub hardware_spec_id: i32,
+    pub hardware_spec_id: Uuid,
     /// The input values, where the element at position 0 is the first one that
     /// will be popped off.
     pub input: Vec<LangValue>,
@@ -95,7 +98,7 @@ impl TryFrom<ProgramSpec> for Valid<gdlk::ProgramSpec> {
 #[table_name = "program_specs"]
 pub struct NewProgramSpec<'a> {
     pub slug: &'a str,
-    pub hardware_spec_id: i32,
+    pub hardware_spec_id: Uuid,
     pub input: Vec<LangValue>,
     pub expected_output: Vec<LangValue>,
 }
@@ -117,9 +120,9 @@ impl NewProgramSpec<'_> {
 #[belongs_to(ProgramSpec, foreign_key = "program_spec_id")]
 #[table_name = "user_programs"]
 pub struct UserProgram {
-    pub id: i32,
-    pub user_id: i32,
-    pub program_spec_id: i32,
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub program_spec_id: Uuid,
     pub file_name: String,
     pub source_code: String,
 }
@@ -133,7 +136,7 @@ impl UserProgram {
 
     /// Get all user programs that exist for a user-program spec pair.
     pub fn filter_by_specs<'a>(
-        user_id: i32,
+        user_id: Uuid,
         hw_spec_slug: &'a str,
         program_spec_slug: &'a str,
     ) -> dsl::Filter<
@@ -153,7 +156,7 @@ impl UserProgram {
     /// Filter down to exactly one UserProgram, based on a user, hw spec,
     /// program spec, and file name.
     pub fn filter_by_file_name<'a>(
-        user_id: i32,
+        user_id: Uuid,
         hw_spec_slug: &'a str,
         program_spec_slug: &'a str,
         file_name: &'a str,
@@ -176,8 +179,8 @@ impl UserProgram {
 #[derive(Debug, PartialEq, Insertable)]
 #[table_name = "user_programs"]
 pub struct NewUserProgram<'a> {
-    pub user_id: i32,
-    pub program_spec_id: i32,
+    pub user_id: Uuid,
+    pub program_spec_id: Uuid,
     pub file_name: &'a str,
     pub source_code: &'a str,
 }
