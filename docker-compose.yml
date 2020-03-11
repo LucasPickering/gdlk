@@ -10,7 +10,7 @@ volumes:
 
 services:
   db:
-    image: postgres:12-alpine
+    image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-postgres:${DOCKER_TAG}
     environment:
       POSTGRES_DB: gdlk
       POSTGRES_USER: root
@@ -19,7 +19,7 @@ services:
       - "5432:5432"
 
   api:
-    image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-api:latest
+    image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-api:${DOCKER_TAG}
     command: cargo watch -x "run -- server"
     tty: true # Colorize output
     volumes:
@@ -35,7 +35,7 @@ services:
       - "8000:8000"
 
   frontend:
-    image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-frontend:latest
+    image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-frontend:${DOCKER_TAG}
     command: ./docker/run_frontend.sh
     tty: true # Colorize output
     volumes:
