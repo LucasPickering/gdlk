@@ -6,6 +6,7 @@ use crate::{
     schema::{hardware_specs, program_specs, users},
 };
 use diesel::{PgConnection, RunQueryDsl};
+use uuid::Uuid;
 
 /// Inserts hard-coded seed data into the DB. Related objects use dynamic FKs
 /// rather than hard-coded ones, to prevent weird situations with existing data.
@@ -18,7 +19,7 @@ pub fn seed_db(conn: &PgConnection) -> Result<(), diesel::result::Error> {
         .returning(users::id)
         .get_result(conn)?;
 
-    let hardware_spec_id: i32 = NewHardwareSpec {
+    let hardware_spec_id: Uuid = NewHardwareSpec {
         slug: "hw1",
         num_registers: 1,
         num_stacks: 0,

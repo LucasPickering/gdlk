@@ -157,7 +157,12 @@ class Test(Command):
         except subprocess.CalledProcessError:
             # If the DB doesn't exist, we don't care
             pass
+        # Create DB and run startup scripts
         run_in_docker_service(DB_SERVICE, ["createdb", API_TEST_DB])
+        run_in_docker_service(
+            DB_SERVICE,
+            ["psql", API_TEST_DB, "-f", "/docker-entrypoint-initdb.d/*"],
+        )
 
         db_url = f"postgres://root:root@db/{API_TEST_DB}"
         run_in_docker_service(
