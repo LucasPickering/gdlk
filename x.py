@@ -161,7 +161,11 @@ class Test(Command):
         run_in_docker_service(DB_SERVICE, ["createdb", API_TEST_DB])
         run_in_docker_service(
             DB_SERVICE,
-            ["psql", API_TEST_DB, "-f", "/docker-entrypoint-initdb.d/*"],
+            [
+                "sh",
+                "-c",
+                f"psql {API_TEST_DB} -f /docker-entrypoint-initdb.d/*",
+            ],
         )
 
         db_url = f"postgres://root:root@db/{API_TEST_DB}"
