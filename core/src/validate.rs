@@ -235,7 +235,7 @@ impl Compiler<Program<Span>> {
     pub(crate) fn validate(
         self,
     ) -> Result<Compiler<Program<Span>>, WithSource<CompileError>> {
-        let errors = validate_body(self.hardware_spec.inner(), &self.ast.body);
+        let errors = validate_body(&self.hardware_spec, &self.ast.body);
         if errors.is_empty() {
             Ok(self)
         } else {
