@@ -42,7 +42,7 @@
 // Re-export dependencies that consumers may need
 pub use validator;
 #[macro_use]
-pub extern crate validator_derive;
+extern crate validator_derive;
 
 pub mod ast;
 mod consts;

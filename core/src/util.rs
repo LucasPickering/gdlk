@@ -4,6 +4,7 @@ use serde::Serialize;
 use std::{
     fmt::{self, Formatter},
     iter,
+    ops::Deref,
 };
 use validator::{Validate, ValidationErrors};
 
@@ -128,9 +129,12 @@ impl<T: Validate> Valid<T> {
         value.validate()?;
         Ok(Self { inner: value })
     }
+}
 
-    /// Get the validated value.
-    pub fn inner(&self) -> &T {
+impl<T: Validate> Deref for Valid<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
         &self.inner
     }
 }
