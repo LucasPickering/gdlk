@@ -33,6 +33,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get install -y libpq-dev
+          rustup component add rustfmt clippy
       - name: Run rustfmt
         uses: actions-rs/cargo@v1
         with:
@@ -44,7 +45,7 @@ jobs:
           command: clippy
 
   build-db:
-    name: "[API] Test"
+    name: "[DB] Test"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
