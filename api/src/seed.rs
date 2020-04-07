@@ -53,7 +53,8 @@ pub fn seed_db(conn: &PgConnection) -> Result<(), diesel::result::Error> {
         user_id,
         program_spec_id: prog1_spec_id,
         file_name: "program.gdlk",
-        source_code: "READ\nWRITE\nREAD\nWRITE\nREAD\nWRITE\n",
+        source_code:
+            "READ RX0\nWRITE RX0\nREAD RX0\nWRITE RX0\nREAD RX0\nWRITE RX0\n",
     }
     .insert()
     .execute(conn)

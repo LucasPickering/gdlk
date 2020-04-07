@@ -1,18 +1,25 @@
-//! The root configuration for GraphQL/Juniper stuff. Not all of the GraphQL
-//! models live here, the VFS stuff is in its own module. We may want to put all
-//! GQL stuff in one module at some point, but not currently.
+//! The root configuration for GraphQL/Juniper stuff. Only the top-level query
+//! and mutation live here, plus some general types that are exposed in the
+//! API. Utility types/functions live in `internal`. Specific models live in
+//! their own files.
 
 use crate::{
     error::{ServerError, ServerResult},
+    models,
+    schema::{hardware_specs, users},
     server::gql::{
         hardware::{
             HardwareSpecConnection, HardwareSpecEdge, HardwareSpecNode,
         },
-        program::{ProgramSpecConnection, ProgramSpecEdge, ProgramSpecNode},
+        program::{
+            ProgramSpecConnection, ProgramSpecEdge, ProgramSpecNode,
+            UserProgramConnection, UserProgramEdge, UserProgramNode,
+        },
+        user::UserNode,
     },
     util::{Pool, PooledConnection},
 };
-use diesel::PgConnection;
+use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
 use gdlk::Valid;
 use juniper::EmptyMutation;
 use juniper_from_schema::graphql_schema_from_file;
@@ -22,6 +29,7 @@ use validator::{Validate, ValidationError, ValidationErrors};
 mod hardware;
 mod internal;
 mod program;
+mod user;
 
 graphql_schema_from_file!("schema.graphql", error_type: ServerError);
 
@@ -52,16 +60,32 @@ impl QueryFields for Query {
         internal::get_by_id_from_all_types(&executor.context(), &id)
     }
 
+    fn field_user(
+        &self,
+        executor: &juniper::Executor<'_, Context>,
+        _trail: &QueryTrail<'_, UserNode, Walked>,
+        username: String,
+    ) -> ServerResult<Option<UserNode>> {
+        Ok(users::table
+            .filter(models::User::with_username(&username))
+            .get_result::<models::User>(&executor.context().get_db_conn()?)
+            .optional()?
+            .map(UserNode::from))
+    }
+
     fn field_hardware_spec(
         &self,
         executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, HardwareSpecNode, Walked>,
         slug: String,
     ) -> ServerResult<Option<HardwareSpecNode>> {
-        HardwareSpecNode::from_slug(
-            &executor.context().get_db_conn()? as &PgConnection,
-            &slug,
-        )
+        Ok(hardware_specs::table
+            .filter(hardware_specs::dsl::slug.eq(&slug))
+            .get_result::<models::HardwareSpec>(
+                &executor.context().get_db_conn()?,
+            )
+            .optional()?
+            .map(HardwareSpecNode::from))
     }
 
     fn field_hardware_specs(

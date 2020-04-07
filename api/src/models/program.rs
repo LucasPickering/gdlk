@@ -1,13 +1,28 @@
 use crate::{
-    models::{HardwareSpec, User},
-    schema::{program_specs, user_programs},
+    models::{user, HardwareSpec, User},
+    schema::{program_specs, user_programs, users},
 };
 use diesel::{
-    prelude::*, query_builder::InsertStatement, Identifiable, Queryable,
+    dsl, expression::bound::Bound, prelude::*, query_builder::InsertStatement,
+    sql_types, Identifiable, Queryable,
 };
 use gdlk::{ast::LangValue, validator::ValidationErrors, Valid};
 use std::convert::TryFrom;
 use uuid::Uuid;
+
+type WithHardwareSpec = dsl::Eq<
+    program_specs::columns::hardware_spec_id,
+    Bound<sql_types::Uuid, Uuid>,
+>;
+
+/// Expression to filter user_programs by owner's username and program spec ID
+type WithUserAndProgramSpec<'a> = dsl::And<
+    user::WithUsername<'a>,
+    dsl::Eq<
+        user_programs::columns::program_spec_id,
+        Bound<sql_types::Uuid, Uuid>,
+    >,
+>;
 
 /// A derivative of [ProgramSpec](gdlk::ProgramSpec), built from a DB query.
 #[derive(Clone, Debug, PartialEq, Identifiable, Associations, Queryable)]
@@ -28,6 +43,20 @@ pub struct ProgramSpec {
     pub expected_output: Vec<LangValue>,
 }
 
+impl ProgramSpec {
+    /// Eq clause to compare the hardware_spec_id to a value.
+    pub fn with_hardware_spec(hardware_spec_id: Uuid) -> WithHardwareSpec {
+        program_specs::dsl::hardware_spec_id.eq(hardware_spec_id)
+    }
+
+    /// Start a query that filters by hardware spec ID.
+    pub fn filter_by_hardware_spec(
+        hardware_spec_id: Uuid,
+    ) -> dsl::Filter<program_specs::table, WithHardwareSpec> {
+        program_specs::table.filter(Self::with_hardware_spec(hardware_spec_id))
+    }
+}
+
 impl TryFrom<ProgramSpec> for Valid<gdlk::ProgramSpec> {
     type Error = ValidationErrors;
 
@@ -43,7 +72,7 @@ impl TryFrom<ProgramSpec> for Valid<gdlk::ProgramSpec> {
 /// This can be constructed manually and inserted into the DB. These fields
 /// all correspond to [ProgramSpec](ProgramSpec), so look there for
 /// field-level documentation.
-#[derive(Debug, PartialEq, Insertable)]
+#[derive(Clone, Debug, PartialEq, Insertable)]
 #[table_name = "program_specs"]
 pub struct NewProgramSpec<'a> {
     pub slug: &'a str,
@@ -64,7 +93,7 @@ impl NewProgramSpec<'_> {
     }
 }
 
-#[derive(Debug, PartialEq, Queryable, Associations)]
+#[derive(Clone, Debug, PartialEq, Identifiable, Queryable, Associations)]
 #[belongs_to(User, foreign_key = "user_id")]
 #[belongs_to(ProgramSpec, foreign_key = "program_spec_id")]
 #[table_name = "user_programs"]
@@ -76,7 +105,24 @@ pub struct UserProgram {
     pub source_code: String,
 }
 
-#[derive(Debug, PartialEq, Insertable)]
+impl UserProgram {
+    /// Start a query that filters this table by associated user's username,
+    /// and by associated program spec's ID.
+    pub fn filter_by_username_and_program_spec<'a>(
+        username: &'a str,
+        program_spec_id: Uuid,
+    ) -> dsl::Filter<
+        dsl::InnerJoin<user_programs::table, users::table>,
+        WithUserAndProgramSpec<'a>,
+    > {
+        user_programs::table
+            .inner_join(users::table)
+            .filter(User::with_username(username))
+            .filter(user_programs::dsl::program_spec_id.eq(program_spec_id))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Insertable)]
 #[table_name = "user_programs"]
 pub struct NewUserProgram<'a> {
     pub user_id: Uuid,

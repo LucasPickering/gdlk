@@ -6,7 +6,8 @@ use diesel::{
 use uuid::Uuid;
 
 /// Expression to filter users by username
-type WithUsername<'a> = dsl::Eq<users::columns::username, Bound<Text, &'a str>>;
+pub type WithUsername<'a> =
+    dsl::Eq<users::columns::username, Bound<Text, &'a str>>;
 
 #[derive(Clone, Debug, PartialEq, Identifiable, Queryable)]
 #[table_name = "users"]
@@ -16,12 +17,9 @@ pub struct User {
 }
 
 impl User {
-    /// Filters users by their username. The resulting queryset should contain
-    /// no more than one user.
-    pub fn filter_by_username<'a>(
-        username: &'a str,
-    ) -> dsl::Filter<users::table, WithUsername<'a>> {
-        users::table.filter(users::dsl::username.eq(username))
+    /// Eq clause to compare the username column to a value.
+    pub fn with_username(username: &str) -> WithUsername<'_> {
+        users::dsl::username.eq(username)
     }
 }
 

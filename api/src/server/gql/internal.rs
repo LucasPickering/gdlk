@@ -19,11 +19,9 @@ const ALL_NODES_GET_BY_ID: &[&dyn Fn(
 
 /// A trait to identify any struct that is a GQL node.
 pub trait NodeType: Sized + Into<Node> {
-    /// The DB model type associated with this node type.
-    type Model;
-
-    /// Convert the underlying model value to a value of this type.
-    fn from_model(model: Self::Model) -> Self;
+    /// The DB model type associated with this node type. Requires `Into<Self>`
+    /// so that we can convert models into this type.
+    type Model: Into<Self>;
 
     /// Query the DB table by ID.
     fn find(conn: &PgConnection, id: Uuid) -> QueryResult<Self::Model>;
@@ -34,7 +32,8 @@ pub trait NodeType: Sized + Into<Node> {
     fn get_by_id(conn: &PgConnection, id: Uuid) -> ServerResult<Option<Node>> {
         Ok(Self::find(conn, id)
             .optional()?
-            .map(|model| Self::from_model(model).into()))
+            // Self::Model -> Self -> Node
+            .map(|row: Self::Model| row.into().into()))
     }
 }
 
@@ -62,7 +61,7 @@ impl<N: NodeType> GenericEdge<N> {
         rows.into_iter()
             .enumerate()
             .map(|(i, row)| Self {
-                node: NodeType::from_model(row),
+                node: row.into(),
                 cursor: Cursor::from_index(offset + i32::try_from(i).unwrap()),
             })
             .collect()
