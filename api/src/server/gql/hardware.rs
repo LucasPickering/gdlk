@@ -1,7 +1,7 @@
 use crate::{
     error::ServerResult,
     models,
-    schema::hardware_specs,
+    schema::{hardware_specs, program_specs},
     server::gql::{
         internal::{GenericEdge, NodeType},
         program::{ProgramSpecConnection, ProgramSpecNode},
@@ -25,28 +25,16 @@ pub struct HardwareSpecNode {
     pub hardware_spec: models::HardwareSpec,
 }
 
-impl HardwareSpecNode {
-    /// Query for a hardware spec by slug.
-    pub fn from_slug(
-        conn: &PgConnection,
-        slug: &str,
-    ) -> ServerResult<Option<Self>> {
-        Ok(hardware_specs::table
-            .filter(hardware_specs::dsl::slug.eq(slug))
-            .get_result::<models::HardwareSpec>(conn)
-            .optional()?
-            .map(Self::from_model))
+impl From<models::HardwareSpec> for HardwareSpecNode {
+    fn from(model: models::HardwareSpec) -> Self {
+        Self {
+            hardware_spec: model,
+        }
     }
 }
 
 impl NodeType for HardwareSpecNode {
     type Model = models::HardwareSpec;
-
-    fn from_model(model: Self::Model) -> Self {
-        Self {
-            hardware_spec: model,
-        }
-    }
 
     fn find(conn: &PgConnection, id: Uuid) -> QueryResult<Self::Model> {
         hardware_specs::table.find(id).get_result(conn)
@@ -92,10 +80,15 @@ impl HardwareSpecNodeFields for HardwareSpecNode {
         _trail: &QueryTrail<'_, ProgramSpecNode, Walked>,
         slug: String,
     ) -> ServerResult<Option<ProgramSpecNode>> {
-        ProgramSpecNode::from_slug(
-            &executor.context().get_db_conn()? as &PgConnection,
-            self.hardware_spec.id,
-            &slug,
+        // Get program spec by hardware spec + slug
+        Ok(
+            models::ProgramSpec::filter_by_hardware_spec(self.hardware_spec.id)
+                .filter(program_specs::dsl::slug.eq(&slug))
+                .get_result::<models::ProgramSpec>(
+                    &executor.context().get_db_conn()?,
+                )
+                .optional()?
+                .map(ProgramSpecNode::from),
         )
     }
 
@@ -146,7 +139,7 @@ impl HardwareSpecConnection {
 
     fn get_total_count(&self, context: &Context) -> ServerResult<i32> {
         match hardware_specs::table
-            .select(dsl::count(hardware_specs::id))
+            .select(dsl::count(dsl::count_star()))
             .get_result::<i64>(&context.get_db_conn()?)
         {
             // Convert i64 to i32 - if this fails, we're in a rough spot

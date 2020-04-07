@@ -7,7 +7,7 @@ use crate::{
 use actix::{Actor, ActorContext, AsyncContext, StreamHandler};
 use actix_web::{get, web, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
-use diesel::{associations::HasTable, prelude::*, PgConnection};
+use diesel::{prelude::*, PgConnection};
 use gdlk::{
     error::{CompileError, RuntimeError, WithSource},
     validator::ValidationErrors,
@@ -246,8 +246,8 @@ pub async fn ws_program_specs_by_slugs(
     let (program_spec, hardware_spec): (
         models::ProgramSpec,
         models::HardwareSpec,
-    ) = models::ProgramSpec::table()
-        .inner_join(models::HardwareSpec::table())
+    ) = program_specs::table
+        .inner_join(hardware_specs::table)
         .filter(hardware_specs::dsl::slug.eq(&hw_spec_slug))
         .filter(program_specs::dsl::slug.eq(&program_spec_slug))
         .get_result(conn)
