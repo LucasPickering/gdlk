@@ -8,14 +8,7 @@ use crate::{
     models,
     schema::{hardware_specs, users},
     server::gql::{
-        hardware::{
-            HardwareSpecConnection, HardwareSpecEdge, HardwareSpecNode,
-        },
-        program::{
-            ProgramSpecConnection, ProgramSpecEdge, ProgramSpecNode,
-            UserProgramConnection, UserProgramEdge, UserProgramNode,
-        },
-        user::UserNode,
+        hardware_spec::*, program_spec::*, user::*, user_program::*,
     },
     util::{Pool, PooledConnection},
 };
@@ -26,10 +19,11 @@ use juniper_from_schema::graphql_schema_from_file;
 use std::sync::Arc;
 use validator::{Validate, ValidationError, ValidationErrors};
 
-mod hardware;
+mod hardware_spec;
 mod internal;
-mod program;
+mod program_spec;
 mod user;
+mod user_program;
 
 graphql_schema_from_file!("schema.graphql", error_type: ServerError);
 
