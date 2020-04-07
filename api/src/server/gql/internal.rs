@@ -1,8 +1,8 @@
 use crate::{
     error::ServerResult,
     server::gql::{
-        hardware::HardwareSpecNode, program::ProgramSpecNode, Context, Cursor,
-        Node,
+        hardware_spec::HardwareSpecNode, program_spec::ProgramSpecNode,
+        Context, Cursor, Node,
     },
     util,
 };

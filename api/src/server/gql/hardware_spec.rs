@@ -4,7 +4,7 @@ use crate::{
     schema::{hardware_specs, program_specs},
     server::gql::{
         internal::{GenericEdge, NodeType},
-        program::{ProgramSpecConnection, ProgramSpecNode},
+        program_spec::{ProgramSpecConnection, ProgramSpecNode},
         ConnectionPageParams, Context, Cursor, HardwareSpecConnectionFields,
         HardwareSpecEdgeFields, HardwareSpecNodeFields, PageInfo,
     },
