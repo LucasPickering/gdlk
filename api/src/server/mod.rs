@@ -1,19 +1,16 @@
 //! All code related to the webserver. Basically anything that calls Actix
 //! lives here.
+mod gql;
+mod websocket;
 
-use crate::{
-    server::gql::{Context, GqlSchema},
-    util::Pool,
-};
+pub use crate::server::gql::{create_gql_schema, Context, GqlSchema};
+use crate::util::Pool;
 use actix_web::{get, middleware, post, web, App, HttpResponse, HttpServer};
 use juniper::http::{graphiql::graphiql_source, GraphQLRequest};
 use std::{io, sync::Arc};
 
-mod gql;
-mod websocket;
-
 #[get("/graphiql")]
-pub async fn route_graphiql() -> HttpResponse {
+async fn route_graphiql() -> HttpResponse {
     let html = graphiql_source("/graphql");
     HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
@@ -21,7 +18,7 @@ pub async fn route_graphiql() -> HttpResponse {
 }
 
 #[post("/graphql")]
-pub async fn route_graphql(
+async fn route_graphql(
     pool: web::Data<Pool>,
     st: web::Data<Arc<GqlSchema>>,
     data: web::Json<GraphQLRequest>,
@@ -48,7 +45,7 @@ pub async fn run_server(pool: Pool, host: String) -> io::Result<()> {
     env_logger::init();
 
     // Init GraphQL schema
-    let gql_schema = Arc::new(gql::create_gql_schema());
+    let gql_schema = Arc::new(create_gql_schema());
 
     // Start the HTTP server
     HttpServer::new(move || {

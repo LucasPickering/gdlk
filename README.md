@@ -21,10 +21,11 @@ First, you'll need to install:
 - `docker-compose`
 - `rustup`
 
-Then, for development you'll probably want to install:
+Then, for development you'll probably want to install more stuff:
 
 ```sh
 rustup component add rustfmt-preview clippy-preview
+cargo install diesel_cli
 ```
 
 If you're using VSCode and have the RLS extension installed (you should), it'll ask to install more components, just say yes.
@@ -57,14 +58,14 @@ Then, see the next section to initialize the DB.
 
 ### Migrations & Seed Data
 
-Migrations are managed by Diesel. Seed data is defined in code, in `seed.rs`.
+Migrations are managed by Diesel. Seed data is defined via SQL scripts, in `api/seeds`.
 
 ```sh
-./x.py migrate # Run initial migrations
+./x.py migration run # Run initial migrations
 ./x.py seed # Insert seed data
 
 # If you need to re-run migrations (this will wipe out your DB!)
-./x.py migrate --redo
+./x.py migration redo
 ```
 
 ### Tests
