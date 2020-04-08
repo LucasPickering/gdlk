@@ -8,6 +8,7 @@ RUN apt-get update && \
     curl \
     libpq-dev \
     pkg-config \
+    postgresql \
     && \
     rm -rf /var/lib/apt/lists/*
 

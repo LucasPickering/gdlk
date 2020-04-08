@@ -14,75 +14,33 @@ use diesel::{
     PgConnection,
 };
 use failure::Fallible;
-use structopt::StructOpt;
+use std::env;
 
 mod error;
 mod models;
 mod schema;
-#[cfg(debug_assertions)]
-mod seed;
 mod server;
 mod util;
 // Commenting this out so we don't have to maintain it - we may want to come
 // back to it at some point
 // mod vfs;
 
-/// The sub-command to execute.
-#[derive(Debug, StructOpt)]
-enum Command {
-    /// Start the HTTP server and listen for connections
-    #[structopt(name = "server")]
-    Server {
-        /// The IP:port to bind to
-        #[structopt(
-            long,
-            env = "SERVER_HOST",
-            default_value = "localhost:8000"
-        )]
-        host: String,
-    },
+fn run() -> Fallible<()> {
+    let database_url = env::var("DATABASE_URL")?;
+    let server_host =
+        env::var("SERVER_HOST").unwrap_or_else(|_| "localhost:8000".into());
 
-    /// Insert pre-defined seed data into the DB. Useful in development, not
-    /// so much in release.
-    #[structopt(name = "seed")]
-    #[cfg(debug_assertions)]
-    Seed,
-}
-
-/// GDLK executable, for executing GDLK programs or running the GDLK webserver
-#[derive(Debug, StructOpt)]
-#[structopt(name = "gdlk")]
-struct Opt {
-    #[structopt(subcommand)]
-    cmd: Command,
-    /// Database URL
-    #[structopt(long, env = "DATABASE_URL")]
-    database_url: String,
-}
-
-fn run(opt: Opt) -> Fallible<()> {
     // Initialize the DB connection pool
-    let manager = ConnectionManager::<PgConnection>::new(opt.database_url);
+    let manager = ConnectionManager::<PgConnection>::new(database_url);
     let pool = r2d2::Pool::builder()
         .build(manager)
         .expect("Failed to create pool.");
 
-    match opt.cmd {
-        // Start the webserver
-        Command::Server { host } => {
-            server::run_server(pool, host)?;
-        }
-        #[cfg(debug_assertions)]
-        Command::Seed => {
-            let conn = pool.get().unwrap();
-            seed::seed_db(&conn)?;
-        }
-    }
-    Ok(())
+    Ok(server::run_server(pool, server_host)?)
 }
 
 fn main() {
-    let result = run(Opt::from_args());
+    let result = run();
     if let Err(error) = result {
         eprintln!("Error!\n{:?}", error);
     }
