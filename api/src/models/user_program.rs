@@ -1,6 +1,6 @@
 use crate::{
-    models::{user, ProgramSpec, User},
-    schema::{user_programs, users},
+    models::{ProgramSpec, User},
+    schema::user_programs,
 };
 use diesel::{
     dsl, expression::bound::Bound, prelude::*, query_builder::InsertStatement,
@@ -8,9 +8,9 @@ use diesel::{
 };
 use uuid::Uuid;
 
-/// Expression to filter user_programs by owner's username and program spec ID
-type WithUserAndProgramSpec<'a> = dsl::And<
-    user::WithUsername<'a>,
+/// Expression to filter user_programs by owner's ID and program spec ID
+type WithUserAndProgramSpec = dsl::And<
+    dsl::Eq<user_programs::columns::user_id, Bound<sql_types::Uuid, Uuid>>,
     dsl::Eq<
         user_programs::columns::program_spec_id,
         Bound<sql_types::Uuid, Uuid>,
@@ -30,18 +30,14 @@ pub struct UserProgram {
 }
 
 impl UserProgram {
-    /// Start a query that filters this table by associated user's username,
-    /// and by associated program spec's ID.
-    pub fn filter_by_username_and_program_spec<'a>(
-        username: &'a str,
+    /// Start a query that filters this table by associated user's ID and by
+    /// associated program spec's ID.
+    pub fn filter_by_user_and_program_spec(
+        user_id: Uuid,
         program_spec_id: Uuid,
-    ) -> dsl::Filter<
-        dsl::InnerJoin<user_programs::table, users::table>,
-        WithUserAndProgramSpec<'a>,
-    > {
+    ) -> dsl::Filter<user_programs::table, WithUserAndProgramSpec> {
         user_programs::table
-            .inner_join(users::table)
-            .filter(User::with_username(username))
+            .filter(user_programs::dsl::user_id.eq(user_id))
             .filter(user_programs::dsl::program_spec_id.eq(program_spec_id))
     }
 }

@@ -45,7 +45,7 @@ impl NodeType for ProgramSpecNode {
 
 impl ProgramSpecNodeFields for ProgramSpecNode {
     fn field_id(&self, _executor: &juniper::Executor<'_, Context>) -> ID {
-        util::uuid_to_gql_id(&self.program_spec.id)
+        util::uuid_to_gql_id(self.program_spec.id)
     }
 
     fn field_slug(
@@ -85,11 +85,11 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
         &self,
         executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, UserProgramNode, Walked>,
-        username: String,
+        user_id: juniper::ID,
         file_name: String,
     ) -> ServerResult<Option<UserProgramNode>> {
-        Ok(models::UserProgram::filter_by_username_and_program_spec(
-            &username,
+        Ok(models::UserProgram::filter_by_user_and_program_spec(
+            util::gql_id_to_uuid(&user_id)?,
             self.program_spec.id,
         )
         .filter(user_programs::dsl::file_name.eq(&file_name))
@@ -103,11 +103,16 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
         &self,
         _executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, UserProgramConnection, Walked>,
-        username: String,
+        user_id: juniper::ID,
         first: Option<i32>,
         after: Option<Cursor>,
     ) -> ServerResult<UserProgramConnection> {
-        UserProgramConnection::new(username, self.program_spec.id, first, after)
+        UserProgramConnection::new(
+            util::gql_id_to_uuid(&user_id)?,
+            self.program_spec.id,
+            first,
+            after,
+        )
     }
 }
 

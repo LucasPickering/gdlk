@@ -43,7 +43,7 @@ impl NodeType for HardwareSpecNode {
 
 impl HardwareSpecNodeFields for HardwareSpecNode {
     fn field_id(&self, _executor: &juniper::Executor<'_, Context>) -> ID {
-        util::uuid_to_gql_id(&self.hardware_spec.id)
+        util::uuid_to_gql_id(self.hardware_spec.id)
     }
 
     fn field_slug(
