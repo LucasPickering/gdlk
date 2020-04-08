@@ -12,7 +12,7 @@ pub type PooledConnection =
     r2d2::PooledConnection<ConnectionManager<PgConnection>>;
 
 /// Converts a UUID to a Juniper (GraphQL) ID.
-pub fn uuid_to_gql_id(uuid: &Uuid) -> juniper::ID {
+pub fn uuid_to_gql_id(uuid: Uuid) -> juniper::ID {
     juniper::ID::new(uuid.to_string())
 }
 

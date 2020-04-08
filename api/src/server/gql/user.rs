@@ -29,7 +29,7 @@ impl NodeType for UserNode {
 
 impl UserNodeFields for UserNode {
     fn field_id(&self, _executor: &juniper::Executor<'_, Context>) -> ID {
-        util::uuid_to_gql_id(&self.user.id)
+        util::uuid_to_gql_id(self.user.id)
     }
 
     fn field_username(

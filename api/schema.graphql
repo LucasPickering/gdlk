@@ -14,6 +14,7 @@ scalar Cursor
 
 schema {
   query: Query
+  mutation: Mutation
 }
 
 """
@@ -223,7 +224,7 @@ type ProgramSpecNode implements Node {
 
   TODO remove the username field and filter by the logged in user instead
   """
-  userProgram(username: String!, fileName: String!): UserProgramNode
+  userProgram(username: ID!, fileName: String!): UserProgramNode
     @juniper(ownership: "owned")
 
   """
@@ -232,7 +233,7 @@ type ProgramSpecNode implements Node {
   TODO remove the username field and filter by the logged in user instead
   """
   userPrograms(
-    username: String!
+    username: ID!
     first: Int
     after: Cursor
   ): UserProgramConnection! @juniper(ownership: "owned")
@@ -333,4 +334,81 @@ type UserProgramConnection implements ConnectionInterface {
   The queried user programs.
   """
   edges: [UserProgramEdge!]! @juniper(ownership: "owned")
+}
+
+# +-----------------------------+
+# |          MUTATIONS          |
+# +-----------------------------+
+
+"""
+The root mutation.
+"""
+type Mutation {
+  """
+  Create or update a user program by owner, program spec, and file name.
+  """
+  saveUserProgram(input: SaveUserProgramInput!): SaveUserProgramPayload!
+    @juniper(ownership: "owned")
+
+  """
+  Delete a user program by ID.
+  """
+  deleteUserProgram(input: DeleteUserProgramInput!): DeleteUserProgramPayload!
+    @juniper(ownership: "owned")
+}
+
+"""
+Input to the `saveUserProgram` mutation.
+"""
+input SaveUserProgramInput {
+  """
+  The ID of the owner of the program source.
+  """
+  userId: ID!
+
+  """
+  The program spec for which this source was written.
+  """
+  programSpecId: ID!
+
+  """
+  The name of the program source file.
+  """
+  fileName: String!
+
+  """
+  The source code for the program.
+  """
+  sourceCode: String!
+}
+
+"""
+Output from the `saveUserProgram` mutation.
+"""
+type SaveUserProgramPayload {
+  """
+  The created/updated user program.
+  """
+  userProgram: UserProgramNode! @juniper(infallible: true)
+}
+
+"""
+Input to the `deleteUserProgram` mutation.
+"""
+input DeleteUserProgramInput {
+  """
+  The ID of the user program to delete.
+  """
+  userProgramId: ID!
+}
+
+"""
+Output from the `deleteUserProgram` mutation.
+"""
+type DeleteUserProgramPayload {
+  """
+  The ID of the deleted program. Will be `null` if no program existed with
+  that ID. Will always be populated if the delete occurred.
+  """
+  deletedId: ID @juniper(infallible: true, ownership: "owned")
 }

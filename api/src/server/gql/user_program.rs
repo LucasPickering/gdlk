@@ -6,9 +6,9 @@ use crate::{
         internal::{GenericEdge, NodeType},
         program_spec::ProgramSpecNode,
         user::UserNode,
-        ConnectionPageParams, Context, Cursor, PageInfo,
-        UserProgramConnectionFields, UserProgramEdgeFields,
-        UserProgramNodeFields,
+        ConnectionPageParams, Context, Cursor, DeleteUserProgramPayloadFields,
+        PageInfo, SaveUserProgramPayloadFields, UserProgramConnectionFields,
+        UserProgramEdgeFields, UserProgramNodeFields,
     },
     util,
 };
@@ -42,7 +42,7 @@ impl NodeType for UserProgramNode {
 
 impl UserProgramNodeFields for UserProgramNode {
     fn field_id(&self, _executor: &juniper::Executor<'_, Context>) -> ID {
-        util::uuid_to_gql_id(&self.user_program.id)
+        util::uuid_to_gql_id(self.user_program.id)
     }
 
     fn field_file_name(
@@ -105,28 +105,28 @@ impl UserProgramEdgeFields for UserProgramEdge {
 
 /// "Connection" is a concept from Relay. Read more: https://graphql.org/learn/pagination/
 pub struct UserProgramConnection {
-    username: String,
+    user_id: Uuid,
     program_spec_id: Uuid,
     page_params: Valid<ConnectionPageParams>,
 }
 
 impl UserProgramConnection {
     pub fn new(
-        username: String,
+        user_id: Uuid,
         program_spec_id: Uuid,
         first: Option<i32>,
         after: Option<Cursor>,
     ) -> ServerResult<Self> {
         Ok(Self {
-            username,
+            user_id,
             program_spec_id,
             page_params: ConnectionPageParams::new(first, after)?,
         })
     }
 
     fn get_total_count(&self, context: &Context) -> ServerResult<i32> {
-        match models::UserProgram::filter_by_username_and_program_spec(
-            &self.username,
+        match models::UserProgram::filter_by_user_and_program_spec(
+            self.user_id,
             self.program_spec_id,
         )
         .select(dsl::count(dsl::count_star()))
@@ -145,14 +145,13 @@ impl UserProgramConnection {
         let offset = self.page_params.offset();
 
         // Load data from the query
-        let mut query =
-            models::UserProgram::filter_by_username_and_program_spec(
-                &self.username,
-                self.program_spec_id,
-            )
-            .select(user_programs::table::all_columns())
-            .offset(offset.into())
-            .into_boxed();
+        let mut query = models::UserProgram::filter_by_user_and_program_spec(
+            self.user_id,
+            self.program_spec_id,
+        )
+        .select(user_programs::table::all_columns())
+        .offset(offset.into())
+        .into_boxed();
 
         // Conditionally include limit param
         if let Some(limit) = self.page_params.limit() {
@@ -191,5 +190,32 @@ impl UserProgramConnectionFields for UserProgramConnection {
         _trail: &QueryTrail<'_, UserProgramEdge, Walked>,
     ) -> ServerResult<Vec<UserProgramEdge>> {
         self.get_edges(executor.context())
+    }
+}
+
+pub struct SaveUserProgramPayload {
+    pub user_program_node: UserProgramNode,
+}
+
+impl SaveUserProgramPayloadFields for SaveUserProgramPayload {
+    fn field_user_program(
+        &self,
+        _executor: &juniper::Executor<'_, Context>,
+        _trail: &QueryTrail<'_, UserProgramNode, Walked>,
+    ) -> &UserProgramNode {
+        &self.user_program_node
+    }
+}
+
+pub struct DeleteUserProgramPayload {
+    pub deleted_id: Option<Uuid>,
+}
+
+impl DeleteUserProgramPayloadFields for DeleteUserProgramPayload {
+    fn field_deleted_id(
+        &self,
+        _executor: &juniper::Executor<'_, Context>,
+    ) -> Option<juniper::ID> {
+        self.deleted_id.map(util::uuid_to_gql_id)
     }
 }
