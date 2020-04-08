@@ -159,6 +159,12 @@ class Test(Command):
             help="Run tests in debug mode (DEBUG=1, see debug! macro in core)",
         )
         parser.add_argument(
+            "--keep-db",
+            "-k",
+            action="store_true",
+            help="Keep the existing test DB, and skip migrations",
+        )
+        parser.add_argument(
             "--tests",
             "-t",
             nargs="+",
@@ -173,44 +179,47 @@ class Test(Command):
             help="Value to use for RUST_BACKTRACE",
         )
 
-    def test_core(self, debug, tests, backtrace):
+    def test_core(self, debug, keep_db, tests, backtrace):
         run_cmd(
             ["cargo", "test", "-p", "gdlk", *tests, "--", "--nocapture"],
             env={"DEBUG": str(int(debug)), "RUST_BACKTRACE": backtrace},
         )
 
-    def test_api(self, debug, tests, backtrace):
-        try:
-            run_in_docker_service(DB_SERVICE, ["dropdb", API_TEST_DB])
-        except subprocess.CalledProcessError:
-            # If the DB doesn't exist, we don't care
-            pass
-        # Create DB and run startup scripts
-        run_in_docker_service(DB_SERVICE, ["createdb", API_TEST_DB])
-        run_in_docker_service(
-            DB_SERVICE,
-            [
-                "sh",
-                "-c",
-                f"psql {API_TEST_DB} -f /docker-entrypoint-initdb.d/*",
-            ],
-        )
-
+    def test_api(self, debug, keep_db, tests, backtrace):
         db_url = f"postgres://root:root@db/{API_TEST_DB}"
+
         run_in_docker_service(
             API_SERVICE,
-            ["diesel", "migration", "run", "--locked-schema"],
-            env={"DEBUG": str(int(debug)), "DATABASE_URL": db_url},
+            ["diesel", "database", "reset"],
+            env={"DATABASE_URL": db_url},
         )
+
+        # Run the tests
         try:
             run_in_docker_service(
                 API_SERVICE,
-                ["cargo", "test", *tests, "--", "--nocapture"],
-                env={"DATABASE_URL": db_url, "RUST_BACKTRACE": backtrace},
+                [
+                    "cargo",
+                    "test",
+                    *tests,
+                    "--",
+                    # Tests have to run in serial to prevent DB modifications
+                    # from stepping on each other
+                    "--test-threads=1",
+                    "--nocapture",
+                ],
+                env={
+                    "DATABASE_URL": db_url,
+                    "DEBUG": str(int(debug)),
+                    "RUST_BACKTRACE": backtrace,
+                },
             )
         except subprocess.CalledProcessError:
             # Ignore this exception, so we don't obfuscate the test output
             pass
+
+        if not keep_db:
+            run_in_docker_service(DB_SERVICE, ["dropdb", API_TEST_DB])
 
     def run(self, crates, **kwargs):
         for crate in crates:

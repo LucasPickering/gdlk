@@ -1,15 +1,22 @@
 //! General utility functions and types.
 
 #[cfg(test)]
-pub use tests::*;
-
+pub use self::tests::*;
 use diesel::{r2d2::ConnectionManager, PgConnection};
+use failure::Fallible;
 use uuid::{parser::ParseError, Uuid};
 
 /// Type aliases for DB connections
 pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 pub type PooledConnection =
     r2d2::PooledConnection<ConnectionManager<PgConnection>>;
+
+pub fn init_db_conn_pool() -> Fallible<Pool> {
+    let database_url = std::env::var("DATABASE_URL")?;
+    let manager = ConnectionManager::new(database_url);
+    let pool = r2d2::Pool::builder().build(manager)?;
+    Ok(pool)
+}
 
 /// Converts a UUID to a Juniper (GraphQL) ID.
 pub fn uuid_to_gql_id(uuid: Uuid) -> juniper::ID {
@@ -40,7 +47,6 @@ pub fn map_to_gql_object<K: ToString, V>(
 
 #[cfg(test)]
 mod tests {
-
     /// Assert that the first value is an Err, and that its string form matches
     /// the second argument.
     #[macro_export]
@@ -48,7 +54,7 @@ mod tests {
         ($res:expr, $msg:tt $(,)?) => {
             match $res {
                 Ok(_) => panic!("Expected Err, got Ok"),
-                Err(err) => assert_eq!(format!("{}", err), $msg),
+                Err(err) => assert_eq!(err.to_string(), $msg),
             }
         };
     }

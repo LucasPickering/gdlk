@@ -2,7 +2,7 @@ use crate::{
     error::ServerResult,
     server::gql::{
         hardware_spec::HardwareSpecNode, program_spec::ProgramSpecNode,
-        Context, Cursor, Node,
+        user::UserNode, user_program::UserProgramNode, Context, Cursor, Node,
     },
     util,
 };
@@ -14,8 +14,12 @@ use uuid::Uuid;
 const ALL_NODES_GET_BY_ID: &[&dyn Fn(
     &PgConnection,
     Uuid,
-) -> ServerResult<Option<Node>>] =
-    &[&HardwareSpecNode::get_by_id, &ProgramSpecNode::get_by_id];
+) -> ServerResult<Option<Node>>] = &[
+    &HardwareSpecNode::get_by_id,
+    &ProgramSpecNode::get_by_id,
+    &UserNode::get_by_id,
+    &UserProgramNode::get_by_id,
+];
 
 /// A trait to identify any struct that is a GQL node.
 pub trait NodeType: Sized + Into<Node> {
@@ -76,7 +80,11 @@ pub fn get_by_id_from_all_types(
     id: &juniper::ID,
 ) -> ServerResult<Option<Node>> {
     let conn: &PgConnection = &context.get_db_conn()? as &PgConnection;
-    let uuid_id = util::gql_id_to_uuid(id)?;
+    let uuid_id = match util::gql_id_to_uuid(id) {
+        Ok(val) => val,
+        // If the ID wasn't a valid UUID, just return None
+        Err(_) => return Ok(None),
+    };
 
     // Do one query per node type to fine the node with this ID
     // This isn't the most efficient solution but ¯\_(ツ)_/¯

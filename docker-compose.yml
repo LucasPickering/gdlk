@@ -12,7 +12,6 @@ services:
   db:
     image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-postgres:${DOCKER_TAG}
     environment:
-      POSTGRES_DB: gdlk
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
     command: postgres -c log_statement=all
@@ -21,7 +20,7 @@ services:
 
   api:
     image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-api:${DOCKER_TAG}
-    command: cargo watch -x "run -- server"
+    command: sh -c "diesel setup && cargo watch -x \"run -- server\""
     tty: true # Colorize output
     volumes:
       - ./:/app:rw
