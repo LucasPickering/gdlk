@@ -2,8 +2,8 @@
 
 import abc
 import argparse
+import glob
 import http.server
-import itertools
 import os
 import socketserver
 import subprocess
@@ -11,6 +11,7 @@ import sys
 
 DB_SERVICE = "db"
 API_SERVICE = "api"
+API_DEV_DB = "gdlk"
 API_TEST_DB = "gdlk_test"
 
 COMMANDS = {}
@@ -55,7 +56,7 @@ class Command(metaclass=abc.ABCMeta):
         pass
 
 
-def run_cmd(cmd, env=None):
+def run_cmd(cmd, env=None, **kwargs):
     """
     Runs the given shell command
 
@@ -64,19 +65,31 @@ def run_cmd(cmd, env=None):
     """
     print("+ {}".format(" ".join(cmd)))
     full_env = {**os.environ, **env} if env else None
-    subprocess.run(cmd, check=True, env=full_env)
+    subprocess.run(cmd, check=True, env=full_env, **kwargs)
 
 
-def run_in_docker_service(service, cmd, env={}):
+def run_in_docker_service(
+    service, cmd, interactive=False, tty=True, env={}, **kwargs
+):
     """
     Runs a command in the container corresponding to the given docker-compose
     service. This will turn the service into a container name, then run the cmd.
     """
-    # create an iter of each env var, e.g. ['-e', 'k1=v1', '-e', 'k2=v2']
-    env_vars = itertools.chain.from_iterable(
-        ["-e", f"{k}={v}"] for k, v in env.items()
+    docker_args = []
+
+    if interactive:
+        docker_args.append("-i")
+
+    if tty:
+        docker_args.append("-t")
+
+    for k, v in env.items():
+        docker_args.append("-e")
+        docker_args.append(f"{k}={v}")
+
+    run_cmd(
+        ["docker", "exec", *docker_args, f"gdlk_{service}_1", *cmd], **kwargs
     )
-    run_cmd(["docker", "exec", "-t", *env_vars, f"gdlk_{service}_1", *cmd])
 
 
 @command("migration", "Apply DB migrations through Diesel")
@@ -107,8 +120,23 @@ class Migrate(Command):
 
 @command("seed", "Insert seed data into the DB")
 class Seed(Command):
+
+    SEED_PATH = "./api/seeds/*.sql"
+
     def run(self):
-        run_in_docker_service(API_SERVICE, ["cargo", "run", "seed"])
+        seed_files = glob.glob(self.SEED_PATH)
+        for file in seed_files:
+            print(f"Executing {file}...")
+
+            # Open the file and pipe it to the docker command
+            with open(file) as f:
+                run_in_docker_service(
+                    DB_SERVICE,
+                    ["psql", API_DEV_DB],
+                    interactive=True,
+                    tty=False,
+                    stdin=f,
+                )
 
 
 @command("test", "Run tests on one or more crates")
