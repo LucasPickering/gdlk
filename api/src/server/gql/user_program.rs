@@ -133,7 +133,7 @@ impl UserProgramConnection {
         .get_result::<i64>(&context.get_db_conn()?)
         {
             // Convert i64 to i32 - if this fails, we're in a rough spot
-            Ok(count) => Ok(count.try_into()?),
+            Ok(count) => Ok(count.try_into().unwrap()),
             Err(err) => Err(err.into()),
         }
     }

@@ -151,7 +151,6 @@ fn validate_cursor(cursor: &Cursor) -> Result<(), ValidationError> {
 pub struct ConnectionPageParams {
     #[validate(range(min = 0))]
     first: Option<i32>,
-    // #[validate]
     #[validate(custom = "validate_cursor")]
     after: Option<Cursor>,
 }

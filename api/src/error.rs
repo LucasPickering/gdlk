@@ -25,10 +25,6 @@ pub enum ServerError {
     /// Wrapper for uuid's parse error type
     #[fail(display = "{}", 0)]
     UuidParseError(#[cause] uuid::parser::ParseError),
-
-    /// Wrapper for std's TryFromIntError
-    #[fail(display = "{}", 0)]
-    TryFromIntoError(#[cause] std::num::TryFromIntError),
 }
 
 impl From<r2d2::Error> for ServerError {
@@ -52,12 +48,6 @@ impl From<ValidationErrors> for ServerError {
 impl From<uuid::parser::ParseError> for ServerError {
     fn from(other: uuid::parser::ParseError) -> Self {
         Self::UuidParseError(other)
-    }
-}
-
-impl From<std::num::TryFromIntError> for ServerError {
-    fn from(other: std::num::TryFromIntError) -> Self {
-        Self::TryFromIntoError(other)
     }
 }
 
