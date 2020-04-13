@@ -139,7 +139,7 @@ impl HardwareSpecConnection {
 
     fn get_total_count(&self, context: &Context) -> ServerResult<i32> {
         match hardware_specs::table
-            .select(dsl::count(dsl::count_star()))
+            .select(dsl::count_star())
             .get_result::<i64>(&context.get_db_conn()?)
         {
             // Convert i64 to i32 - if this fails, we're in a rough spot

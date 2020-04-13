@@ -158,7 +158,7 @@ impl ProgramSpecConnection {
             .filter(models::ProgramSpec::with_hardware_spec(
                 self.hardware_spec_id,
             ))
-            .select(dsl::count(dsl::count_star()))
+            .select(dsl::count_star())
             .get_result::<i64>(&context.get_db_conn()?)
         {
             // Convert i64 to i32 - if this fails, we're in a rough spot

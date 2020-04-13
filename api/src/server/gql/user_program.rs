@@ -129,7 +129,7 @@ impl UserProgramConnection {
             self.user_id,
             self.program_spec_id,
         )
-        .select(dsl::count(dsl::count_star()))
+        .select(dsl::count_star())
         .get_result::<i64>(&context.get_db_conn()?)
         {
             // Convert i64 to i32 - if this fails, we're in a rough spot
