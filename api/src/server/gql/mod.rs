@@ -16,9 +16,11 @@ use diesel::{
     pg::upsert, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl,
     Table,
 };
+use failure::Fallible;
 use gdlk::Valid;
 use juniper_from_schema::graphql_schema_from_file;
-use std::sync::Arc;
+use serde::{Serialize, Serializer};
+use std::{convert::TryInto, sync::Arc};
 use uuid::Uuid;
 use validator::{Validate, ValidationError, ValidationErrors};
 
@@ -104,33 +106,41 @@ impl QueryFields for Query {
 
 impl Cursor {
     fn from_index(index: i32) -> Self {
-        // TODO use base64
-        Self(format!("{}", index))
+        // i32 to base64 string
+        Self(base64::encode(index.to_be_bytes()))
     }
 
-    fn to_index(&self) -> ServerResult<i32> {
-        // TODO use base64
-        Ok(self.0.parse()?)
+    fn to_index(&self) -> Fallible<i32> {
+        // base64 string to i32. Convert to bytes first, then to int.
+        let decoded_bytes: Vec<u8> = base64::decode(&self.0)?;
+        let byte_array: [u8; 4] = decoded_bytes.as_slice().try_into()?;
+        Ok(i32::from_be_bytes(byte_array))
     }
 }
 
-impl Validate for Cursor {
-    fn validate(&self) -> Result<(), ValidationErrors> {
-        // we have to implement this manually because the struct definition
-        // is auto-generated, so we can't put more macros on it.
-        let mut error: ValidationError = match self.to_index() {
-            Ok(index) if index >= 0 => {
-                return Ok(());
-            }
-            _ => ValidationError::new("cursor"),
-        };
-        error.add_param("cursor".into(), &self.0);
-
-        // This error is kinda nasty but way she goes
-        let mut errors: ValidationErrors = ValidationErrors::new();
-        errors.add("__all__", error);
-        Err(errors)
+// We have to implement this manually because the struct definition is
+// auto-generated, so we can't put more macros on it. Needed for the validation
+// errors.
+impl Serialize for Cursor {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.0)
     }
+}
+
+fn validate_cursor(cursor: &Cursor) -> Result<(), ValidationError> {
+    // we have to implement this manually because the struct definition
+    // is auto-generated, so we can't put more macros on it.
+    let mut error: ValidationError = match cursor.to_index() {
+        Ok(index) if index >= 0 => {
+            return Ok(());
+        }
+        _ => ValidationError::new("cursor"),
+    };
+    error.add_param("message".into(), &"Invalid cursor value");
+    Err(error)
 }
 
 /// Helper type to handle pagination params for Connection types. Right now this
@@ -141,7 +151,8 @@ impl Validate for Cursor {
 pub struct ConnectionPageParams {
     #[validate(range(min = 0))]
     first: Option<i32>,
-    #[validate]
+    // #[validate]
+    #[validate(custom = "validate_cursor")]
     after: Option<Cursor>,
 }
 
@@ -319,7 +330,9 @@ mod tests {
     #[test]
     fn test_connection_page_params_validation() {
         ConnectionPageParams::new(Some(-1), None).unwrap_err();
-        ConnectionPageParams::new(None, Some(Cursor("-1".into()))).unwrap_err();
+        // base64 for -1
+        ConnectionPageParams::new(None, Some(Cursor("/////w==".into())))
+            .unwrap_err();
         ConnectionPageParams::new(None, Some(Cursor("garbage".into())))
             .unwrap_err();
     }

@@ -26,11 +26,6 @@ pub enum ServerError {
     #[fail(display = "{}", 0)]
     UuidParseError(#[cause] uuid::parser::ParseError),
 
-    /// Wrapper for std's ParseIntError
-    /// TODO remove this once we switch to base64 for cursors
-    #[fail(display = "{}", 0)]
-    ParseIntError(#[cause] std::num::ParseIntError),
-
     /// Wrapper for std's TryFromIntError
     #[fail(display = "{}", 0)]
     TryFromIntoError(#[cause] std::num::TryFromIntError),
@@ -57,12 +52,6 @@ impl From<ValidationErrors> for ServerError {
 impl From<uuid::parser::ParseError> for ServerError {
     fn from(other: uuid::parser::ParseError) -> Self {
         Self::UuidParseError(other)
-    }
-}
-
-impl From<std::num::ParseIntError> for ServerError {
-    fn from(other: std::num::ParseIntError) -> Self {
-        Self::ParseIntError(other)
     }
 }
 
