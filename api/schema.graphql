@@ -222,21 +222,18 @@ type ProgramSpecNode implements Node {
   """
   A single user's single solution to this program spec.
 
-  TODO remove the username field and filter by the logged in user instead
+  TODO remove the userId field and filter by the logged in user instead
   """
-  userProgram(username: ID!, fileName: String!): UserProgramNode
+  userProgram(userId: ID!, fileName: String!): UserProgramNode
     @juniper(ownership: "owned")
 
   """
   All of a single user's solutions to this program spec.
 
-  TODO remove the username field and filter by the logged in user instead
+  TODO remove the userId field and filter by the logged in user instead
   """
-  userPrograms(
-    username: ID!
-    first: Int
-    after: Cursor
-  ): UserProgramConnection! @juniper(ownership: "owned")
+  userPrograms(userId: ID!, first: Int, after: Cursor): UserProgramConnection!
+    @juniper(ownership: "owned")
 }
 
 """
