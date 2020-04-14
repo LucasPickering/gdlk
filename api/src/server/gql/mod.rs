@@ -4,7 +4,7 @@
 //! their own files.
 
 use crate::{
-    error::{ServerError, ServerResult},
+    error::{ResponseError, ResponseResult},
     models,
     schema::{hardware_specs, user_programs, users},
     server::gql::{
@@ -30,14 +30,14 @@ mod program_spec;
 mod user;
 mod user_program;
 
-graphql_schema_from_file!("schema.graphql", error_type: ServerError);
+graphql_schema_from_file!("schema.graphql", error_type: ResponseError);
 
 pub struct Context {
     pub pool: Arc<Pool>,
 }
 
 impl Context {
-    pub fn get_db_conn(&self) -> Result<PooledConnection, ServerError> {
+    pub fn get_db_conn(&self) -> Result<PooledConnection, ResponseError> {
         Ok(self.pool.get()?)
     }
 }
@@ -61,7 +61,7 @@ impl QueryFields for Query {
         executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, Node, Walked>,
         id: juniper::ID,
-    ) -> ServerResult<Option<Node>> {
+    ) -> ResponseResult<Option<Node>> {
         internal::get_by_id_from_all_types(&executor.context(), &id)
     }
 
@@ -70,7 +70,7 @@ impl QueryFields for Query {
         executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, UserNode, Walked>,
         username: String,
-    ) -> ServerResult<Option<UserNode>> {
+    ) -> ResponseResult<Option<UserNode>> {
         Ok(users::table
             .filter(models::User::with_username(&username))
             .get_result::<models::User>(&executor.context().get_db_conn()?)
@@ -83,7 +83,7 @@ impl QueryFields for Query {
         executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, HardwareSpecNode, Walked>,
         slug: String,
-    ) -> ServerResult<Option<HardwareSpecNode>> {
+    ) -> ResponseResult<Option<HardwareSpecNode>> {
         Ok(hardware_specs::table
             .filter(hardware_specs::dsl::slug.eq(&slug))
             .get_result::<models::HardwareSpec>(
@@ -99,7 +99,7 @@ impl QueryFields for Query {
         _trail: &QueryTrail<'_, HardwareSpecConnection, Walked>,
         first: Option<i32>,
         after: Option<Cursor>,
-    ) -> ServerResult<HardwareSpecConnection> {
+    ) -> ResponseResult<HardwareSpecConnection> {
         HardwareSpecConnection::new(first, after)
     }
 }
@@ -274,7 +274,7 @@ impl MutationFields for Mutation {
         executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, SaveUserProgramPayload, Walked>,
         input: SaveUserProgramInput,
-    ) -> ServerResult<SaveUserProgramPayload> {
+    ) -> ResponseResult<SaveUserProgramPayload> {
         // User a helper type to do the insert
         let new_user_program = models::NewUserProgram {
             user_id: util::gql_id_to_uuid(&input.user_id)?,
@@ -307,7 +307,7 @@ impl MutationFields for Mutation {
         executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, DeleteUserProgramPayload, Walked>,
         input: DeleteUserProgramInput,
-    ) -> ServerResult<DeleteUserProgramPayload> {
+    ) -> ResponseResult<DeleteUserProgramPayload> {
         use self::user_programs::dsl::*;
 
         // Delete and get the ID back

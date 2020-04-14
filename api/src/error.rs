@@ -1,15 +1,17 @@
 //! Error types and other error-related code.
 
 use crate::util;
-use actix_web::{HttpResponse, ResponseError};
+use actix_web::HttpResponse;
 use failure::Fail;
 use juniper::{DefaultScalarValue, FieldError, IntoFieldError};
 use validator::{ValidationError, ValidationErrors, ValidationErrorsKind};
 
-pub type ServerResult<T> = Result<T, ServerError>;
+pub type ResponseResult<T> = Result<T, ResponseError>;
 
+/// An error that can occur while handling an HTTP request. These errors should
+/// all at least somewhat meaningful to the user.
 #[derive(Debug, Fail)]
-pub enum ServerError {
+pub enum ResponseError {
     /// Wrapper for R2D2's error type
     #[fail(display = "{}", 0)]
     R2d2Error(#[cause] r2d2::Error),
@@ -27,38 +29,38 @@ pub enum ServerError {
     UuidParseError(#[cause] uuid::parser::ParseError),
 }
 
-impl From<r2d2::Error> for ServerError {
+impl From<r2d2::Error> for ResponseError {
     fn from(other: r2d2::Error) -> Self {
         Self::R2d2Error(other)
     }
 }
 
-impl From<diesel::result::Error> for ServerError {
+impl From<diesel::result::Error> for ResponseError {
     fn from(other: diesel::result::Error) -> Self {
         Self::DieselError(other)
     }
 }
 
-impl From<ValidationErrors> for ServerError {
+impl From<ValidationErrors> for ResponseError {
     fn from(other: ValidationErrors) -> Self {
         Self::ValidationErrors(other)
     }
 }
 
-impl From<uuid::parser::ParseError> for ServerError {
+impl From<uuid::parser::ParseError> for ResponseError {
     fn from(other: uuid::parser::ParseError) -> Self {
         Self::UuidParseError(other)
     }
 }
 
 // Juniper error
-impl IntoFieldError for ServerError {
+impl IntoFieldError for ResponseError {
     fn into_field_error(self) -> FieldError {
         match self {
-            ServerError::ValidationErrors(errors) => {
+            ResponseError::ValidationErrors(errors) => {
                 validation_to_field_error(errors)
             }
-            ServerError::UuidParseError(error) => FieldError::new(
+            ResponseError::UuidParseError(error) => FieldError::new(
                 "Error decoding UUID",
                 juniper::Value::Scalar(juniper::DefaultScalarValue::String(
                     error.to_string(),
@@ -70,7 +72,7 @@ impl IntoFieldError for ServerError {
 }
 
 // Actix error
-impl ResponseError for ServerError {
+impl actix_web::ResponseError for ResponseError {
     fn error_response(&self) -> HttpResponse {
         match self {
             // 404
@@ -168,7 +170,7 @@ mod tests {
                 },
             ],
         };
-        let server_error: ServerError =
+        let server_error: ResponseError =
             test_struct.validate().unwrap_err().into();
         assert_eq!(
             // Juniper's object type has issues with equality checks, so it's
@@ -195,7 +197,7 @@ mod tests {
 
     #[test]
     fn test_uuid_to_field_error() {
-        let server_error: ServerError =
+        let server_error: ResponseError =
             Uuid::parse_str("bad-uuid").unwrap_err().into();
         assert_eq!(
             server_error.into_field_error(),

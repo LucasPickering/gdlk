@@ -1,5 +1,5 @@
 use crate::{
-    error::ServerResult,
+    error::ResponseResult,
     models,
     schema::{hardware_specs, program_specs},
     server::gql::{
@@ -79,7 +79,7 @@ impl HardwareSpecNodeFields for HardwareSpecNode {
         executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, ProgramSpecNode, Walked>,
         slug: String,
-    ) -> ServerResult<Option<ProgramSpecNode>> {
+    ) -> ResponseResult<Option<ProgramSpecNode>> {
         // Get program spec by hardware spec + slug
         Ok(
             models::ProgramSpec::filter_by_hardware_spec(self.hardware_spec.id)
@@ -98,7 +98,7 @@ impl HardwareSpecNodeFields for HardwareSpecNode {
         _trail: &QueryTrail<'_, ProgramSpecConnection, Walked>,
         first: Option<i32>,
         after: Option<Cursor>,
-    ) -> ServerResult<ProgramSpecConnection> {
+    ) -> ResponseResult<ProgramSpecConnection> {
         ProgramSpecConnection::new(self.hardware_spec.id, first, after)
     }
 }
@@ -131,13 +131,13 @@ impl HardwareSpecConnection {
     pub fn new(
         first: Option<i32>,
         after: Option<Cursor>,
-    ) -> ServerResult<Self> {
+    ) -> ResponseResult<Self> {
         Ok(Self {
             page_params: ConnectionPageParams::new(first, after)?,
         })
     }
 
-    fn get_total_count(&self, context: &Context) -> ServerResult<i32> {
+    fn get_total_count(&self, context: &Context) -> ResponseResult<i32> {
         match hardware_specs::table
             .select(dsl::count_star())
             .get_result::<i64>(&context.get_db_conn()?)
@@ -151,7 +151,7 @@ impl HardwareSpecConnection {
     fn get_edges(
         &self,
         context: &Context,
-    ) -> ServerResult<Vec<HardwareSpecEdge>> {
+    ) -> ResponseResult<Vec<HardwareSpecEdge>> {
         let offset = self.page_params.offset();
 
         // Load data from the query
@@ -173,7 +173,7 @@ impl HardwareSpecConnectionFields for HardwareSpecConnection {
     fn field_total_count(
         &self,
         executor: &juniper::Executor<'_, Context>,
-    ) -> ServerResult<i32> {
+    ) -> ResponseResult<i32> {
         self.get_total_count(executor.context())
     }
 
@@ -181,7 +181,7 @@ impl HardwareSpecConnectionFields for HardwareSpecConnection {
         &self,
         executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, PageInfo, Walked>,
-    ) -> ServerResult<PageInfo> {
+    ) -> ResponseResult<PageInfo> {
         Ok(PageInfo::from_page_params(
             &self.page_params,
             self.get_total_count(executor.context())?,
@@ -192,7 +192,7 @@ impl HardwareSpecConnectionFields for HardwareSpecConnection {
         &self,
         executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, HardwareSpecEdge, Walked>,
-    ) -> ServerResult<Vec<HardwareSpecEdge>> {
+    ) -> ResponseResult<Vec<HardwareSpecEdge>> {
         self.get_edges(executor.context())
     }
 }

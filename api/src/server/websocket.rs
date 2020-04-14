@@ -1,5 +1,5 @@
 use crate::{
-    error::ServerError,
+    error::ResponseError,
     models,
     schema::{hardware_specs, program_specs},
     server::Pool,
@@ -240,7 +240,7 @@ pub async fn ws_program_specs_by_slugs(
     pool: web::Data<Pool>,
     params: web::Path<(String, String)>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    let conn = &pool.get().map_err(ServerError::from)? as &PgConnection;
+    let conn = &pool.get().map_err(ResponseError::from)? as &PgConnection;
     let (hw_spec_slug, program_spec_slug) = params.into_inner();
     // Look up the program spec by ID, get the associated hardware spec too
     let (program_spec, hardware_spec): (
@@ -251,7 +251,7 @@ pub async fn ws_program_specs_by_slugs(
         .filter(hardware_specs::dsl::slug.eq(&hw_spec_slug))
         .filter(program_specs::dsl::slug.eq(&program_spec_slug))
         .get_result(conn)
-        .map_err(ServerError::from)?;
+        .map_err(ResponseError::from)?;
     ws::start(
         ProgramWebsocket::new(
             // These unwraps _should_ be safe because our DB constraints
