@@ -1,5 +1,5 @@
 use crate::{
-    error::ServerResult,
+    error::ResponseResult,
     models,
     schema::{program_specs, user_programs},
     server::gql::{
@@ -73,7 +73,7 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
         &self,
         executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, HardwareSpecNode, Walked>,
-    ) -> ServerResult<HardwareSpecNode> {
+    ) -> ResponseResult<HardwareSpecNode> {
         Ok(HardwareSpecNode::find(
             &executor.context().get_db_conn()? as &PgConnection,
             self.program_spec.hardware_spec_id,
@@ -87,7 +87,7 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
         _trail: &QueryTrail<'_, UserProgramNode, Walked>,
         user_id: juniper::ID,
         file_name: String,
-    ) -> ServerResult<Option<UserProgramNode>> {
+    ) -> ResponseResult<Option<UserProgramNode>> {
         Ok(models::UserProgram::filter_by_user_and_program_spec(
             util::gql_id_to_uuid(&user_id)?,
             self.program_spec.id,
@@ -106,7 +106,7 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
         user_id: juniper::ID,
         first: Option<i32>,
         after: Option<Cursor>,
-    ) -> ServerResult<UserProgramConnection> {
+    ) -> ResponseResult<UserProgramConnection> {
         UserProgramConnection::new(
             util::gql_id_to_uuid(&user_id)?,
             self.program_spec.id,
@@ -146,14 +146,14 @@ impl ProgramSpecConnection {
         hardware_spec_id: Uuid,
         first: Option<i32>,
         after: Option<Cursor>,
-    ) -> ServerResult<Self> {
+    ) -> ResponseResult<Self> {
         Ok(Self {
             hardware_spec_id,
             page_params: ConnectionPageParams::new(first, after)?,
         })
     }
 
-    fn get_total_count(&self, context: &Context) -> ServerResult<i32> {
+    fn get_total_count(&self, context: &Context) -> ResponseResult<i32> {
         match program_specs::table
             .filter(models::ProgramSpec::with_hardware_spec(
                 self.hardware_spec_id,
@@ -170,7 +170,7 @@ impl ProgramSpecConnection {
     fn get_edges(
         &self,
         context: &Context,
-    ) -> ServerResult<Vec<ProgramSpecEdge>> {
+    ) -> ResponseResult<Vec<ProgramSpecEdge>> {
         let offset = self.page_params.offset();
 
         // Load data from the query
@@ -197,7 +197,7 @@ impl ProgramSpecConnectionFields for ProgramSpecConnection {
     fn field_total_count(
         &self,
         executor: &juniper::Executor<'_, Context>,
-    ) -> ServerResult<i32> {
+    ) -> ResponseResult<i32> {
         self.get_total_count(executor.context())
     }
 
@@ -205,7 +205,7 @@ impl ProgramSpecConnectionFields for ProgramSpecConnection {
         &self,
         executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, PageInfo, Walked>,
-    ) -> ServerResult<PageInfo> {
+    ) -> ResponseResult<PageInfo> {
         Ok(PageInfo::from_page_params(
             &self.page_params,
             self.get_total_count(executor.context())?,
@@ -216,7 +216,7 @@ impl ProgramSpecConnectionFields for ProgramSpecConnection {
         &self,
         executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, ProgramSpecEdge, Walked>,
-    ) -> ServerResult<Vec<ProgramSpecEdge>> {
+    ) -> ResponseResult<Vec<ProgramSpecEdge>> {
         self.get_edges(executor.context())
     }
 }

@@ -8,7 +8,7 @@
 //! ```
 
 use crate::{
-    error::{Result, ServerError},
+    error::{ResponseError, Result},
     models::{NewUserProgram, ProgramSpec, UserProgram},
     schema::{program_specs, user_programs},
     vfs::{
@@ -200,7 +200,7 @@ impl VirtualNodeHandler for ProgramSourceNodeHandler {
             Err(diesel::result::Error::DatabaseError(
                 DatabaseErrorKind::UniqueViolation,
                 _,
-            )) => Err(ServerError::AlreadyExists),
+            )) => Err(ResponseError::AlreadyExists),
             Err(err) => Err(err.into()),
         }
     }

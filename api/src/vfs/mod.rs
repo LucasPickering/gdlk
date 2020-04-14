@@ -21,7 +21,7 @@ mod internal;
 mod program;
 
 use crate::{
-    error::{Result, ServerError},
+    error::{ResponseError, Result},
     gql::Context,
     models::User,
     util::PooledConnection,
@@ -37,7 +37,7 @@ use crate::{
         },
     },
 };
-use juniper::{ServerResult, GraphQLEnum, GraphQLObject};
+use juniper::{GraphQLEnum, GraphQLObject, ResponseResult};
 use std::rc::Rc;
 
 #[derive(Copy, Clone, Debug, PartialEq, GraphQLEnum)]
@@ -85,22 +85,22 @@ pub struct NodePermissions {
 
 impl NodePermissions {
     /// Check if these permissions permit reads. If not, return a
-    /// [ServerError::PermissionDenied].
+    /// [ResponseError::PermissionDenied].
     pub fn require_read(self) -> Result<()> {
         if self.read {
             Ok(())
         } else {
-            Err(ServerError::PermissionDenied)
+            Err(ResponseError::PermissionDenied)
         }
     }
 
     /// Check if these permissions permit writes. If not, return a
-    /// [ServerError::PermissionDenied].
+    /// [ResponseError::PermissionDenied].
     pub fn require_write(self) -> Result<()> {
         if self.write {
             Ok(())
         } else {
-            Err(ServerError::PermissionDenied)
+            Err(ResponseError::PermissionDenied)
         }
     }
 }
@@ -167,7 +167,7 @@ impl NodeReference {
                 )
             }
             // Can't do this for directories, ya dummy
-            NodeType::Directory => Err(ServerError::UnsupportedFileOperation),
+            NodeType::Directory => Err(ResponseError::UnsupportedFileOperation),
         }
     }
 
@@ -178,7 +178,7 @@ impl NodeReference {
     pub fn children(&self) -> Result<Vec<Self>> {
         // Files don't have children!
         if self.node_type() == NodeType::File {
-            return Err(ServerError::UnsupportedFileOperation);
+            return Err(ResponseError::UnsupportedFileOperation);
         }
 
         self.permissions()?.require_read()?;
@@ -233,7 +233,7 @@ impl NodeReference {
     /// Create a persistent node for this dangling reference. This function
     /// creates a physical entry for the reference node, so that the reference
     /// is no longer a dangling reference. If this reference is _not_ dangling,
-    /// then this operation should fail with a [ServerError::AlreadyExists].
+    /// then this operation should fail with a [ResponseError::AlreadyExists].
     fn create(&self) -> Result<()> {
         self.vnode.handler.create_node(
             &self.context,
@@ -247,7 +247,7 @@ impl NodeReference {
     /// a file, does not have write permission.
     pub fn create_child(&self, child_path_segment: String) -> Result<Self> {
         match self.node_type() {
-            NodeType::File => Err(ServerError::UnsupportedFileOperation),
+            NodeType::File => Err(ResponseError::UnsupportedFileOperation),
             NodeType::Directory => {
                 self.permissions()?.require_write()?;
                 match self.vnode.find_child(&child_path_segment) {
@@ -287,7 +287,7 @@ impl NodeReference {
                     &content,
                 )
             }
-            NodeType::Directory => Err(ServerError::UnsupportedFileOperation),
+            NodeType::Directory => Err(ResponseError::UnsupportedFileOperation),
         }
     }
 
@@ -304,7 +304,7 @@ impl NodeReference {
                     &self.path_segment,
                 )
             }
-            NodeType::Directory => Err(ServerError::UnsupportedFileOperation),
+            NodeType::Directory => Err(ResponseError::UnsupportedFileOperation),
         }
     }
 }
@@ -327,7 +327,7 @@ impl NodeReference {
 
     /// The permissions of this node (read/write/execute).
     #[graphql(name = "permissions")]
-    fn gql_permissions() -> ServerResult<NodePermissions> {
+    fn gql_permissions() -> ResponseResult<NodePermissions> {
         Ok(self.permissions()?)
     }
 
@@ -335,10 +335,10 @@ impl NodeReference {
     /// no content. As such, this always returns content for files and `null`
     /// for directories.
     #[graphql(name = "content")]
-    fn gql_content() -> ServerResult<Option<String>> {
+    fn gql_content() -> ResponseResult<Option<String>> {
         match self.content() {
             Ok(content) => Ok(Some(content)),
-            Err(ServerError::UnsupportedFileOperation) => Ok(None),
+            Err(ResponseError::UnsupportedFileOperation) => Ok(None),
             Err(err) => Err(err.into()),
         }
     }
@@ -346,10 +346,10 @@ impl NodeReference {
     /// The nested children of this node. Returns an array of the children for a
     /// directory, and `null` for a file.
     #[graphql(name = "children")]
-    fn gql_children() -> ServerResult<Option<Vec<Self>>> {
+    fn gql_children() -> ResponseResult<Option<Vec<Self>>> {
         match self.children() {
             Ok(children) => Ok(Some(children)),
-            Err(ServerError::UnsupportedFileOperation) => Ok(None),
+            Err(ResponseError::UnsupportedFileOperation) => Ok(None),
             Err(err) => Err(err.into()),
         }
     }
@@ -370,20 +370,20 @@ impl NodeMutation {
 impl NodeMutation {
     /// Create a new child of this node, with the given name. Fails if this node
     /// is a file, doesn't have write permissions, or the name isn't valid.
-    fn create_child(&self, name: String) -> ServerResult<NodeReference> {
+    fn create_child(&self, name: String) -> ResponseResult<NodeReference> {
         Ok(self.0.create_child(name)?)
     }
 
     /// Set the contents of a file. Fails if the node is a directory or a file
     /// without write permissions.
-    fn set_content(&self, content: String) -> ServerResult<&NodeReference> {
+    fn set_content(&self, content: String) -> ResponseResult<&NodeReference> {
         self.0.set_content(content)?;
         Ok(&self.0)
     }
 
     /// Delete a file or directory. Fails if the node does not have write
     /// permissions. Returns the name (_not_ the full path) of the deleted file.
-    fn delete(&self) -> ServerResult<String> {
+    fn delete(&self) -> ResponseResult<String> {
         self.0.delete()?;
         Ok(self.0.name().into())
     }
@@ -438,7 +438,7 @@ impl VirtualFileSystem {
                 // path_segments is empty, the first segment doesn't match any
                 // virtual node, or the corresponding physical node doesn't
                 // exist
-                _ => Err(ServerError::NodeNotFound),
+                _ => Err(ResponseError::NodeNotFound),
             }
         }
 
@@ -474,7 +474,7 @@ impl VirtualFileSystem {
                         path_variables.insert_if_var(node.path_segment, first);
                         find_node(child, context, path_variables, rest)
                     }
-                    None => Err(ServerError::NodeNotFound),
+                    None => Err(ResponseError::NodeNotFound),
                 },
             }
         }

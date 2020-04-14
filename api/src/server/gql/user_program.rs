@@ -1,5 +1,5 @@
 use crate::{
-    error::ServerResult,
+    error::ResponseResult,
     models,
     schema::user_programs,
     server::gql::{
@@ -63,7 +63,7 @@ impl UserProgramNodeFields for UserProgramNode {
         &self,
         executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, UserNode, Walked>,
-    ) -> ServerResult<UserNode> {
+    ) -> ResponseResult<UserNode> {
         Ok(UserNode::find(
             &executor.context().get_db_conn()? as &PgConnection,
             self.user_program.user_id,
@@ -75,7 +75,7 @@ impl UserProgramNodeFields for UserProgramNode {
         &self,
         executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, ProgramSpecNode, Walked>,
-    ) -> ServerResult<ProgramSpecNode> {
+    ) -> ResponseResult<ProgramSpecNode> {
         Ok(ProgramSpecNode::find(
             &executor.context().get_db_conn()? as &PgConnection,
             self.user_program.program_spec_id,
@@ -116,7 +116,7 @@ impl UserProgramConnection {
         program_spec_id: Uuid,
         first: Option<i32>,
         after: Option<Cursor>,
-    ) -> ServerResult<Self> {
+    ) -> ResponseResult<Self> {
         Ok(Self {
             user_id,
             program_spec_id,
@@ -124,7 +124,7 @@ impl UserProgramConnection {
         })
     }
 
-    fn get_total_count(&self, context: &Context) -> ServerResult<i32> {
+    fn get_total_count(&self, context: &Context) -> ResponseResult<i32> {
         match models::UserProgram::filter_by_user_and_program_spec(
             self.user_id,
             self.program_spec_id,
@@ -141,7 +141,7 @@ impl UserProgramConnection {
     fn get_edges(
         &self,
         context: &Context,
-    ) -> ServerResult<Vec<UserProgramEdge>> {
+    ) -> ResponseResult<Vec<UserProgramEdge>> {
         let offset = self.page_params.offset();
 
         // Load data from the query
@@ -169,7 +169,7 @@ impl UserProgramConnectionFields for UserProgramConnection {
     fn field_total_count(
         &self,
         executor: &juniper::Executor<'_, Context>,
-    ) -> ServerResult<i32> {
+    ) -> ResponseResult<i32> {
         self.get_total_count(executor.context())
     }
 
@@ -177,7 +177,7 @@ impl UserProgramConnectionFields for UserProgramConnection {
         &self,
         executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, PageInfo, Walked>,
-    ) -> ServerResult<PageInfo> {
+    ) -> ResponseResult<PageInfo> {
         Ok(PageInfo::from_page_params(
             &self.page_params,
             self.get_total_count(executor.context())?,
@@ -188,7 +188,7 @@ impl UserProgramConnectionFields for UserProgramConnection {
         &self,
         executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, UserProgramEdge, Walked>,
-    ) -> ServerResult<Vec<UserProgramEdge>> {
+    ) -> ResponseResult<Vec<UserProgramEdge>> {
         self.get_edges(executor.context())
     }
 }
