@@ -83,11 +83,7 @@ pub fn get_by_id_from_all_types(
     id: &juniper::ID,
 ) -> ResponseResult<Option<Node>> {
     let conn: &PgConnection = &context.get_db_conn()? as &PgConnection;
-    let uuid_id = match util::gql_id_to_uuid(id) {
-        Ok(val) => val,
-        // If the ID wasn't a valid UUID, just return None
-        Err(_) => return Ok(None),
-    };
+    let uuid_id = util::gql_id_to_uuid(id);
 
     // Do one query per node type to fine the node with this ID
     // This isn't the most efficient solution but ¯\_(ツ)_/¯

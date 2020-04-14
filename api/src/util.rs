@@ -4,7 +4,7 @@
 pub use self::tests::*;
 use diesel::{r2d2::ConnectionManager, PgConnection};
 use failure::Fallible;
-use uuid::{parser::ParseError, Uuid};
+use uuid::Uuid;
 
 /// Type aliases for DB connections
 pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
@@ -23,9 +23,12 @@ pub fn uuid_to_gql_id(uuid: Uuid) -> juniper::ID {
     juniper::ID::new(uuid.to_string())
 }
 
-/// Converts a Juniper (GraphQL) ID to a UUID.
-pub fn gql_id_to_uuid(id: &juniper::ID) -> Result<Uuid, ParseError> {
-    Uuid::parse_str(&id.to_string())
+/// Converts a Juniper (GraphQL) ID to a UUID. If the given string is not a
+/// valid UUID, then just return the nil UUID (all zeroes). This is useful in
+/// the API because we want to handle malformed UUIDs the same way we handle
+/// UUIDs that aren't in the database.
+pub fn gql_id_to_uuid(id: &juniper::ID) -> Uuid {
+    Uuid::parse_str(&id.to_string()).unwrap_or_default()
 }
 
 /// Converts a map to a GraphQL object. Takes in an iterator of (K, V) so that

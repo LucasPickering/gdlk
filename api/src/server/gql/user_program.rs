@@ -194,7 +194,7 @@ impl UserProgramConnectionFields for UserProgramConnection {
 }
 
 pub struct SaveUserProgramPayload {
-    pub user_program_node: UserProgramNode,
+    pub user_program_node: Option<UserProgramNode>,
 }
 
 impl SaveUserProgramPayloadFields for SaveUserProgramPayload {
@@ -202,7 +202,7 @@ impl SaveUserProgramPayloadFields for SaveUserProgramPayload {
         &self,
         _executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, UserProgramNode, Walked>,
-    ) -> &UserProgramNode {
+    ) -> &Option<UserProgramNode> {
         &self.user_program_node
     }
 }

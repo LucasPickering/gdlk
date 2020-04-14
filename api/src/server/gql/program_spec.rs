@@ -89,7 +89,7 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
         file_name: String,
     ) -> ResponseResult<Option<UserProgramNode>> {
         Ok(models::UserProgram::filter_by_user_and_program_spec(
-            util::gql_id_to_uuid(&user_id)?,
+            util::gql_id_to_uuid(&user_id),
             self.program_spec.id,
         )
         .filter(user_programs::dsl::file_name.eq(&file_name))
@@ -108,7 +108,7 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
         after: Option<Cursor>,
     ) -> ResponseResult<UserProgramConnection> {
         UserProgramConnection::new(
-            util::gql_id_to_uuid(&user_id)?,
+            util::gql_id_to_uuid(&user_id),
             self.program_spec.id,
             first,
             after,
