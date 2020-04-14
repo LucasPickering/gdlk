@@ -23,10 +23,6 @@ pub enum ResponseError {
     /// Wrapper for validator's error type
     #[fail(display = "{}", 0)]
     ValidationErrors(#[cause] validator::ValidationErrors),
-
-    /// Wrapper for uuid's parse error type
-    #[fail(display = "{}", 0)]
-    UuidParseError(#[cause] uuid::parser::ParseError),
 }
 
 impl From<r2d2::Error> for ResponseError {
@@ -47,12 +43,6 @@ impl From<ValidationErrors> for ResponseError {
     }
 }
 
-impl From<uuid::parser::ParseError> for ResponseError {
-    fn from(other: uuid::parser::ParseError) -> Self {
-        Self::UuidParseError(other)
-    }
-}
-
 // Juniper error
 impl IntoFieldError for ResponseError {
     fn into_field_error(self) -> FieldError {
@@ -60,12 +50,6 @@ impl IntoFieldError for ResponseError {
             ResponseError::ValidationErrors(errors) => {
                 validation_to_field_error(errors)
             }
-            ResponseError::UuidParseError(error) => FieldError::new(
-                "Error decoding UUID",
-                juniper::Value::Scalar(juniper::DefaultScalarValue::String(
-                    error.to_string(),
-                )),
-            ),
             error => FieldError::new(error.to_string(), juniper::Value::Null),
         }
     }
@@ -129,7 +113,6 @@ fn validation_to_field_error(errors: ValidationErrors) -> FieldError {
 mod tests {
     use super::*;
     use serde_json::json;
-    use uuid::Uuid;
     use validator::Validate;
 
     #[derive(Validate)]
@@ -192,21 +175,6 @@ mod tests {
                     },
                 }
             })
-        );
-    }
-
-    #[test]
-    fn test_uuid_to_field_error() {
-        let server_error: ResponseError =
-            Uuid::parse_str("bad-uuid").unwrap_err().into();
-        assert_eq!(
-            server_error.into_field_error(),
-            FieldError::new(
-                "Error decoding UUID",
-                juniper::Value::Scalar(juniper::DefaultScalarValue::String(
-                    "invalid length: expected one of [36, 32], found 8".into()
-                ))
-            )
         );
     }
 }
