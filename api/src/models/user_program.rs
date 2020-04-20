@@ -1,5 +1,5 @@
 use crate::{
-    models::{ProgramSpec, User},
+    models::{Factory, ProgramSpec, User},
     schema::user_programs,
 };
 use diesel::{
@@ -60,5 +60,17 @@ impl NewUserProgram<'_> {
         <Self as Insertable<user_programs::table>>::Values,
     > {
         self.insert_into(user_programs::table)
+    }
+}
+
+// This trait is only needed for tests
+impl Factory for NewUserProgram<'_> {
+    type ReturnType = UserProgram;
+
+    fn create(self, conn: &PgConnection) -> UserProgram {
+        self.insert()
+            .returning(user_programs::all_columns)
+            .get_result(conn)
+            .unwrap()
     }
 }

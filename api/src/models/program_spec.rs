@@ -1,4 +1,7 @@
-use crate::{models::HardwareSpec, schema::program_specs};
+use crate::{
+    models::{Factory, HardwareSpec},
+    schema::program_specs,
+};
 use diesel::{
     dsl, expression::bound::Bound, prelude::*, query_builder::InsertStatement,
     sql_types, Identifiable, Queryable,
@@ -78,5 +81,17 @@ impl NewProgramSpec<'_> {
         <Self as Insertable<program_specs::table>>::Values,
     > {
         self.insert_into(program_specs::table)
+    }
+}
+
+// This trait is only needed for tests
+impl Factory for NewProgramSpec<'_> {
+    type ReturnType = ProgramSpec;
+
+    fn create(self, conn: &PgConnection) -> ProgramSpec {
+        self.insert()
+            .returning(program_specs::all_columns)
+            .get_result(conn)
+            .unwrap()
     }
 }
