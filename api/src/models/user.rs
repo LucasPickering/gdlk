@@ -1,4 +1,4 @@
-use crate::schema::users;
+use crate::{models::Factory, schema::users};
 use diesel::{
     dsl, expression::bound::Bound, prelude::*, query_builder::InsertStatement,
     sql_types::Text, Identifiable, Queryable,
@@ -36,5 +36,17 @@ impl NewUser<'_> {
     ) -> InsertStatement<users::table, <Self as Insertable<users::table>>::Values>
     {
         self.insert_into(users::table)
+    }
+}
+
+// This trait is only needed for tests
+impl Factory for NewUser<'_> {
+    type ReturnType = User;
+
+    fn create(self, conn: &PgConnection) -> User {
+        self.insert()
+            .returning(users::all_columns)
+            .get_result(conn)
+            .unwrap()
     }
 }

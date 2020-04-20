@@ -1,4 +1,4 @@
-use crate::schema::hardware_specs;
+use crate::{models::Factory, schema::hardware_specs};
 use diesel::{
     prelude::*, query_builder::InsertStatement, Identifiable, Queryable,
 };
@@ -63,5 +63,17 @@ impl NewHardwareSpec<'_> {
         <Self as Insertable<hardware_specs::table>>::Values,
     > {
         self.insert_into(hardware_specs::table)
+    }
+}
+
+// This trait is only needed for tests
+impl Factory for NewHardwareSpec<'_> {
+    type ReturnType = HardwareSpec;
+
+    fn create(self, conn: &PgConnection) -> HardwareSpec {
+        self.insert()
+            .returning(hardware_specs::all_columns)
+            .get_result(conn)
+            .unwrap()
     }
 }
