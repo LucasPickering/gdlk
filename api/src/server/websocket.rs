@@ -5,7 +5,7 @@ use crate::{
     server::Pool,
 };
 use actix::{Actor, ActorContext, AsyncContext, StreamHandler};
-use actix_web::{get, web, HttpRequest, HttpResponse};
+use actix_web::{get, web, HttpRequest, HttpResponse, ResponseError as _};
 use actix_web_actors::ws;
 use diesel::{prelude::*, PgConnection};
 use gdlk::{
@@ -252,12 +252,18 @@ pub async fn ws_program_specs_by_slugs(
     let (program_spec, hardware_spec): (
         models::ProgramSpec,
         models::HardwareSpec,
-    ) = program_specs::table
+    ) = match program_specs::table
         .inner_join(hardware_specs::table)
         .filter(hardware_specs::dsl::slug.eq(&hw_spec_slug))
         .filter(program_specs::dsl::slug.eq(&program_spec_slug))
-        .get_result(conn)
-        .map_err(ResponseError::from)?;
+        .get_result::<(models::ProgramSpec, models::HardwareSpec)>(conn)
+        .optional()
+    {
+        Ok(Some(rows)) => Ok(rows),
+        // Convert missing row to 404
+        Ok(None) => Err(HttpResponse::NotFound().into()),
+        Err(err) => Err(ResponseError::from(err).error_response()),
+    }?;
     ws::start(
         ProgramWebsocket::new(
             // These unwraps _should_ be safe because our DB constraints

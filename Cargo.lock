@@ -798,6 +798,7 @@ dependencies = [
  "gdlk 0.1.0",
  "juniper 0.14.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "juniper-from-schema 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "maplit 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "r2d2 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",

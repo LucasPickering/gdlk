@@ -7,6 +7,7 @@ use std::env;
 // mod vfs;
 
 fn run() -> Fallible<()> {
+    env_logger::init();
     let server_host =
         env::var("SERVER_HOST").unwrap_or_else(|_| "localhost:8000".into());
     let pool = util::init_db_conn_pool()?;

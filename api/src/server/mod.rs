@@ -40,10 +40,6 @@ async fn route_graphql(
 
 #[actix_rt::main]
 pub async fn run_server(pool: Pool, host: String) -> io::Result<()> {
-    // Set up logging
-    std::env::set_var("RUST_LOG", "actix_server=info,actix_web=info");
-    env_logger::init();
-
     // Init GraphQL schema
     let gql_schema = Arc::new(create_gql_schema());
 
