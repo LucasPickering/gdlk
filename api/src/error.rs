@@ -4,6 +4,7 @@ use crate::util;
 use actix_web::HttpResponse;
 use failure::Fail;
 use juniper::{DefaultScalarValue, FieldError, IntoFieldError};
+use log::error;
 use validator::{ValidationError, ValidationErrors, ValidationErrorsKind};
 
 pub type ResponseResult<T> = Result<T, ResponseError>;
@@ -27,12 +28,15 @@ pub enum ResponseError {
 
 impl From<r2d2::Error> for ResponseError {
     fn from(other: r2d2::Error) -> Self {
+        error!("{}", other); // we want to log all these errors
         Self::R2d2Error(other)
     }
 }
 
 impl From<diesel::result::Error> for ResponseError {
     fn from(other: diesel::result::Error) -> Self {
+        // every DB error that gets shown to the user should get logged
+        error!("{}", other);
         Self::DieselError(other)
     }
 }
@@ -58,14 +62,8 @@ impl IntoFieldError for ResponseError {
 // Actix error
 impl actix_web::ResponseError for ResponseError {
     fn error_response(&self) -> HttpResponse {
-        match self {
-            // 404
-            Self::DieselError(diesel::result::Error::NotFound) => {
-                HttpResponse::NotFound().into()
-            }
-            // 500
-            _ => HttpResponse::InternalServerError().into(),
-        }
+        // Convert everything to a 500
+        HttpResponse::InternalServerError().into()
     }
 }
 
