@@ -4,7 +4,9 @@ import { ThemeProvider } from '@material-ui/styles';
 import { BrowserRouter, Switch, Route } from 'react-router-dom';
 import Terminal from './Terminal';
 import theme from 'util/theme';
-import PageContainer from './PageContainer';
+import HomeView from './HomeView';
+import HardwareSpecView from './hardwareSpec/HardwareSpecView';
+import NotFound from './NotFound';
 
 const App: React.FC = () => {
   return (
@@ -15,8 +17,14 @@ const App: React.FC = () => {
           <Route path="/terminal" exact>
             <Terminal />
           </Route>
-          <Route path="/">
-            <PageContainer />
+          <Route path="/" exact>
+            <HomeView />
+          </Route>
+          <Route path="/hardware/:hwSlug">
+            <HardwareSpecView />
+          </Route>
+          <Route path="*">
+            <NotFound />
           </Route>
         </Switch>
       </BrowserRouter>

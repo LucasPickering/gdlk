@@ -1,7 +1,7 @@
 import { makeStyles, Typography } from '@material-ui/core';
 import React from 'react';
-import ButtonLink from './common/ButtonLink';
-import Link from './common/Link';
+import Link from './Link';
+import Navigation from 'components/navigation/Navigation';
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   root: {
@@ -9,6 +9,9 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
     flexDirection: 'column',
     alignItems: 'center',
     height: '100%',
+  },
+  pageBody: {
+    margin: spacing(2),
   },
   pageFooter: {
     marginTop: 'auto',
@@ -19,7 +22,7 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
       padding: `0px ${spacing(0.5)}px`,
     },
     '& > * + *': {
-      borderLeftWidth: 1,
+      borderLeftWidth: 2,
       borderLeftStyle: 'solid',
       borderLeftColor: palette.divider,
     },
@@ -30,15 +33,14 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
  * Container for all content on the page. This is used for everything but the
  * terminal.
  */
-const PageContainer: React.FC = () => {
+const PageContainer: React.FC = ({ children }) => {
   const localClasses = useLocalStyles();
 
-  // Only render the page if user data is loaded
   return (
     <div className={localClasses.root}>
-      <ButtonLink to="/terminal" variant="contained" color="primary">
-        Go to Terminal
-      </ButtonLink>
+      <Navigation />
+
+      <div className={localClasses.pageBody}>{children}</div>
 
       <footer className={localClasses.pageFooter}>
         <Typography variant="body2">
