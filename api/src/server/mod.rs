@@ -9,15 +9,15 @@ use actix_web::{get, middleware, post, web, App, HttpResponse, HttpServer};
 use juniper::http::{graphiql::graphiql_source, GraphQLRequest};
 use std::{io, sync::Arc};
 
-#[get("/graphiql")]
+#[get("/api/graphiql")]
 async fn route_graphiql() -> HttpResponse {
-    let html = graphiql_source("/graphql");
+    let html = graphiql_source("/api/graphql");
     HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
         .body(html)
 }
 
-#[post("/graphql")]
+#[post("/api/graphql")]
 async fn route_graphql(
     pool: web::Data<Pool>,
     st: web::Data<Arc<GqlSchema>>,

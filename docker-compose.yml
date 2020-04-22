@@ -20,7 +20,7 @@ services:
 
   api:
     image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-api:${DOCKER_TAG}
-    command: sh -c "diesel setup && cargo watch -x \"run -- server\""
+    command: sh -c "dockerize -wait tcp://db:5432 && diesel setup && cargo watch -x \"run -- server\""
     tty: true # Colorize output
     volumes:
       - ./:/app:rw
@@ -38,6 +38,8 @@ services:
     image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-frontend:${DOCKER_TAG}
     command: ./docker/run_frontend.sh
     tty: true # Colorize output
+    environment:
+      GDLK_API_HOST: http://api:8000
     volumes:
       - ./:/app:rw
       - frontend_core_build:/app/target
