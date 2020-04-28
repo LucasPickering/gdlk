@@ -94,8 +94,7 @@ fn run(opt: Opt) -> Fallible<()> {
             let success = machine.execute_all()?;
 
             println!(
-                "{}\nProgram completed with {}",
-                serde_json::to_string_pretty(&machine)?,
+                "{}\nProgram completed",
                 if success { "success" } else { "failure" },
             );
         }

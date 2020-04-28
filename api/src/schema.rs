@@ -13,8 +13,8 @@ table! {
         id -> Uuid,
         slug -> Varchar,
         hardware_spec_id -> Uuid,
-        input -> Array<Int4>,
-        expected_output -> Array<Int4>,
+        input -> Array<Int2>,
+        expected_output -> Array<Int2>,
     }
 }
 

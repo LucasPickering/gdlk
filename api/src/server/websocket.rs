@@ -9,12 +9,14 @@ use actix_web::{get, web, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
 use diesel::{prelude::*, PgConnection};
 use gdlk::{
+    ast::{LangValue, RegisterRef, StackRef},
     error::{CompileError, RuntimeError, WithSource},
     validator::ValidationErrors,
     Compiler, HardwareSpec, Machine, ProgramSpec, Valid,
 };
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashMap,
     convert,
     convert::TryInto,
     time::{Duration, Instant},
@@ -32,13 +34,14 @@ const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 #[serde(
     tag = "type",
     content = "content",
-    rename_all = "snake_case",
+    rename_all = "camelCase",
     deny_unknown_fields
 )]
 enum IncomingEvent {
+    #[serde(rename_all = "camelCase")]
     Compile {
         // Saving room for more fields here
-        source: String,
+        source_code: String,
     },
     Step,
 }
@@ -46,18 +49,17 @@ enum IncomingEvent {
 /// All the different types of events that we can transmit over the websocket.
 /// This can include both success and error events.
 #[derive(Debug, Serialize)]
-#[serde(tag = "type", content = "content", rename_all = "snake_case")]
+#[serde(tag = "type", content = "content", rename_all = "camelCase")]
 enum OutgoingEvent<'a> {
     // OK events
-    /// Send latest version of the program source code
-    /// Not using this right now, but we will once we can save source in the DB
-    _Source {
-        // Saving room for more fields here
-        source: &'a str,
-    },
     /// Send latest version of the machine state
+    #[serde(rename_all = "camelCase")]
     MachineState {
-        state: &'a Machine,
+        program_counter: usize,
+        input: &'a [LangValue],
+        output: &'a [LangValue],
+        registers: HashMap<RegisterRef, LangValue>,
+        stacks: HashMap<StackRef, &'a [LangValue]>,
         is_complete: bool,
         is_successful: bool,
     },
@@ -78,7 +80,11 @@ enum OutgoingEvent<'a> {
 impl<'a> From<&'a Machine> for OutgoingEvent<'a> {
     fn from(machine: &'a Machine) -> Self {
         OutgoingEvent::MachineState {
-            state: machine,
+            program_counter: machine.program_counter(),
+            input: machine.input(),
+            output: machine.output(),
+            registers: machine.registers(),
+            stacks: machine.stacks(),
             is_complete: machine.is_complete(),
             is_successful: machine.is_successful(),
         }
@@ -149,10 +155,10 @@ impl ProgramWebsocket {
 
         // Process message based on type
         Ok(match socket_msg {
-            IncomingEvent::Compile { source } => {
+            IncomingEvent::Compile { source_code } => {
                 // Compile the program into a machine
                 self.machine = Some(
-                    Compiler::compile(source, self.hardware_spec.clone())?
+                    Compiler::compile(source_code, self.hardware_spec)?
                         .allocate(&self.program_spec),
                 );
 
@@ -233,7 +239,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>>
 
 /// Do websocket handshake, look up the request ProgramSpec by ID, then (if it
 /// exists), start a handler for it.
-#[get("/ws/hardware/{hw_spec_slug}/programs/{program_spec_slug}/")]
+#[get("/ws/hardware/{hw_spec_slug}/programs/{program_spec_slug}")]
 pub async fn ws_program_specs_by_slugs(
     req: HttpRequest,
     stream: web::Payload,

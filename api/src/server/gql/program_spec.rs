@@ -1,7 +1,7 @@
 use crate::{
     error::ResponseResult,
     models,
-    schema::{program_specs, user_programs},
+    schema::{program_specs, user_programs, users},
     server::gql::{
         hardware_spec::HardwareSpecNode,
         internal::{GenericEdge, NodeType},
@@ -16,7 +16,7 @@ use diesel::{
     dsl, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
     QueryResult, RunQueryDsl, Table,
 };
-use gdlk::{ast::LangValue, Valid};
+use gdlk::Valid;
 use juniper::ID;
 use juniper_from_schema::{QueryTrail, Walked};
 use std::convert::TryInto;
@@ -58,15 +58,25 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
     fn field_input(
         &self,
         _executor: &juniper::Executor<'_, Context>,
-    ) -> &Vec<LangValue> {
-        &self.program_spec.input
+    ) -> Vec<i32> {
+        self.program_spec
+            .input
+            .iter()
+            .cloned()
+            .map(i32::from)
+            .collect()
     }
 
     fn field_expected_output(
         &self,
         _executor: &juniper::Executor<'_, Context>,
-    ) -> &Vec<LangValue> {
-        &self.program_spec.expected_output
+    ) -> Vec<i32> {
+        self.program_spec
+            .expected_output
+            .iter()
+            .cloned()
+            .map(i32::from)
+            .collect()
     }
 
     fn field_hardware_spec(
@@ -85,34 +95,37 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
         &self,
         executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, UserProgramNode, Walked>,
-        user_id: juniper::ID,
         file_name: String,
     ) -> ResponseResult<Option<UserProgramNode>> {
+        let conn = &executor.context().get_db_conn()? as &PgConnection;
+        let user_id: Uuid = models::User::tmp_user()
+            .select(users::columns::id)
+            .get_result(conn)?;
+
         Ok(models::UserProgram::filter_by_user_and_program_spec(
-            util::gql_id_to_uuid(&user_id),
+            user_id,
             self.program_spec.id,
         )
         .filter(user_programs::dsl::file_name.eq(&file_name))
         .select(user_programs::table::all_columns())
-        .get_result::<models::UserProgram>(&executor.context().get_db_conn()?)
+        .get_result::<models::UserProgram>(conn)
         .optional()?
         .map(UserProgramNode::from))
     }
 
     fn field_user_programs(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, Context>,
         _trail: &QueryTrail<'_, UserProgramConnection, Walked>,
-        user_id: juniper::ID,
         first: Option<i32>,
         after: Option<Cursor>,
     ) -> ResponseResult<UserProgramConnection> {
-        UserProgramConnection::new(
-            util::gql_id_to_uuid(&user_id),
-            self.program_spec.id,
-            first,
-            after,
-        )
+        let conn = &executor.context().get_db_conn()? as &PgConnection;
+        let user_id: Uuid = models::User::tmp_user()
+            .select(users::columns::id)
+            .get_result(conn)?;
+
+        UserProgramConnection::new(user_id, self.program_spec.id, first, after)
     }
 }
 

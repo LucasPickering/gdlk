@@ -4,6 +4,10 @@ use crate::{
         Jump, Label, LangValue, Node, Operator, RegisterRef, SpanNode, StackId,
         StackRef, UserRegisterId, ValueSource,
     },
+    consts::{
+        INPUT_LENGTH_REGISTER_REF, STACK_LENGTH_REGISTER_REF_TAG,
+        STACK_REF_TAG, USER_REGISTER_REF_TAG,
+    },
     error::{CompileError, SourceErrorWrapper, WithSource},
     util::{RawSpan, Span},
     Compiler,
@@ -75,7 +79,10 @@ impl<'a> Parse<'a> for LabelDecl {
 
 impl<'a> Parse<'a> for StackRef {
     fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
-        map(preceded(tag_no_case("S"), StackId::parse), StackRef)(input)
+        map(
+            preceded(tag_no_case(STACK_REF_TAG), StackId::parse),
+            StackRef,
+        )(input)
     }
 }
 
@@ -83,15 +90,23 @@ impl<'a> Parse<'a> for RegisterRef {
     fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
         alt((
             // "RLI" => RegisterRef::InputLength
-            map(tag_no_case("RLI"), |_| RegisterRef::InputLength),
+            map(tag_no_case(INPUT_LENGTH_REGISTER_REF), |_| {
+                RegisterRef::InputLength
+            }),
             // "RSx" => RegisterRef::StackLength(x)
             map(
-                preceded(tag_no_case("RS"), cut(StackId::parse)),
+                preceded(
+                    tag_no_case(STACK_LENGTH_REGISTER_REF_TAG),
+                    cut(StackId::parse),
+                ),
                 RegisterRef::StackLength,
             ),
             // "RXx" => RegisterRef::User(x)
             map(
-                preceded(tag_no_case("RX"), cut(UserRegisterId::parse)),
+                preceded(
+                    tag_no_case(USER_REGISTER_REF_TAG),
+                    cut(UserRegisterId::parse),
+                ),
                 RegisterRef::User,
             ),
         ))(input)
@@ -618,14 +633,14 @@ mod tests {
                         Node(
                             ValueSource::Const(Node(
                                 LangValue::max_value(),
-                                span(1, 9, 1, 19)
+                                span(1, 9, 1, 14)
                             )),
-                            span(1, 9, 1, 19)
+                            span(1, 9, 1, 14)
                         )
                     ),
-                    span(1, 1, 1, 19)
+                    span(1, 1, 1, 14)
                 )),
-                span(1, 1, 1, 19)
+                span(1, 1, 1, 14)
             )]
         );
     }
@@ -642,14 +657,14 @@ mod tests {
                         Node(
                             ValueSource::Const(Node(
                                 LangValue::min_value(),
-                                span(1, 9, 1, 20)
+                                span(1, 9, 1, 15)
                             )),
-                            span(1, 9, 1, 20)
+                            span(1, 9, 1, 15)
                         )
                     ),
-                    span(1, 1, 1, 20)
+                    span(1, 1, 1, 15)
                 )),
-                span(1, 1, 1, 20)
+                span(1, 1, 1, 15)
             )]
         );
     }

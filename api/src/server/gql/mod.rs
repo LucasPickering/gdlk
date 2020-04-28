@@ -14,7 +14,7 @@ use crate::{
 };
 use diesel::{
     pg::upsert, result::DatabaseErrorKind, ExpressionMethods,
-    OptionalExtension, QueryDsl, RunQueryDsl, Table,
+    OptionalExtension, PgConnection, QueryDsl, RunQueryDsl, Table,
 };
 use failure::Fallible;
 use gdlk::Valid;
@@ -71,8 +71,7 @@ impl QueryFields for Query {
         _trail: &QueryTrail<'_, UserNode, Walked>,
         username: String,
     ) -> ResponseResult<Option<UserNode>> {
-        Ok(users::table
-            .filter(models::User::with_username(&username))
+        Ok(models::User::filter_by_username(&username)
             .get_result::<models::User>(&executor.context().get_db_conn()?)
             .optional()?
             .map(UserNode::from))
@@ -275,9 +274,15 @@ impl MutationFields for Mutation {
         _trail: &QueryTrail<'_, SaveUserProgramPayload, Walked>,
         input: SaveUserProgramInput,
     ) -> ResponseResult<SaveUserProgramPayload> {
+        let conn: &PgConnection =
+            &executor.context().get_db_conn()? as &PgConnection;
+        let user_id: Uuid = models::User::tmp_user()
+            .select(users::columns::id)
+            .get_result(conn)?;
+
         // User a helper type to do the insert
         let new_user_program = models::NewUserProgram {
-            user_id: util::gql_id_to_uuid(&input.user_id),
+            user_id,
             program_spec_id: util::gql_id_to_uuid(&input.program_spec_id),
             file_name: &input.file_name,
             source_code: &input.source_code,
@@ -295,7 +300,7 @@ impl MutationFields for Mutation {
             .do_update()
             .set(user_programs::dsl::source_code.eq(&input.source_code))
             .returning(user_programs::table::all_columns())
-            .get_result(&executor.context().get_db_conn()?);
+            .get_result(conn);
 
         let user_program_node: Option<UserProgramNode> = match result {
             // Row was updated successfully, return the new row

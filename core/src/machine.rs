@@ -10,10 +10,8 @@ use crate::{
     models::{HardwareSpec, ProgramSpec},
     util::{Span, Valid},
 };
-use serde::Serialize;
 use std::{
-    cmp::Ordering, collections::VecDeque, convert::TryInto, iter,
-    iter::FromIterator, num::Wrapping,
+    cmp::Ordering, collections::HashMap, convert::TryInto, iter, num::Wrapping,
 };
 
 /// A steppable program executor. Maintains the current state of the program,
@@ -23,28 +21,24 @@ use std::{
 /// a program. The current machine state can be obtained at any time, including
 /// execution stats (e.g. # cycles), which allows for handy visualizations of
 /// execution.
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub struct Machine {
     // Static data - this is copied from the input and shouldn't be included in
     // serialization. We store these ourselves instead of keeping references
     // to the originals because it just makes life a lot easier.
-    #[serde(skip)]
+    hardware_spec: Valid<HardwareSpec>,
     source: String,
-    #[serde(skip)]
     program: Program<Span>,
-    #[serde(skip)]
     expected_output: Vec<LangValue>,
-    #[serde(skip)]
-    max_stack_length: usize,
 
     // Runtime state
     /// The index of the next instruction to be executed
     program_counter: usize,
     /// The current input buffer. This can be popped from as the program is
-    /// executed. The front of the buffer is where we want to pop from first,
-    /// so this is a VecDeque so we get pop_front. Values can never be added to
-    /// the input, only popped off.
-    pub input: VecDeque<LangValue>,
+    /// executed. We always pop from the front. This isn't ideal for a Vec,
+    /// but these arrays will be small enough that it probably doesn't matter.
+    /// Values never get added to the input, only popped off.
+    pub input: Vec<LangValue>,
     /// The current output buffer. This can be pushed into, but never popped
     /// out of.
     pub output: Vec<LangValue>,
@@ -66,27 +60,30 @@ impl Machine {
         program: Program<Span>,
         source: String,
     ) -> Self {
+        let registers =
+            iter::repeat(0).take(hardware_spec.num_registers).collect();
+
+        // Initialize `num_stacks` new stacks. Set an initial capacity
+        // for each one to prevent grows during program operation
+        let stacks = iter::repeat_with(|| {
+            Vec::with_capacity(hardware_spec.max_stack_length)
+        })
+        .take(hardware_spec.num_stacks)
+        .collect();
+
         Self {
             // Static data
+            hardware_spec: *hardware_spec,
             program,
             source,
             expected_output: program_spec.expected_output.clone(),
-            max_stack_length: hardware_spec.max_stack_length,
 
             // Runtime state
             program_counter: 0,
-            input: VecDeque::from_iter(program_spec.input.iter().copied()),
+            input: program_spec.input.clone(),
             output: Vec::new(),
-            registers: iter::repeat(0)
-                .take(hardware_spec.num_registers)
-                .collect(),
-            // Initialize `num_stacks` new stacks. Set an initial capacity
-            // for each one to prevent grows during program operation
-            stacks: iter::repeat_with(|| {
-                Vec::with_capacity(hardware_spec.max_stack_length)
-            })
-            .take(hardware_spec.num_stacks)
-            .collect(),
+            registers,
+            stacks,
 
             // Performance stats
             cycle_count: 0,
@@ -100,23 +97,23 @@ impl Machine {
     fn get_val_from_src(&self, src: &SpanNode<ValueSource<Span>>) -> LangValue {
         match src.value() {
             ValueSource::Const(Node(val, _)) => *val,
-            ValueSource::Register(reg_ref) => self.get_reg(reg_ref),
+            ValueSource::Register(reg_ref) => self.get_reg(*reg_ref.value()),
         }
     }
 
     /// Gets the value from the given register. The register reference is
     /// assumed to be valid (should be validated at build time). Will panic if
     /// it isn't valid.
-    fn get_reg(&self, reg: &SpanNode<RegisterRef>) -> LangValue {
-        match reg.value() {
+    fn get_reg(&self, reg: RegisterRef) -> LangValue {
+        match reg {
             // These conversion unwraps are safe because we know that input
             // and stack lengths are bounded by validation rules to fit into an
             // i32 (max length is 256 at the time of writing this)
             RegisterRef::InputLength => self.input.len().try_into().unwrap(),
             RegisterRef::StackLength(stack_id) => {
-                self.stacks[*stack_id].len().try_into().unwrap()
+                self.stacks[stack_id].len().try_into().unwrap()
             }
-            RegisterRef::User(reg_id) => *self.registers.get(*reg_id).unwrap(),
+            RegisterRef::User(reg_id) => *self.registers.get(reg_id).unwrap(),
         }
     }
 
@@ -141,7 +138,7 @@ impl Machine {
         value: LangValue,
     ) -> Result<(), (RuntimeError, Span)> {
         // Have to access this first cause borrow checker
-        let max_stack_length = self.max_stack_length;
+        let max_stack_length = self.hardware_spec.max_stack_length;
         let stack = &mut self.stacks[stack_ref.value().0];
 
         // If the stack is capacity, make sure we're not over it
@@ -194,12 +191,15 @@ impl Machine {
             // Operators
             Instruction::Operator(Node(op, span)) => {
                 match op {
-                    Operator::Read(reg) => match self.input.pop_front() {
-                        Some(val) => {
+                    Operator::Read(reg) => {
+                        if self.input.is_empty() {
+                            return Err((RuntimeError::EmptyInput, *span));
+                        } else {
+                            // Remove the first element in the input
+                            let val = self.input.remove(0);
                             self.set_reg(&reg, val);
                         }
-                        None => return Err((RuntimeError::EmptyInput, *span)),
-                    },
+                    }
                     Operator::Write(src) => {
                         self.output.push(self.get_val_from_src(&src));
                     }
@@ -209,7 +209,7 @@ impl Machine {
                     Operator::Add(dst, src) => {
                         self.set_reg(
                             &dst,
-                            (Wrapping(self.get_reg(&dst))
+                            (Wrapping(self.get_reg(*dst.value()))
                                 + Wrapping(self.get_val_from_src(&src)))
                             .0,
                         );
@@ -217,7 +217,7 @@ impl Machine {
                     Operator::Sub(dst, src) => {
                         self.set_reg(
                             &dst,
-                            (Wrapping(self.get_reg(&dst))
+                            (Wrapping(self.get_reg(*dst.value()))
                                 - Wrapping(self.get_val_from_src(&src)))
                             .0,
                         );
@@ -225,7 +225,7 @@ impl Machine {
                     Operator::Mul(dst, src) => {
                         self.set_reg(
                             &dst,
-                            (Wrapping(self.get_reg(&dst))
+                            (Wrapping(self.get_reg(*dst.value()))
                                 * Wrapping(self.get_val_from_src(&src)))
                             .0,
                         );
@@ -305,6 +305,39 @@ impl Machine {
             self.execute_next()?;
         }
         Ok(self.is_successful())
+    }
+
+    /// Get the index of the next instruction to be executed.
+    pub fn program_counter(&self) -> usize {
+        self.program_counter
+    }
+
+    /// Get the current input buffer.
+    pub fn input(&self) -> &[LangValue] {
+        self.input.as_slice()
+    }
+
+    /// Get the current output buffer.
+    pub fn output(&self) -> &[LangValue] {
+        self.output.as_slice()
+    }
+
+    /// Get all registers and their current values.
+    pub fn registers(&self) -> HashMap<RegisterRef, LangValue> {
+        self.hardware_spec
+            .all_register_refs()
+            .into_iter()
+            .map(|reg_ref| (reg_ref, self.get_reg(reg_ref)))
+            .collect()
+    }
+
+    /// Get all stacks and their current values.
+    pub fn stacks(&self) -> HashMap<StackRef, &[LangValue]> {
+        self.hardware_spec
+            .all_stack_refs()
+            .into_iter()
+            .map(|stack_ref| (stack_ref, self.stacks[stack_ref.0].as_slice()))
+            .collect()
     }
 
     /// Checks if this machine has finished executing.

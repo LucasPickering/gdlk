@@ -21,6 +21,20 @@ impl User {
     pub fn with_username(username: &str) -> WithUsername<'_> {
         users::dsl::username.eq(username)
     }
+
+    /// Start a query that filters by username.
+    pub fn filter_by_username(
+        username: &str,
+    ) -> dsl::Filter<users::table, WithUsername<'_>> {
+        users::table.filter(Self::with_username(username))
+    }
+
+    /// TEMPORARY function that filters for a hard-coded user in the DB. This is
+    /// to be used for operations that require a user, before we implement
+    /// auth.
+    pub fn tmp_user() -> dsl::Filter<users::table, WithUsername<'static>> {
+        Self::filter_by_username("user1")
+    }
 }
 
 #[derive(Debug, PartialEq, Insertable)]
