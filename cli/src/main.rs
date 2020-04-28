@@ -94,8 +94,18 @@ fn run(opt: Opt) -> Fallible<()> {
             let success = machine.execute_all()?;
 
             println!(
-                "{}\nProgram completed",
-                if success { "success" } else { "failure" },
+                "Registers: {:#?}
+Stacks: {:?}
+Input: {:?}
+Output: {:?}
+Cycles: {}
+Program completed with {}",
+                machine.registers(),
+                machine.stacks(),
+                machine.input(),
+                machine.output(),
+                machine.cycle_count(),
+                if success { "SUCCESS" } else { "FAILURE" },
             );
         }
     }

@@ -38,18 +38,18 @@ pub struct Machine {
     /// executed. We always pop from the front. This isn't ideal for a Vec,
     /// but these arrays will be small enough that it probably doesn't matter.
     /// Values never get added to the input, only popped off.
-    pub input: Vec<LangValue>,
+    input: Vec<LangValue>,
     /// The current output buffer. This can be pushed into, but never popped
     /// out of.
-    pub output: Vec<LangValue>,
+    output: Vec<LangValue>,
     /// The registers that the user can read and write. Indexed by Register ID.
-    pub registers: Vec<LangValue>,
+    registers: Vec<LangValue>,
     /// The series of stacks that act as the programs RAM. The number of stacks
     /// and their capacity is determined by the initializating hardware spec.
-    pub stacks: Vec<Vec<LangValue>>,
+    stacks: Vec<Vec<LangValue>>,
     /// The number of instructions that have been executed so far. This is not
     /// unique, so repeated instructions are counted multiple times.
-    pub cycle_count: usize,
+    cycle_count: usize,
 }
 
 impl Machine {
@@ -338,6 +338,12 @@ impl Machine {
             .into_iter()
             .map(|stack_ref| (stack_ref, self.stacks[stack_ref.0].as_slice()))
             .collect()
+    }
+
+    /// Get the number of cycles, i.e. the number of instructions that have
+    /// been run, during the current program execution.
+    pub fn cycle_count(&self) -> usize {
+        self.cycle_count
     }
 
     /// Checks if this machine has finished executing.

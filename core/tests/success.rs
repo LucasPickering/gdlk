@@ -27,8 +27,11 @@ fn execute_expect_success(
 
     // Make sure program terminated successfully
     // Check each bit of state individually to make debugging easier
-    assert_eq!(machine.input, Vec::new() as Vec<LangValue>);
-    assert_eq!(machine.output, valid_program_spec.expected_output);
+    assert_eq!(machine.input(), &[] as &[LangValue]);
+    assert_eq!(
+        machine.output(),
+        valid_program_spec.expected_output.as_slice()
+    );
     // Final sanity check, in case we change the criteria for success
     assert!(success);
     machine
@@ -336,7 +339,7 @@ fn test_cycle_count_simple() {
         WRITE RX0
         ",
     );
-    assert_eq!(machine.cycle_count, 3);
+    assert_eq!(machine.cycle_count(), 3);
 }
 
 #[test]
@@ -356,28 +359,7 @@ fn test_cycle_count_jump() {
         END:
         ",
     );
-    assert_eq!(m1.cycle_count, 13);
-}
-
-#[test]
-fn test_equal_max_cycle_count() {
-    // We can exit successfully with exactly the maximum number of cycles
-    let machine = execute_expect_success(
-        HardwareSpec::default(),
-        ProgramSpec {
-            input: vec![(MAX_CYCLE_COUNT as LangValue - 1) / 2],
-            expected_output: vec![],
-        },
-        "
-        READ RX0
-        JEZ RX0 END
-        LOOP:
-        SUB RX0 1
-        JGZ RX0 LOOP
-        END:
-        ",
-    );
-    assert_eq!(machine.cycle_count, MAX_CYCLE_COUNT);
+    assert_eq!(m1.cycle_count(), 13);
 }
 
 #[test]

@@ -1,0 +1,23 @@
+INPUT_LOOP:
+JEZ RLI END_INPUT_LOOP
+    READ RX0 ; read divisor
+    READ RX1 ; read dividend
+
+    SUB_LOOP:
+    JGZ RX1 CONT_SUB_LOOP
+    JMP END_SUB_LOOP
+    CONT_SUB_LOOP:
+        ; now we know RX1 > 0
+        SUB RX1 RX0
+        JMP SUB_LOOP
+    END_SUB_LOOP:
+
+    ; now RX1 <= 0. if it's < 0, write 0. if it's == 0, write 1
+    JEZ RX1 WRITE_1
+    WRITE 0
+    JMP INPUT_LOOP
+
+    WRITE_1:
+    WRITE 1
+    JMP INPUT_LOOP
+END_INPUT_LOOP:
