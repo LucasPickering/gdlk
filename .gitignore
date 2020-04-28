@@ -1,4 +1,3 @@
-*.gdlk
 .vscode/
 pkg/
 node_modules/

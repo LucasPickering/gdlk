@@ -1,8 +1,9 @@
 /// The maximum number of cycles that a program can run for before being killed.
 /// Programs that take this number of cycles WILL terminate normally, but going
 /// over this number will cause an error when trying to execute additional
-/// instructions.
-pub const MAX_CYCLE_COUNT: usize = 1000;
+/// instructions. This isn't meant to be a strategic restriction on users, just
+/// a mechanism to prevent programs from running forever.
+pub const MAX_CYCLE_COUNT: usize = 1_000_000;
 
 /// The prefix that indicates a stack reference.
 pub const STACK_REF_TAG: &str = "S";

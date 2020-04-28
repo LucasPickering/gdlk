@@ -1,0 +1,18 @@
+INPUT_LOOP:
+JEZ RLI END_INPUT_LOOP
+    READ RX0
+    SET RX1 0
+
+    ; subtract 1 from RX0 until it hits 0
+    SUB_LOOP:
+    JEZ RX0 END_SUB_LOOP
+        SUB RX0 1
+        ; flip RX1 between 0 and 1
+        MUL RX1 -1
+        ADD RX1 1
+        JMP SUB_LOOP
+    END_SUB_LOOP:
+
+    WRITE RX1
+    JMP INPUT_LOOP
+END_INPUT_LOOP:
