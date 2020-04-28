@@ -365,7 +365,7 @@ fn test_equal_max_cycle_count() {
     let machine = execute_expect_success(
         HardwareSpec::default(),
         ProgramSpec {
-            input: vec![(MAX_CYCLE_COUNT as i32 - 1) / 2],
+            input: vec![(MAX_CYCLE_COUNT as LangValue - 1) / 2],
             expected_output: vec![],
         },
         "

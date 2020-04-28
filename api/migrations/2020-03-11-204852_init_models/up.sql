@@ -10,8 +10,8 @@ CREATE TABLE program_specs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     slug VARCHAR(20) NOT NULL,
     hardware_spec_id UUID NOT NULL REFERENCES hardware_specs(id),
-    input INTEGER[] NOT NULL,
-    expected_output INTEGER[] NOT NULL,
+    input SMALLINT[] NOT NULL,
+    expected_output SMALLINT[] NOT NULL,
     UNIQUE(slug, hardware_spec_id)
 );
 

@@ -580,12 +580,11 @@ fn test_program_spec_user_program() {
         query UserProgramQuery(
             $hwSlug: String!,
             $progSlug: String!,
-            $userId: ID!,
             $fileName: String!,
         ) {
             hardwareSpec(slug: $hwSlug) {
                 programSpec(slug: $progSlug) {
-                    userProgram(userId: $userId, fileName: $fileName) {
+                    userProgram(fileName: $fileName) {
                         id
                         fileName
                         sourceCode
@@ -596,7 +595,7 @@ fn test_program_spec_user_program() {
                             slug
                         }
                     }
-                    userPrograms(userId: $userId) {
+                    userPrograms {
                         totalCount
                         edges {
                             node {
@@ -616,7 +615,6 @@ fn test_program_spec_user_program() {
             hashmap! {
                 "hwSlug" => InputValue::scalar("hw1"),
                 "progSlug" => InputValue::scalar("prog1"),
-                "userId" => InputValue::scalar(user_id.to_string()),
                 "fileName" => InputValue::scalar("sl1.gdlk"),
             }
         ),
@@ -682,13 +680,11 @@ fn test_save_user_program() {
     .create(conn);
     let query = r#"
         mutation SaveUserProgramMutation(
-            $userId: ID!,
             $programSpecId: ID!,
             $fileName: String!,
             $sourceCode: String!,
         ) {
             saveUserProgram(input: {
-                userId: $userId,
                 programSpecId: $programSpecId,
                 fileName: $fileName,
                 sourceCode: $sourceCode,
@@ -712,7 +708,6 @@ fn test_save_user_program() {
         runner.query(
             query,
             hashmap! {
-                "userId" => InputValue::scalar(user_id.to_string()),
                 "programSpecId" => InputValue::scalar(program_spec_id.to_string()),
                 "fileName" => InputValue::scalar("new.gdlk"),
                 "sourceCode" => InputValue::scalar("READ RX0"),

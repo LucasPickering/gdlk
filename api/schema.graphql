@@ -208,11 +208,11 @@ type ProgramSpecNode implements Node {
   """
   The input to the program.
   """
-  input: [Int!]! @juniper(infallible: true)
+  input: [Int!]! @juniper(infallible: true, ownership: "owned")
   """
   The output that the program is expected to give.
   """
-  expectedOutput: [Int!]! @juniper(infallible: true)
+  expectedOutput: [Int!]! @juniper(infallible: true, ownership: "owned")
 
   """
   The hardware that this program runs on.
@@ -221,18 +221,13 @@ type ProgramSpecNode implements Node {
 
   """
   A single user's single solution to this program spec.
-
-  TODO remove the userId field and filter by the logged in user instead
   """
-  userProgram(userId: ID!, fileName: String!): UserProgramNode
-    @juniper(ownership: "owned")
+  userProgram(fileName: String!): UserProgramNode @juniper(ownership: "owned")
 
   """
   All of a single user's solutions to this program spec.
-
-  TODO remove the userId field and filter by the logged in user instead
   """
-  userPrograms(userId: ID!, first: Int, after: Cursor): UserProgramConnection!
+  userPrograms(first: Int, after: Cursor): UserProgramConnection!
     @juniper(ownership: "owned")
 }
 
@@ -358,11 +353,6 @@ type Mutation {
 Input to the `saveUserProgram` mutation.
 """
 input SaveUserProgramInput {
-  """
-  The ID of the owner of the program source.
-  """
-  userId: ID!
-
   """
   The program spec for which this source was written.
   """

@@ -114,7 +114,7 @@ impl Span {
 /// };
 /// let valid: Valid<HardwareSpec> = Valid::validate(maybe_valid).unwrap();
 /// ```
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Valid<T: Validate> {
     inner: T,
 }

@@ -2,13 +2,13 @@
 //! structs should mostly just be data containers, with little to no
 //! functionality defined on them.
 
-use crate::ast::LangValue;
+use crate::ast::{LangValue, RegisterRef, StackRef};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 /// The "hardware" that a program can execute on. This defines computing
 /// constraints. This is needed both at compile time and runtime.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Validate)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, Validate)]
 pub struct HardwareSpec {
     /// Number of registers available
     #[validate(range(min = 1, max = 16))]
@@ -19,6 +19,22 @@ pub struct HardwareSpec {
     /// Maximum size of each stack
     #[validate(range(min = 0, max = 256))]
     pub max_stack_length: usize,
+}
+
+impl HardwareSpec {
+    /// Get a list of all [RegisterRef]s that exist for this hardware.
+    pub fn all_register_refs(&self) -> Vec<RegisterRef> {
+        let mut register_refs = vec![RegisterRef::InputLength];
+        register_refs.extend((0..self.num_registers).map(RegisterRef::User));
+        register_refs
+            .extend((0..self.num_stacks).map(RegisterRef::StackLength));
+        register_refs
+    }
+
+    /// Get a list of all [StackRef]s that exist for this hardware.
+    pub fn all_stack_refs(&self) -> Vec<StackRef> {
+        (0..self.num_stacks).map(StackRef).collect()
+    }
 }
 
 // Useful for tests and prototyping
@@ -54,5 +70,63 @@ impl Default for ProgramSpec {
             input: vec![],
             expected_output: vec![],
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_all_register_refs() {
+        assert_eq!(
+            HardwareSpec {
+                num_registers: 0,
+                num_stacks: 0,
+                max_stack_length: 0,
+            }
+            .all_register_refs(),
+            vec![RegisterRef::InputLength],
+        );
+
+        assert_eq!(
+            HardwareSpec {
+                num_registers: 3,
+                num_stacks: 2,
+                max_stack_length: 0,
+            }
+            .all_register_refs(),
+            vec![
+                RegisterRef::InputLength,
+                RegisterRef::User(0),
+                RegisterRef::User(1),
+                RegisterRef::User(2),
+                RegisterRef::StackLength(0),
+                RegisterRef::StackLength(1),
+            ],
+        );
+    }
+
+    #[test]
+    fn test_all_stack_refs() {
+        assert_eq!(
+            HardwareSpec {
+                num_registers: 0,
+                num_stacks: 0,
+                max_stack_length: 0,
+            }
+            .all_stack_refs(),
+            vec![],
+        );
+
+        assert_eq!(
+            HardwareSpec {
+                num_registers: 3,
+                num_stacks: 2,
+                max_stack_length: 0,
+            }
+            .all_stack_refs(),
+            vec![StackRef(0), StackRef(1),],
+        );
     }
 }

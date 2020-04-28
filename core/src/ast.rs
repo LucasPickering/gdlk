@@ -3,10 +3,17 @@
 //! Every AST node type is generic and can hold an extra value. This is useful
 //! to carry metadata along with the AST (e.g. [Span]).
 
-use crate::util::Span;
+use crate::{
+    consts::{
+        INPUT_LENGTH_REGISTER_REF, STACK_LENGTH_REGISTER_REF_TAG,
+        STACK_REF_TAG, USER_REGISTER_REF_TAG,
+    },
+    util::Span,
+};
+use serde::{Serialize, Serializer};
 
 /// The type of every value in our language.
-pub type LangValue = i32;
+pub type LangValue = i16;
 
 /// A symbol used to identify a certain user register.
 pub type UserRegisterId = usize;
@@ -46,13 +53,24 @@ pub(crate) type SpanNode<T> = Node<T, Span>;
 
 /// A reference to a stack, e.g. "S0". This should NOT be used for other uses
 /// of a stack ID, e.g. in the register "RS0".
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct StackRef(pub StackId);
+
+// Custom Serialize implementation to give the reference the same format that
+// it has in the syntax.
+impl Serialize for StackRef {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{}{}", STACK_REF_TAG, self.0))
+    }
+}
 
 /// A reference to a register. Registers can be readonly (in which case the
 /// value is a reflection of some other part of state), or read-write, which
 /// means the user can read and write freely from/to it.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum RegisterRef {
     /// Read-only register that provides the number of elements remaining
     /// in the input buffer
@@ -62,6 +80,26 @@ pub enum RegisterRef {
     StackLength(StackId),
     /// User-writable register to be used for arbitrary computations
     User(UserRegisterId),
+}
+
+// Custom Serialize implementation to give the reference the same format that
+// it has in the syntax.
+impl Serialize for RegisterRef {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let label = match self {
+            Self::InputLength => INPUT_LENGTH_REGISTER_REF.to_owned(),
+            Self::StackLength(stack_id) => {
+                format!("{}{}", STACK_LENGTH_REGISTER_REF_TAG, stack_id)
+            }
+            Self::User(reg_id) => {
+                format!("{}{}", USER_REGISTER_REF_TAG, reg_id)
+            }
+        };
+        serializer.serialize_str(&label)
+    }
 }
 
 /// Something that can produce a [LangValue] idempotently. The value
