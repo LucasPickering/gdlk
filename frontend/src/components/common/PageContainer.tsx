@@ -2,16 +2,21 @@ import { makeStyles, Typography } from '@material-ui/core';
 import React from 'react';
 import Link from './Link';
 import Navigation from 'components/navigation/Navigation';
+import clsx from 'clsx';
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
-  root: {
+  pageContainer: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     height: '100%',
   },
   pageBody: {
-    margin: spacing(2),
+    width: '100%',
+    height: '100%',
+  },
+  pageBodyPadding: {
+    padding: spacing(2),
   },
   pageFooter: {
     marginTop: 'auto',
@@ -22,35 +27,55 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
       padding: `0px ${spacing(0.5)}px`,
     },
     '& > * + *': {
-      borderLeftWidth: 2,
+      borderLeftWidth: 1,
       borderLeftStyle: 'solid',
       borderLeftColor: palette.divider,
     },
   },
 }));
 
+interface Props {
+  fullScreen: boolean;
+}
+
 /**
- * Container for all content on the page. This is used for everything but the
- * terminal.
+ * Container for all content on the page. This is used in the root to wrap all
+ * pages.
  */
-const PageContainer: React.FC = ({ children }) => {
+const PageContainer: React.FC<Props> & { defaultProps: Partial<Props> } = ({
+  fullScreen,
+  children,
+}) => {
   const localClasses = useLocalStyles();
 
   return (
-    <div className={localClasses.root}>
+    <div className={localClasses.pageContainer}>
       <Navigation />
 
-      <div className={localClasses.pageBody}>{children}</div>
+      <div
+        className={clsx(
+          localClasses.pageBody,
+          !fullScreen && localClasses.pageBodyPadding
+        )}
+      >
+        {children}
+      </div>
 
-      <footer className={localClasses.pageFooter}>
-        <Typography variant="body2">
-          Created by <Link to="https://github.com/JRMurr">John Murray</Link> and{' '}
-          <Link to="https://lucaspickering.me">Lucas Pickering</Link>
-        </Typography>
-        <Link to="https://github.com/LucasPickering/gdlk">GitHub</Link>
-      </footer>
+      {!fullScreen && (
+        <footer className={localClasses.pageFooter}>
+          <Typography variant="body2">
+            Created by <Link to="https://github.com/JRMurr">John Murray</Link>{' '}
+            and <Link to="https://lucaspickering.me">Lucas Pickering</Link>
+          </Typography>
+          <Link to="https://github.com/LucasPickering/gdlk">GitHub</Link>
+        </footer>
+      )}
     </div>
   );
+};
+
+PageContainer.defaultProps = {
+  fullScreen: false,
 };
 
 export default PageContainer;

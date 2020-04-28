@@ -1,11 +1,11 @@
 import React from 'react';
 import { createPaginationContainer, RelayPaginationProp } from 'react-relay';
 import graphql from 'babel-plugin-relay/macro';
-import { ProgramSpecs_hardwareSpec } from './__generated__/ProgramSpecs_hardwareSpec.graphql';
+import { ProgramSpecList_hardwareSpec } from './__generated__/ProgramSpecList_hardwareSpec.graphql';
 import { Paper, Button } from '@material-ui/core';
 
-const ProgramSpecs: React.FC<{
-  hardwareSpec: ProgramSpecs_hardwareSpec;
+const ProgramSpecList: React.FC<{
+  hardwareSpec: ProgramSpecList_hardwareSpec;
   relay: RelayPaginationProp;
 }> = ({ hardwareSpec, relay: { hasMore, loadMore } }) => {
   return (
@@ -21,16 +21,16 @@ const ProgramSpecs: React.FC<{
 };
 
 export default createPaginationContainer(
-  ProgramSpecs,
+  ProgramSpecList,
   {
     hardwareSpec: graphql`
-      fragment ProgramSpecs_hardwareSpec on HardwareSpecNode
+      fragment ProgramSpecList_hardwareSpec on HardwareSpecNode
         @argumentDefinitions(
           count: { type: "Int" }
           cursor: { type: "Cursor" }
         ) {
         programSpecs(first: $count, after: $cursor)
-          @connection(key: "ProgramSpecs_programSpecs") {
+          @connection(key: "ProgramSpecList_programSpecs") {
           edges {
             node {
               slug
@@ -51,13 +51,13 @@ export default createPaginationContainer(
       };
     },
     query: graphql`
-      query ProgramSpecsPaginationQuery(
+      query ProgramSpecListPaginationQuery(
         $hwSlug: String!
         $count: Int
         $cursor: Cursor
       ) {
         hardwareSpec(slug: $hwSlug) {
-          ...ProgramSpecs_hardwareSpec
+          ...ProgramSpecList_hardwareSpec
             @arguments(count: $count, cursor: $cursor)
         }
       }
