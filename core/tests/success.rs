@@ -4,7 +4,6 @@
 
 use gdlk::{
     ast::LangValue, Compiler, HardwareSpec, Machine, ProgramSpec, Valid,
-    MAX_CYCLE_COUNT,
 };
 
 /// Compiles the program for the given hardware, and executes it against the

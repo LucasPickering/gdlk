@@ -20,7 +20,7 @@ services:
 
   api:
     image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-api:${DOCKER_TAG}
-    command: sh -c "dockerize -wait tcp://db:5432 && diesel setup && cargo watch -x \"run -- server\""
+    command: cargo make -p docker start
     tty: true # Colorize output
     volumes:
       - ./:/app:rw
@@ -30,7 +30,6 @@ services:
     environment:
       RUST_BACKTRACE: 1
       SERVER_HOST: 0.0.0.0:8000
-      DATABASE_URL: postgres://root:root@db/gdlk
       RUST_LOG: info
     ports:
       - "8000:8000"

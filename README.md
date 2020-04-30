@@ -25,17 +25,22 @@ Then, for development you'll probably want to install more stuff:
 
 ```sh
 rustup component add rustfmt-preview clippy-preview
-cargo install diesel_cli
+cargo install diesel_cli --no-default-features --features postgres
+cargo install cargo-make
 ```
-
-If you're using VSCode and have the RLS extension installed (you should), it'll ask to install more components, just say yes.
 
 ### Compiling and Executing Locally
 
-If you just want to compile and run a program without starting up the webserver, you can use the CLI for that. First, you'll need the environment to execute under saved in a JSON file, e.g. `env.json`. Then you need your program source in a file, e.g. `prog.gdlk`. Then run:
+If you just want to compile and run a program without starting up the webserver, you can use the CLI for that. To execute a program, you will need:
+
+- A hardware spec, which defines what hardware the program can access (JSON)
+- A program spec, which defines the input and expected output (JSON)
+- A source file (GDLK)
+
+See `core/src/models.rs` for a list of fields that the hardware and program specs need. Then, you can run the program with:
 
 ```sh
-cargo run -- execute -e env.json -i prog.gdlk
+cargo run -p gdlk_cli -- run --hardware hw.json --program prog.json -s prog.gdlk
 ```
 
 ### Running the Web Stack
@@ -61,11 +66,15 @@ Then, see the next section to initialize the DB.
 Migrations are managed by Diesel. Seed data is defined via SQL scripts, in `api/seeds`.
 
 ```sh
-./x.py migration run # Run initial migrations
-./x.py seed # Insert seed data
+cd api
+# Migrations are automatically run on server startup, but if you need to run them manually:
+cargo make diesel migration run
+
+# You can load seed data with:
+cargo make seed
 
 # If you need to re-run migrations (this will wipe out your DB!)
-./x.py migration redo
+cargo make diesel db reset
 ```
 
 ### Tests
@@ -73,16 +82,16 @@ Migrations are managed by Diesel. Seed data is defined via SQL scripts, in `api/
 You can run tests with:
 
 ```sh
-./x.py test
+cargo make test # In the root, or any sub-crate
 ```
 
 ### Debugging
 
-If you have a program or test failing, you can run with additional debug output by setting `DEBUG=1`. There is also the `--debug` (or `-d`) flag on the `x.py` command that does the same thing.
+If you have a GDLK program or test failing, you can have the GDLK compiler and interpreter output additional debug information by setting `DEBUG=1`.
 
 ```sh
-DEBUG=1 cargo run -- execute -e env.json -i prog.gdlk
-./x.py test --debug core
+DEBUG=1 cargo run -p gdlk_cli -- --hardware hw.json --program prog.json -s prog.gdlk
+DEBUG=1 cargo make test
 ```
 
 ### Nightly Rust

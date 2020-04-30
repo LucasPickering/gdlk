@@ -7,6 +7,7 @@ RUN apt-get update && \
     apt-get install -y \
     curl \
     libpq-dev \
+    libssl-dev \
     pkg-config \
     postgresql \
     && \
@@ -17,7 +18,8 @@ RUN curl -sSL https://github.com/jwilder/dockerize/releases/download/${DOCKERIZE
 
 WORKDIR /app
 COPY rust-toolchain ./
-RUN cargo install diesel_cli --no-default-features --features=postgres && \
+RUN cargo install cargo-make && \
+    cargo install diesel_cli --no-default-features --features=postgres && \
     cargo install cargo-watch
 
 WORKDIR /app/api
