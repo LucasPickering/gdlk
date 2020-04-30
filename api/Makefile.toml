@@ -1,0 +1,62 @@
+# This is the default profile
+[env.development]
+DATABASE_URL = "postgres://root:root@localhost/gdlk"
+
+[env.docker]
+DATABASE_URL = "postgres://root:root@db/gdlk"
+
+[tasks.db]
+# TODO - only install w/ postgres feature
+# install_crate = { crate_name = "diesel_cli", binary = "diesel", test_arg = "--help" }
+
+# Alias for the diesel CLI
+[tasks.diesel]
+extend = "db"
+command = "diesel"
+args = ["${@}"]
+
+[tasks.wait-for-db]
+condition = { profiles = ["docker"] }
+command = "dockerize"
+args = ["-wait", "tcp://db:5432"]
+
+[tasks.db-setup]
+extend = "diesel"
+dependencies = ["wait-for-db"]
+args = ["db", "setup"]
+
+[tasks.seed]
+dependencies = ["db-setup"]
+script = [
+'''
+for f in ./seeds/*.sql; do
+    psql $DATABASE_URL -f $f
+done
+'''
+]
+
+[tasks.start]
+dependencies = ["db-setup"]
+command = "cargo"
+args = ["watch", "-x", "run -- server"]
+
+# ===== Test tasks =====
+
+[tasks.test-db-reset]
+extend = "diesel"
+env = { DATABASE_URL = "${DATABASE_URL}_test" }
+dependencies = ["wait-for-db"]
+args = ["db", "reset"]
+
+[tasks.test]
+dependencies = ["test-db-reset"]
+# This inherits the DATABASE_URL from test-db-reset,
+# which might be a bug in cargo-make but who cares
+command = "cargo"
+args = [
+    "test",
+    "${@}",
+    "--",
+    "--test-threads=1",
+    "--nocapture",
+]
