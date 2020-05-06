@@ -18,7 +18,8 @@ env_logger = "0.7"
 failure = "0.1"
 gdlk = { path = "../core" }
 juniper = "0.14.2"
-juniper-from-schema = "0.5.2"
+# juniper-from-schema = "0.5.2"
+juniper-from-schema = { git = "https://github.com/LucasPickering/juniper-from-schema", branch = "fragment-bug-workaround" }
 log = "^0.4.8"
 r2d2 = "0.8"
 serde = { version = "1.0", features = ["derive"] }
