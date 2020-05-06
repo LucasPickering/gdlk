@@ -60,6 +60,16 @@ impl<N: NodeType> GenericEdge<N> {
         &self.cursor
     }
 
+    /// Convert a single DB row into an edge. `offset` is the index of the row
+    /// in the database (with the ordering with which it was queried). The
+    /// offset is used to determine the cursor for the edge.
+    pub fn from_db_row(row: N::Model, offset: i32) -> Self {
+        Self {
+            node: row.into(),
+            cursor: Cursor::from_index(offset),
+        }
+    }
+
     /// Convert a list of DB model rows into a list of this type. `offset` is
     /// the index of the first row in the database (with the ordering with which
     /// it was queried). The offset is used to determine the cursor for each
@@ -67,9 +77,8 @@ impl<N: NodeType> GenericEdge<N> {
     pub fn from_db_rows(rows: Vec<N::Model>, offset: i32) -> Vec<Self> {
         rows.into_iter()
             .enumerate()
-            .map(|(i, row)| Self {
-                node: row.into(),
-                cursor: Cursor::from_index(offset + i32::try_from(i).unwrap()),
+            .map(|(i, row)| {
+                Self::from_db_row(row, offset + i32::try_from(i).unwrap())
             })
             .collect()
     }

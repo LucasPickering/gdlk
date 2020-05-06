@@ -302,9 +302,9 @@ impl MutationFields for Mutation {
             .returning(user_programs::table::all_columns())
             .get_result(conn);
 
-        let user_program_node: Option<UserProgramNode> = match result {
+        let user_program: Option<models::UserProgram> = match result {
             // Row was updated successfully, return the new row
-            Ok(updated_row) => Some(updated_row.into()),
+            Ok(updated_row) => Some(updated_row),
             // A foreign key violation means one of the given related IDs
             // was invalid. Just return None in that case.
             Err(diesel::result::Error::DatabaseError(
@@ -315,7 +315,7 @@ impl MutationFields for Mutation {
             Err(err) => return Err(err.into()),
         };
 
-        Ok(SaveUserProgramPayload { user_program_node })
+        Ok(SaveUserProgramPayload { user_program })
     }
 
     fn field_delete_user_program(

@@ -689,14 +689,16 @@ fn test_save_user_program() {
                 fileName: $fileName,
                 sourceCode: $sourceCode,
             }) {
-                userProgram {
-                    fileName
-                    sourceCode
-                    user {
-                        username
-                    }
-                    programSpec {
-                        slug
+                userProgramEdge {
+                    node {
+                        fileName
+                        sourceCode
+                        user {
+                            username
+                        }
+                        programSpec {
+                            slug
+                        }
                     }
                 }
             }
@@ -716,15 +718,17 @@ fn test_save_user_program() {
         (
             graphql_value!({
                 "saveUserProgram": {
-                    "userProgram": {
-                        "fileName": "new.gdlk",
-                        "sourceCode": "READ RX0",
-                        "user": {
-                            "username": "user1"
-                        },
-                        "programSpec": {
-                            "slug": "prog1"
-                        },
+                    "userProgramEdge": {
+                        "node": {
+                            "fileName": "new.gdlk",
+                            "sourceCode": "READ RX0",
+                            "user": {
+                                "username": "user1"
+                            },
+                            "programSpec": {
+                                "slug": "prog1"
+                            },
+                        }
                     }
                 }
             }),
@@ -746,15 +750,17 @@ fn test_save_user_program() {
         (
             graphql_value!({
                 "saveUserProgram": {
-                    "userProgram": {
-                        "fileName": "existing.gdlk",
-                        "sourceCode": "WRITE RX0",
-                        "user": {
-                            "username": "user1"
-                        },
-                        "programSpec": {
-                            "slug": "prog1"
-                        },
+                    "userProgramEdge": {
+                        "node":{
+                            "fileName": "existing.gdlk",
+                            "sourceCode": "WRITE RX0",
+                            "user": {
+                                "username": "user1"
+                            },
+                            "programSpec": {
+                                "slug": "prog1"
+                            },
+                        }
                     }
                 }
             }),
@@ -776,7 +782,7 @@ fn test_save_user_program() {
         (
             graphql_value!({
                 "saveUserProgram": {
-                    "userProgram": None
+                    "userProgramEdge": None
                 }
             }),
             vec![]
