@@ -376,7 +376,8 @@ type SaveUserProgramPayload {
   """
   The created/updated user program.
   """
-  userProgram: UserProgramNode @juniper(infallible: true)
+  userProgramEdge: UserProgramEdge
+    @juniper(infallible: true, ownership: "owned")
 }
 
 """

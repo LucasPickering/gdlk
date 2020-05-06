@@ -194,16 +194,20 @@ impl UserProgramConnectionFields for UserProgramConnection {
 }
 
 pub struct SaveUserProgramPayload {
-    pub user_program_node: Option<UserProgramNode>,
+    pub user_program: Option<models::UserProgram>,
 }
 
 impl SaveUserProgramPayloadFields for SaveUserProgramPayload {
-    fn field_user_program(
+    fn field_user_program_edge(
         &self,
         _executor: &juniper::Executor<'_, Context>,
-        _trail: &QueryTrail<'_, UserProgramNode, Walked>,
-    ) -> &Option<UserProgramNode> {
-        &self.user_program_node
+        _trail: &QueryTrail<'_, UserProgramEdge, Walked>,
+    ) -> Option<UserProgramEdge> {
+        self.user_program
+            .as_ref()
+            // Since this wasn't queried as part of a set, we can use a
+            // bullshit offset to generate the cursor
+            .map(|row| GenericEdge::from_db_row(row.clone(), 0))
     }
 }
 
