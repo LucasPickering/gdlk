@@ -24,8 +24,6 @@ const IoInfo: React.FC<{
 }> = ({ className, programSpec }) => {
   const localClasses = useLocalStyles();
   const { machineState } = useContext(IdeContext);
-  const input = machineState?.input ?? [];
-  const output = machineState?.output ?? [];
 
   return (
     <div className={clsx(localClasses.ioInfo, className)}>
@@ -36,12 +34,13 @@ const IoInfo: React.FC<{
       <div className={localClasses.buffers}>
         <BufferDisplay
           label="Input"
-          values={input}
+          values={machineState?.input ?? programSpec.input}
           maxLength={programSpec.input.length}
         />
         <BufferDisplay
           label="Output"
-          values={output}
+          values={programSpec.expectedOutput}
+          secondaryValues={machineState?.output ?? []}
           maxLength={programSpec.expectedOutput.length}
         />
       </div>

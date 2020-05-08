@@ -60,6 +60,7 @@ enum OutgoingEvent<'a> {
         output: &'a [LangValue],
         registers: HashMap<RegisterRef, LangValue>,
         stacks: HashMap<StackRef, &'a [LangValue]>,
+        cycle_count: usize,
         is_complete: bool,
         is_successful: bool,
     },
@@ -85,6 +86,7 @@ impl<'a> From<&'a Machine> for OutgoingEvent<'a> {
             output: machine.output(),
             registers: machine.registers(),
             stacks: machine.stacks(),
+            cycle_count: machine.cycle_count(),
             is_complete: machine.is_complete(),
             is_successful: machine.is_successful(),
         }

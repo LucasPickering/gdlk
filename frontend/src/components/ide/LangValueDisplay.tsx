@@ -7,6 +7,7 @@ const useLocalStyles = makeStyles(() => ({
   langValueDisplay: {
     minWidth: 50, // Based on the min/max value
     textAlign: 'right',
+    lineHeight: 1.1,
   },
 }));
 

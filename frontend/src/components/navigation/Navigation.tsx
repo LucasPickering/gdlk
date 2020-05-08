@@ -18,11 +18,6 @@ const LINKS = [
     label: 'Home',
     exact: true,
   },
-  {
-    to: '/terminal',
-    label: 'Terminal',
-    exact: true,
-  },
 ];
 
 const useLocalStyles = makeStyles(({ spacing }) => ({

@@ -9,45 +9,52 @@ import ProgramSpecView from './programs/ProgramSpecView';
 import NotFoundPage from './NotFoundPage';
 import PageContainer from './common/PageContainer';
 import ProgramIdeView from './ide/ProgramIdeView';
+import environment from 'util/environment';
+import { RelayEnvironmentProvider } from 'relay-hooks';
 
 const App: React.FC = () => {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <BrowserRouter>
-        <Switch>
-          {/* Full screen routes first */}
-          <Route path="/hardware/:hwSlug/programs/:programSlug/:fileName" exact>
-            <PageContainer fullScreen>
-              <ProgramIdeView />
-            </PageContainer>
-          </Route>
+    <RelayEnvironmentProvider environment={environment}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <BrowserRouter>
+          <Switch>
+            {/* Full screen routes first */}
+            <Route
+              path="/hardware/:hwSlug/programs/:programSlug/:fileName"
+              exact
+            >
+              <PageContainer fullScreen>
+                <ProgramIdeView />
+              </PageContainer>
+            </Route>
 
-          {/* All non-full screen routes */}
-          <Route path="*">
-            <PageContainer>
-              <Switch>
-                <Route path="/" exact>
-                  <HomePage />
-                </Route>
+            {/* All non-full screen routes */}
+            <Route path="*">
+              <PageContainer>
+                <Switch>
+                  <Route path="/" exact>
+                    <HomePage />
+                  </Route>
 
-                {/* Hardware routes */}
-                <Route path="/hardware/:hwSlug" exact>
-                  <HardwareSpecView />
-                </Route>
-                <Route path="/hardware/:hwSlug/programs/:programSlug" exact>
-                  <ProgramSpecView />
-                </Route>
+                  {/* Hardware routes */}
+                  <Route path="/hardware/:hwSlug" exact>
+                    <HardwareSpecView />
+                  </Route>
+                  <Route path="/hardware/:hwSlug/programs/:programSlug" exact>
+                    <ProgramSpecView />
+                  </Route>
 
-                <Route path="*">
-                  <NotFoundPage />
-                </Route>
-              </Switch>
-            </PageContainer>
-          </Route>
-        </Switch>
-      </BrowserRouter>
-    </ThemeProvider>
+                  <Route path="*">
+                    <NotFoundPage />
+                  </Route>
+                </Switch>
+              </PageContainer>
+            </Route>
+          </Switch>
+        </BrowserRouter>
+      </ThemeProvider>
+    </RelayEnvironmentProvider>
   );
 };
 

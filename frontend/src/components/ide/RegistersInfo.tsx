@@ -16,6 +16,7 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   register: {
     display: 'flex',
     flexDirection: 'column',
+    alignItems: 'flex-end',
     '&:not(:first-child)': {
       paddingLeft: spacing(2),
     },

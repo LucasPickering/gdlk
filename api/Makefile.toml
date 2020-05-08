@@ -25,8 +25,13 @@ extend = "diesel"
 dependencies = ["wait-for-db"]
 args = ["db", "setup"]
 
-[tasks.seed]
+[tasks.migrations]
+extend = "diesel"
 dependencies = ["db-setup"]
+args = ["migration", "run"]
+
+[tasks.seed]
+dependencies = ["migrations"]
 script = [
 '''
 for f in ./seeds/*.sql; do

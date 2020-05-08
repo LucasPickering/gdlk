@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { RelayProp, createFragmentContainer } from 'react-relay';
 import graphql from 'babel-plugin-relay/macro';
 import { ProgramIde_hardwareSpec } from './__generated__/ProgramIde_hardwareSpec.graphql';
@@ -10,27 +10,29 @@ import {
   OutgoingIdeEvent,
   IdeContextType,
   IdeContext,
+  IncomingIdeEvent,
 } from 'state/ide';
-import { SocketSend, SocketConnectionStatus } from 'hooks/useWebSocket';
+import useWebSocket, { SocketEventConsumer } from 'hooks/useWebSocket';
 import IoInfo from './IoInfo';
 import StackInfo from './StackInfo';
 import NotFoundPage from 'components/NotFoundPage';
 import IdeControls from './IdeControls';
+import ProgramStatus from './ProgramStatus';
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => {
   const border = `2px solid ${palette.divider}`;
   return {
     programIde: {
-      width: '100%',
-      height: '100%',
+      minWidth: '100%',
+      minHeight: '100%',
       display: 'grid',
       gridTemplateRows: 'auto auto 1fr 1fr',
-      gridTemplateColumns: 'repeat(4, 1fr)',
+      gridTemplateColumns: 'auto 1fr auto auto',
       gridTemplateAreas: `
-      'rg rg rg io'
-      'ct ct ct io'
-      'ed ed ed st'
-      'ed ed ed st'
+      'io rg rg sk'
+      'io st ct sk'
+      'io ed ed sk'
+      'io ed ed sk'
       `,
       border,
     },
@@ -41,6 +43,10 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => {
     },
     ioInfo: {
       gridArea: 'io',
+      borderRight: border,
+    },
+    programStatus: {
+      gridArea: 'st',
       borderBottom: border,
     },
     controls: {
@@ -54,7 +60,7 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => {
     },
 
     stackInfo: {
-      gridArea: 'st',
+      gridArea: 'sk',
       padding: spacing(1),
     },
   };
@@ -65,14 +71,43 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => {
  */
 const ProgramIde: React.FC<{
   hardwareSpec: ProgramIde_hardwareSpec;
-  machineState?: MachineState;
-  wsStatus: SocketConnectionStatus;
-  wsSend: SocketSend<OutgoingIdeEvent>;
   relay: RelayProp;
-}> = ({ hardwareSpec, wsStatus, machineState, wsSend }) => {
+}> = ({ hardwareSpec }) => {
   const localClasses = useLocalStyles();
+  const [machineState, setMachineState] = useState<MachineState | undefined>(
+    undefined
+  );
   const [sourceCode, setSourceCode] = useState<string>(
     hardwareSpec.programSpec?.userProgram?.sourceCode ?? ''
+  );
+  const setSourceCodeWrapped = useCallback(
+    (newSource: string): void => {
+      // Any time we change the source code, we want to invalidate the compiled
+      // program.
+      setMachineState(undefined);
+      setSourceCode(newSource);
+    },
+    [setMachineState, setSourceCode]
+  );
+
+  const hwSlug = hardwareSpec.slug;
+  const programSlug = hardwareSpec.programSpec?.slug;
+  const { status, send } = useWebSocket<IncomingIdeEvent, OutgoingIdeEvent>(
+    // Only connect if the program spec is defined
+    programSlug && `/ws/hardware/${hwSlug}/programs/${programSlug}`,
+
+    // We need to memoize the callbacks to prevent hook triggers
+    {
+      onMessage: useCallback<
+        SocketEventConsumer<IncomingIdeEvent, OutgoingIdeEvent>
+      >((send, data) => {
+        if (data.type === 'machineState') {
+          setMachineState(data.content);
+        }
+        // TODO handle other data cases
+      }, []),
+    },
+    [hwSlug, programSlug] // Create a new socket when either slug changes
   );
 
   // Either the program spec or the user program doesn't exist - show 404
@@ -81,11 +116,11 @@ const ProgramIde: React.FC<{
   }
 
   const contextValue: IdeContextType = {
-    sourceCode,
-    setSourceCode,
     machineState,
-    wsStatus,
-    wsSend,
+    sourceCode,
+    setSourceCode: setSourceCodeWrapped,
+    wsStatus: status,
+    wsSend: send,
   };
 
   return (
@@ -96,13 +131,14 @@ const ProgramIde: React.FC<{
           className={localClasses.ioInfo}
           programSpec={hardwareSpec.programSpec}
         />
-        <StackInfo
-          className={localClasses.stackInfo}
-          hardwareSpec={hardwareSpec}
-        />
+        <ProgramStatus className={localClasses.programStatus} />
         <IdeControls
           className={localClasses.controls}
           programSpec={hardwareSpec.programSpec}
+        />
+        <StackInfo
+          className={localClasses.stackInfo}
+          hardwareSpec={hardwareSpec}
         />
         <CodeEditor className={localClasses.editor} />
       </div>
@@ -117,6 +153,7 @@ export default createFragmentContainer(ProgramIde, {
         programSlug: { type: "String!" }
         fileName: { type: "String!" }
       ) {
+      slug
       ...StackInfo_hardwareSpec
       programSpec(slug: $programSlug) {
         id
