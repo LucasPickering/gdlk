@@ -41,9 +41,9 @@ export type IncomingIdeEvent =
   | { type: 'noCompilation' };
 
 export interface IdeContextType {
+  machineState: MachineState | undefined;
   sourceCode: string;
   setSourceCode: (newSourceCode: string) => void;
-  machineState?: MachineState;
   wsStatus: SocketConnectionStatus;
   wsSend: SocketSend<OutgoingIdeEvent>;
 }

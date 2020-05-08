@@ -23,7 +23,8 @@ interface SocketCallbacks<In, Out> {
 }
 
 /**
- * Hook for managing a websocket.
+ * Hook for managing a websocket. Connects to the given address, if it is not
+ * empty. If the address changes, the socket will close and re-connect.
  *
  * ### Types
  *
@@ -32,7 +33,7 @@ interface SocketCallbacks<In, Out> {
  * `Out` - The type of data sent out over the websocket.
  */
 const useWebSocket = <In, Out>(
-  addr: string,
+  address: string | undefined,
   callbacks: SocketCallbacks<In, Out>,
   dependencies: readonly unknown[] = []
 ): { status: SocketConnectionStatus; send: SocketSend<Out> } => {
@@ -60,65 +61,69 @@ const useWebSocket = <In, Out>(
   /**
    * A function to establish a WS connection
    */
-  const connect: React.EffectCallback = () => {
-    const protocol = window.location.protocol === 'http:' ? 'ws' : 'wss';
-    const fullAddr = `${protocol}://${window.location.host}${addr}`;
-    wsRef.current = new WebSocket(fullAddr);
+  const connect = useCallback(
+    (addr: string): (() => void) => {
+      const protocol = window.location.protocol === 'http:' ? 'ws' : 'wss';
+      const fullAddr = `${protocol}://${window.location.host}${addr}`;
+      wsRef.current = new WebSocket(fullAddr);
 
-    const { current: ws } = wsRef;
-    wsRef.current.onopen = (event) => {
-      if (isMounted.current) {
-        setStatus('connected');
-        if (onOpen) {
-          onOpen(send, event);
+      const { current: ws } = wsRef;
+      wsRef.current.onopen = (event) => {
+        if (isMounted.current) {
+          setStatus('connected');
+          if (onOpen) {
+            onOpen(send, event);
+          }
         }
-      }
-    };
-    ws.onmessage = (event) => {
-      if (isMounted.current && onMessage) {
-        onMessage(send, JSON.parse(event.data));
-      }
-    };
-    ws.onerror = (event) => {
-      console.log(event);
-      if (isMounted.current && onError) {
-        onError(send, event);
-      }
-    };
-
-    ws.onclose = (event) => {
-      if (isMounted.current) {
-        // code === 1000 indicates normal closure
-        if (event.code === 1000) {
-          setStatus('closedNormal');
-        } else {
-          setStatus('closedError');
-          // Reconnect after a certain amount of time
-          reconnectTimeoutIdRef.current = window.setTimeout(() => {
-            connect();
-          }, RECONNECT_TIMEOUT);
+      };
+      ws.onmessage = (event) => {
+        if (isMounted.current && onMessage) {
+          onMessage(send, JSON.parse(event.data));
         }
-
-        if (onClose) {
-          onClose(send, event);
+      };
+      ws.onerror = (event) => {
+        console.log(event);
+        if (isMounted.current && onError) {
+          onError(send, event);
         }
-      }
-    };
+      };
 
-    // Close the socket on unmount
-    return () => {
-      window.clearTimeout(reconnectTimeoutIdRef.current);
-      ws.close();
-    };
-  };
+      ws.onclose = (event) => {
+        if (isMounted.current) {
+          // code === 1000 indicates normal closure
+          if (event.code === 1000) {
+            setStatus('closedNormal');
+          } else {
+            setStatus('closedError');
+            // Reconnect after a certain amount of time
+            reconnectTimeoutIdRef.current = window.setTimeout(() => {
+              connect(addr);
+            }, RECONNECT_TIMEOUT);
+          }
 
-  useEffect(connect, [
-    addr,
-    onOpen,
-    onMessage,
-    onError,
-    onClose,
-    isMounted,
+          if (onClose) {
+            onClose(send, event);
+          }
+        }
+      };
+
+      // Close the socket on unmount
+      return () => {
+        window.clearTimeout(reconnectTimeoutIdRef.current);
+        ws.close();
+      };
+    },
+    [onOpen, onMessage, onError, onClose, send, isMounted]
+  );
+
+  useEffect(() => {
+    // Only connect if a real address is given.
+    if (address) {
+      return connect(address);
+    }
+  }, [
+    connect,
+    address,
     ...dependencies, // eslint-disable-line react-hooks/exhaustive-deps
   ]);
 

@@ -25,6 +25,12 @@ const StackInfo: React.FC<{
 }> = ({ className, hardwareSpec }) => {
   const localClasses = useLocalStyles();
   const { machineState } = useContext(IdeContext);
+
+  if (hardwareSpec.numStacks === 0) {
+    return null;
+  }
+
+  // TODO show empty stacks based on hardware spec when not compiled
   const stacks = machineState?.stacks ?? {};
 
   return (
@@ -54,6 +60,7 @@ const StackInfo: React.FC<{
 export default createFragmentContainer(StackInfo, {
   hardwareSpec: graphql`
     fragment StackInfo_hardwareSpec on HardwareSpecNode {
+      numStacks
       maxStackLength
     }
   `,
