@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useContext,
-  useRef,
-  useCallback,
-  useEffect,
-} from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import graphql from 'babel-plugin-relay/macro';
 import {
   makeStyles,
@@ -87,50 +81,30 @@ const IdeControls: React.FC<{
   const [saveState, setSaveState] = useState<'success' | 'error' | undefined>();
   const [stepping, setStepping] = useState<boolean>(false);
   const [stepSpeed, setStepSpeed] = useState<number>(STEP_SPEED_OPTIONS[0]);
-  // Used to track the stepping interval
-  const intervalId = useRef<number | undefined>();
 
-  // Helper to send a step msg over the websocket
-  const step = useCallback(() => wsSend({ type: 'step' }), [wsSend]);
+  const wsConnected = wsStatus === 'connected';
 
-  // Helper to cancel the current step interval
-  const pause = useCallback(() => {
-    if (intervalId.current !== undefined) {
-      window.clearInterval(intervalId.current);
-      intervalId.current = undefined;
-    }
-  }, [intervalId]);
-
-  // Helper to initiate a step interval at some speed.
-  const playAtSpeed = useCallback(
-    (speed: number) => {
-      pause();
-      intervalId.current = window.setInterval(
-        step,
-        DEFAULT_STEP_INTERVAL / speed
-      );
-    },
-    [intervalId, step, pause]
-  );
-
-  // If the play/pause state changes, or the play speed changes, we want to
-  // update the play rate
-  const canStep = Boolean(machineState && !machineState?.isComplete);
+  // Effect to start/stop the auto-stepper
   useEffect(() => {
-    if (stepping && canStep) {
-      playAtSpeed(stepSpeed);
-    } else {
-      pause();
+    if (wsConnected) {
+      if (stepping) {
+        wsSend({
+          type: 'autoStepStart',
+          content: {
+            interval: Math.round(DEFAULT_STEP_INTERVAL / stepSpeed),
+          },
+        });
+      } else {
+        wsSend({ type: 'autoStepStop' });
+      }
     }
-  }, [playAtSpeed, pause, step, stepping, canStep, stepSpeed]);
+  }, [wsConnected, wsSend, stepping, stepSpeed]);
 
   const { userProgram } = programSpec;
   // This shouldn't be possible, but we need to appease the type checker
   if (!userProgram) {
     throw new Error('`programSpec.userProgram` should not be null');
   }
-
-  const wsConnected = wsStatus === 'connected';
 
   return (
     <div className={clsx(localClasses.controls, className)}>
@@ -171,7 +145,7 @@ const IdeControls: React.FC<{
           disabled={
             !wsConnected || !machineState || machineState.isComplete || stepping
           }
-          onClick={step}
+          onClick={() => wsSend({ type: 'step' })}
         >
           <IconChevronRight />
         </IconButton>

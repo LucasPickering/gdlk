@@ -22,7 +22,9 @@ export type OutgoingIdeEvent =
       type: 'compile';
       content: { sourceCode: string };
     }
-  | { type: 'step' };
+  | { type: 'step' }
+  | { type: 'autoStepStart'; content: { interval: number } }
+  | { type: 'autoStepStop' };
 
 export type IncomingIdeEvent =
   | {

@@ -4,7 +4,7 @@ use crate::{
     schema::{hardware_specs, program_specs},
     server::Pool,
 };
-use actix::{Actor, ActorContext, AsyncContext, StreamHandler};
+use actix::{Actor, ActorContext, AsyncContext, SpawnHandle, StreamHandler};
 use actix_web::{get, web, HttpRequest, HttpResponse, ResponseError as _};
 use actix_web_actors::ws;
 use diesel::{prelude::*, PgConnection};
@@ -38,12 +38,25 @@ const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
     deny_unknown_fields
 )]
 enum IncomingEvent {
+    /// Initiate a compilation of the given source code. If successful, the
+    /// resulting [Machine] will be stored for execution.
     #[serde(rename_all = "camelCase")]
     Compile {
-        // Saving room for more fields here
+        /// The code to compile
         source_code: String,
     },
+    /// Execute one step in the stored machine. Returns an
+    /// [OutgoingEvent::NoCompilation] if there is no machine to execute.
     Step,
+    /// Enable auto-step, which will automatically step through the the program
+    /// at the specified interval.
+    #[serde(rename_all = "camelCase")]
+    AutoStepStart {
+        /// The time, in milliseconds, between steps
+        interval: u64,
+    },
+    /// Disable auto-step.
+    AutoStepStop,
 }
 
 /// All the different types of events that we can transmit over the websocket.
@@ -74,6 +87,13 @@ enum OutgoingEvent<'a> {
     RuntimeError(WithSource<RuntimeError>),
     /// "Step" message occurred before "Compile" message
     NoCompilation,
+}
+
+impl OutgoingEvent<'_> {
+    /// Send this event out over the websocket.
+    fn send(&self, ctx: &mut <ProgramWebsocket as Actor>::Context) {
+        ctx.text(serde_json::to_string(self).unwrap());
+    }
 }
 
 // Define type conversions to make processing code a bit cleaner
@@ -129,6 +149,11 @@ struct ProgramWebsocket {
     /// The current execution state of the machine. None if the program hasn't
     /// been compiled yet.
     machine: Option<Machine>,
+    /// The duration between steps when auto-step is enabled.
+    auto_step_interval: Duration,
+    /// The identifier for the auto-step future. This will be populated
+    /// iff the auto-stepper is running, and can be used to stop it.
+    auto_step_handle: Option<SpawnHandle>,
 }
 
 impl ProgramWebsocket {
@@ -141,6 +166,66 @@ impl ProgramWebsocket {
             program_spec,
             heartbeat: Instant::now(),
             machine: None,
+            auto_step_interval: Duration::default(),
+            auto_step_handle: None,
+        }
+    }
+
+    /// Take one step on the current machine.
+    fn machine_step(&mut self) -> Result<OutgoingEvent, OutgoingEvent> {
+        match self.machine.as_mut() {
+            None => Err(OutgoingEvent::NoCompilation),
+            Some(machine) => {
+                machine.execute_next()?;
+                // need to convert &mut to just &
+                Ok((machine as &Machine).into())
+            }
+        }
+    }
+
+    /// Start the auto-step process, which will automatically advance the
+    /// program on a set interval, until it errors or terminates.
+    fn start_auto_step(&mut self, ctx: &mut <Self as Actor>::Context) {
+        // Cancel the stepper if it's already running. If it's not, this will do
+        // nothing.
+        self.cancel_auto_step(ctx);
+        self.auto_step_handle =
+            Some(ctx.run_interval(self.auto_step_interval, |act, ctx| {
+                let response_result = act.machine_step();
+
+                // We need to check this first, before we move the response
+                // event out of the `response_result` value
+                let should_cancel: bool = match response_result {
+                    Err(_) => true,
+                    Ok(OutgoingEvent::MachineState { is_complete, .. }) => {
+                        is_complete
+                    }
+                    // This shouldn't happen because MachineState is the only
+                    // valid success response
+                    Ok(_) => unreachable!(),
+                };
+
+                let response: OutgoingEvent =
+                    response_result.unwrap_or_else(convert::identity);
+                response.send(ctx);
+                // Now that `response` is dropped, we can borrow `act` again
+
+                // The actual cancel has to happen _after_ sending the message,
+                // because we can only maintain one borrow of `act` at a time
+                // (because it's mutable), and `response` has a borrow to it
+                if should_cancel {
+                    act.cancel_auto_step(ctx);
+                }
+            }));
+    }
+
+    /// Cancel the auto-step process. If it isn't running, this does nothing.
+    fn cancel_auto_step(&mut self, ctx: &mut <Self as Actor>::Context) {
+        match self.auto_step_handle {
+            None => {}
+            Some(handle) => {
+                ctx.cancel_future(handle);
+            }
         }
     }
 
@@ -148,15 +233,17 @@ impl ProgramWebsocket {
     /// event. The return type on this is a little funky because all our
     /// event types (OK and error) are under the same enum. We still use a
     /// Result because it makes it easier to exit early in the case of an error.
+    /// Error cases always emit a response, but success cases don't necessarily.
     fn process_msg(
         &mut self,
+        ctx: &mut <Self as Actor>::Context,
         text: String,
-    ) -> Result<OutgoingEvent, OutgoingEvent> {
+    ) -> Result<Option<OutgoingEvent>, OutgoingEvent> {
         // Parse the message
         let socket_msg = serde_json::from_str::<IncomingEvent>(&text)?;
 
         // Process message based on type
-        Ok(match socket_msg {
+        let response: Option<OutgoingEvent> = match socket_msg {
             IncomingEvent::Compile { source_code } => {
                 // Compile the program into a machine
                 self.machine = Some(
@@ -165,18 +252,21 @@ impl ProgramWebsocket {
                 );
 
                 // we need this fuckery cause lol borrow checker
-                self.machine.as_ref().unwrap().into()
+                Some(self.machine.as_ref().unwrap().into())
             }
-            IncomingEvent::Step => {
-                // Execute one step on the machine
-                if let Some(machine) = self.machine.as_mut() {
-                    machine.execute_next()?;
-                    (&*machine).into() // need to convert &mut to just &
-                } else {
-                    return Err(OutgoingEvent::NoCompilation);
-                }
+            IncomingEvent::Step => Some(self.machine_step()?),
+            IncomingEvent::AutoStepStart { interval } => {
+                self.auto_step_interval = Duration::from_millis(interval);
+                self.start_auto_step(ctx);
+                None
             }
-        })
+            IncomingEvent::AutoStepStop => {
+                // Stop the auto-stepper
+                self.cancel_auto_step(ctx);
+                None
+            }
+        };
+        Ok(response)
     }
 }
 
@@ -218,13 +308,13 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>>
                 self.heartbeat = Instant::now();
             }
             Ok(ws::Message::Text(text)) => {
-                // This is a little funky because both sides of the Result are
-                // the same type
-                let response =
-                    self.process_msg(text).unwrap_or_else(convert::identity);
-                let response_string = serde_json::to_string(&response).unwrap();
-
-                ctx.text(response_string);
+                match self.process_msg(ctx, text) {
+                    Ok(None) => {}
+                    // If a response was given, send it over the wire
+                    Ok(Some(response)) | Err(response) => {
+                        response.send(ctx);
+                    }
+                }
             }
             Ok(ws::Message::Close(_)) => {
                 ctx.stop();
