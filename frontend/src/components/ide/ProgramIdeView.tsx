@@ -5,6 +5,7 @@ import { useParams } from 'react-router-dom';
 import ProgramIde from './ProgramIde';
 import QueryResult from 'components/common/QueryResult';
 import NotFoundPage from 'components/NotFoundPage';
+import PageContainer from 'components/common/PageContainer';
 
 interface RouteParams {
   hwSlug: string;
@@ -32,18 +33,28 @@ const ProgramIdeView: React.FC = () => {
   const { hwSlug, programSlug, fileName } = useParams<RouteParams>();
 
   return (
-    <QueryResult<ProgramIdeViewQuery>
-      query={query}
-      variables={{ hwSlug, programSlug, fileName }}
-      render={({ props }) => {
-        if (props.hardwareSpec) {
-          return <ProgramIde hardwareSpec={props.hardwareSpec} />;
-        }
-
-        // TODO fix padding here
-        return <NotFoundPage />;
+    <PageContainer
+      fullScreen
+      navProps={{
+        backLink: {
+          to: `/hardware/${hwSlug}/puzzles/${programSlug}`,
+          label: 'Back to Puzzle',
+        },
       }}
-    />
+    >
+      <QueryResult<ProgramIdeViewQuery>
+        query={query}
+        variables={{ hwSlug, programSlug, fileName }}
+        render={({ props }) => {
+          if (props.hardwareSpec) {
+            return <ProgramIde hardwareSpec={props.hardwareSpec} />;
+          }
+
+          // TODO fix padding here
+          return <NotFoundPage />;
+        }}
+      />
+    </PageContainer>
   );
 };
 
