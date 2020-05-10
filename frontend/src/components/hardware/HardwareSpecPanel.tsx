@@ -13,9 +13,11 @@ import {
   makeStyles,
 } from '@material-ui/core';
 import { ExpandMore as IconExpandMore } from '@material-ui/icons';
-import Link from 'components/common/Link';
+// import Link from 'components/common/Link';
+import { Link } from 'react-router-dom';
+import HardwareSpecSummary from './HardwareSpecSummary';
 
-const useLocalStyles = makeStyles(() => ({
+const useLocalStyles = makeStyles(({ spacing }) => ({
   panelHeader: {
     display: 'flex',
     alignItems: 'center',
@@ -24,6 +26,17 @@ const useLocalStyles = makeStyles(() => ({
   panelBody: {
     display: 'flex',
     justifyContent: 'space-between',
+  },
+
+  hwStats: {
+    borderCollapse: 'collapse',
+  },
+  hwStatName: {
+    textAlign: 'left',
+    paddingRight: spacing(2),
+  },
+  hwStatValue: {
+    textAlign: 'right',
   },
 }));
 
@@ -44,27 +57,12 @@ const HardwareSpecPanel: React.FC<{
         <Typography variant="h5">{hardwareSpec.slug}</Typography>
 
         <Typography variant="body1">
-          {hardwareSpec.programSpecs.totalCount} programs
+          {hardwareSpec.programSpecs.totalCount} puzzles
         </Typography>
       </ExpansionPanelSummary>
 
       <ExpansionPanelDetails classes={{ root: localClasses.panelBody }}>
-        <table>
-          <tbody>
-            <tr>
-              <th>Registers</th>
-              <td>{hardwareSpec.numRegisters}</td>
-            </tr>
-            <tr>
-              <th>Stacks</th>
-              <td>{hardwareSpec.numStacks}</td>
-            </tr>
-            <tr>
-              <th>Stack Size</th>
-              <td>{hardwareSpec.maxStackLength}</td>
-            </tr>
-          </tbody>
-        </table>
+        <HardwareSpecSummary hardwareSpec={hardwareSpec} />
 
         <List dense>
           {hardwareSpec.programSpecs.edges.map(({ node: programSpec }) => {
@@ -73,9 +71,8 @@ const HardwareSpecPanel: React.FC<{
                 key={programSpec.slug}
                 button
                 component={Link}
-                // These props get forwarded to the link
-                styled={false}
-                to={`/hardware/${hardwareSpec.slug}/programs/${programSpec.slug}`}
+                // This prop gets forwarded to the link
+                to={`/hardware/${hardwareSpec.slug}/puzzles/${programSpec.slug}`}
               >
                 <ListItemText
                   primary={programSpec.slug}
@@ -94,16 +91,12 @@ export default createFragmentContainer(HardwareSpecPanel, {
   hardwareSpec: graphql`
     fragment HardwareSpecPanel_hardwareSpec on HardwareSpecNode {
       slug
-      numRegisters
-      numStacks
-      maxStackLength
+      ...HardwareSpecSummary_hardwareSpec
       programSpecs(first: 5) {
         totalCount
         edges {
           node {
             slug
-            input
-            expectedOutput
             userPrograms {
               totalCount
             }

@@ -21,12 +21,10 @@ const App: React.FC = () => {
           <Switch>
             {/* Full screen routes first */}
             <Route
-              path="/hardware/:hwSlug/programs/:programSlug/:fileName"
+              path="/hardware/:hwSlug/puzzles/:programSlug/:fileName"
               exact
             >
-              <PageContainer fullScreen>
-                <ProgramIdeView />
-              </PageContainer>
+              <ProgramIdeView />
             </Route>
 
             {/* All non-full screen routes */}
@@ -41,7 +39,7 @@ const App: React.FC = () => {
                   <Route path="/hardware/:hwSlug" exact>
                     <HardwareSpecView />
                   </Route>
-                  <Route path="/hardware/:hwSlug/programs/:programSlug" exact>
+                  <Route path="/hardware/:hwSlug/puzzles/:programSlug" exact>
                     <ProgramSpecView />
                   </Route>
 

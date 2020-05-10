@@ -36,6 +36,7 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
 
 interface Props {
   fullScreen: boolean;
+  navProps: React.ComponentProps<typeof Navigation>;
 }
 
 /**
@@ -44,13 +45,14 @@ interface Props {
  */
 const PageContainer: React.FC<Props> & { defaultProps: Partial<Props> } = ({
   fullScreen,
+  navProps,
   children,
 }) => {
   const localClasses = useLocalStyles();
 
   return (
     <div className={localClasses.pageContainer}>
-      <Navigation />
+      <Navigation {...navProps} />
 
       <div
         className={clsx(
@@ -76,6 +78,7 @@ const PageContainer: React.FC<Props> & { defaultProps: Partial<Props> } = ({
 
 PageContainer.defaultProps = {
   fullScreen: false,
+  navProps: {},
 };
 
 export default PageContainer;

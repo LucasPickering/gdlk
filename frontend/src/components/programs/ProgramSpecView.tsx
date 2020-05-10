@@ -1,11 +1,10 @@
-import { CircularProgress } from '@material-ui/core';
 import React from 'react';
-import { QueryRenderer } from 'react-relay';
 import graphql from 'babel-plugin-relay/macro';
-import environment from 'util/environment';
 import { ProgramSpecViewQuery } from './__generated__/ProgramSpecViewQuery.graphql';
 import { useParams } from 'react-router-dom';
 import ProgramSpecDetails from './ProgramSpecDetails';
+import QueryResult from 'components/common/QueryResult';
+import NotFoundPage from 'components/NotFoundPage';
 
 interface RouteParams {
   hwSlug: string;
@@ -16,8 +15,7 @@ const ProgramSpecView: React.FC = () => {
   const { hwSlug, programSlug } = useParams<RouteParams>();
 
   return (
-    <QueryRenderer<ProgramSpecViewQuery>
-      environment={environment}
+    <QueryResult<ProgramSpecViewQuery>
       query={graphql`
         query ProgramSpecViewQuery($hwSlug: String!, $programSlug: String!) {
           hardwareSpec(slug: $hwSlug) {
@@ -32,18 +30,14 @@ const ProgramSpecView: React.FC = () => {
         }
       `}
       variables={{ hwSlug, programSlug }}
-      render={({ props, error }) => {
-        if (error) {
-          return <div>error!</div>;
-        }
-
+      render={({ props }) => {
         if (props?.hardwareSpec?.programSpec) {
           return (
             <ProgramSpecDetails programSpec={props.hardwareSpec.programSpec} />
           );
         }
 
-        return <CircularProgress />;
+        return <NotFoundPage />;
       }}
     />
   );

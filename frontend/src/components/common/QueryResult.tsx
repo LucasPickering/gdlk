@@ -3,12 +3,6 @@ import { CircularProgress } from '@material-ui/core';
 import { useQuery } from 'relay-hooks';
 import { OperationType, GraphQLTaggedNode } from 'relay-runtime';
 
-interface RouteParams {
-  hwSlug: string;
-  programSlug: string;
-  fileName: string;
-}
-
 interface Props<TOperation extends OperationType> {
   query: GraphQLTaggedNode | null | undefined;
   variables: TOperation['variables'];

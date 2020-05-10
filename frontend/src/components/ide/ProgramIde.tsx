@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { RelayProp, createFragmentContainer } from 'react-relay';
 import graphql from 'babel-plugin-relay/macro';
 import { ProgramIde_hardwareSpec } from './__generated__/ProgramIde_hardwareSpec.graphql';
-import { makeStyles } from '@material-ui/core';
+import { makeStyles, Snackbar } from '@material-ui/core';
 import CodeEditor from './CodeEditor';
 import RegistersInfo from './RegistersInfo';
 import {
@@ -18,6 +18,7 @@ import StackInfo from './StackInfo';
 import NotFoundPage from 'components/NotFoundPage';
 import IdeControls from './IdeControls';
 import ProgramStatus from './ProgramStatus';
+import { Alert } from '@material-ui/lab';
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => {
   const border = `2px solid ${palette.divider}`;
@@ -67,7 +68,8 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => {
 });
 
 /**
- * A component to edit and run GDLK programs.
+ * A component to edit and run GDLK programs. This should only be rendered
+ * when the necessary GraphQL data has been loaded.
  */
 const ProgramIde: React.FC<{
   hardwareSpec: ProgramIde_hardwareSpec;
@@ -77,6 +79,9 @@ const ProgramIde: React.FC<{
   const [machineState, setMachineState] = useState<MachineState | undefined>(
     undefined
   );
+  const clearMachineState = useCallback(() => {
+    setMachineState(undefined);
+  }, []);
   const [sourceCode, setSourceCode] = useState<string>(
     hardwareSpec.programSpec?.userProgram?.sourceCode ?? ''
   );
@@ -92,6 +97,7 @@ const ProgramIde: React.FC<{
 
   const hwSlug = hardwareSpec.slug;
   const programSlug = hardwareSpec.programSpec?.slug;
+
   const { status, send } = useWebSocket<IncomingIdeEvent, OutgoingIdeEvent>(
     // Only connect if the program spec is defined
     programSlug && `/ws/hardware/${hwSlug}/programs/${programSlug}`,
@@ -101,11 +107,15 @@ const ProgramIde: React.FC<{
       onMessage: useCallback<
         SocketEventConsumer<IncomingIdeEvent, OutgoingIdeEvent>
       >((send, data) => {
-        if (data.type === 'machineState') {
-          setMachineState(data.content);
+        switch (data.type) {
+          case 'machineState':
+            setMachineState(data.content);
+            break;
+          // TODO handle other data cases
         }
-        // TODO handle other data cases
       }, []),
+      onError: clearMachineState,
+      onClose: clearMachineState,
     },
     [hwSlug, programSlug] // Create a new socket when either slug changes
   );
@@ -142,6 +152,12 @@ const ProgramIde: React.FC<{
         />
         <CodeEditor className={localClasses.editor} />
       </div>
+      <Snackbar open={status === 'connecting'} autoHideDuration={null}>
+        <Alert severity="info">Connecting to server...</Alert>
+      </Snackbar>
+      <Snackbar open={status === 'closedError'}>
+        <Alert severity="error">Error, disconnected</Alert>
+      </Snackbar>
     </IdeContext.Provider>
   );
 };

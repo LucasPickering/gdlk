@@ -1,64 +1,31 @@
 import React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import { makeStyles } from '@material-ui/core';
-import clsx from 'clsx';
+import { Link as MuiLink } from '@material-ui/core';
+
+type Props = Pick<React.ComponentProps<typeof RouterLink>, 'to'> &
+  React.ComponentProps<typeof MuiLink>;
 
 /**
- * Exported for NavLink
+ * A component that merges the styles of Material UI's Link with the functionality
+ * of React router's Link. If the given target has a protocol, this will assume
+ * it's an external link, and use a normal <a> instead of a router link.
+ * @param to The link target, either local or external
  */
-export const useLinkStyles = makeStyles(({ palette }) => ({
-  link: {
-    // For links with icons
-    display: 'inline-flex',
-    justifyContent: 'center',
-    alignItems: 'center',
+const Link = ({ to, ...rest }: Props): React.ReactElement => {
+  const props = to.toString().match(/^https?:/)
+    ? {
+        href: to.toString(),
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        ...rest,
+      }
+    : {
+        component: RouterLink,
+        to,
+        ...rest,
+      };
 
-    color: palette.primary.main,
-    textDecoration: 'none',
-    '&:hover': {
-      textDecoration: 'underline',
-    },
-    '& > button': {
-      textDecoration: 'none',
-    },
-  },
-}));
-
-interface Props extends React.ComponentProps<typeof RouterLink> {
-  styled: boolean;
-}
-
-const Link = ({
-  className,
-  to,
-  children,
-  styled,
-  ...rest
-}: Props): React.ReactElement => {
-  const localClasses = useLinkStyles();
-  return to.toString().match(/^https?:/) ? (
-    <a
-      className={clsx(styled && localClasses.link, className)}
-      href={to.toString()}
-      target="_blank"
-      rel="noopener noreferrer"
-      {...rest}
-    >
-      {children}
-    </a>
-  ) : (
-    <RouterLink
-      className={clsx(styled && localClasses.link, className)}
-      to={to}
-      {...rest}
-    >
-      {children}
-    </RouterLink>
-  );
+  return <MuiLink {...props} />;
 };
-
-Link.defaultProps = {
-  styled: true,
-} as Partial<Props>;
 
 export default Link;

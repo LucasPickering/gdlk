@@ -5,7 +5,6 @@ import { Add as IconAdd } from '@material-ui/icons';
 import { UserProgramsTable_programSpec } from './__generated__/UserProgramsTable_programSpec.graphql';
 import {
   makeStyles,
-  Typography,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -41,10 +40,6 @@ const UserProgramsTable: React.FC<{
   return (
     <>
       <TableContainer>
-        <Typography variant="h6" component="h3">
-          Solutions
-        </Typography>
-
         <Table size="small">
           <TableHead>
             <TableRow>
