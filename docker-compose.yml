@@ -1,4 +1,4 @@
-version: "3"
+version: "3.7"
 
 # Use these instead of the local directory for building the projects
 # to prevent the containers from fighting with external build tools
@@ -37,6 +37,7 @@ services:
   frontend:
     image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-frontend:${DOCKER_TAG}
     command: ./docker/run_frontend.sh
+    init: true # Needed to kill the relay compiler background process
     tty: true # Colorize output
     environment:
       GDLK_API_HOST: http://api:8000

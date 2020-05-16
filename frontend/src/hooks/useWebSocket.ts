@@ -82,7 +82,6 @@ const useWebSocket = <In, Out>(
         }
       };
       ws.onerror = (event) => {
-        console.log(event);
         if (isMounted.current && onError) {
           onError(send, event);
         }
