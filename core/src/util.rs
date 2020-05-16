@@ -7,12 +7,15 @@ use std::{
     ops::Deref,
 };
 use validator::{Validate, ValidationErrors};
+#[cfg(feature = "wasm")]
+use wasm_bindgen::prelude::*;
 
 pub type RawSpan<'a> = LocatedSpan<&'a str>;
 
 /// A definition of a span of source code. This doesn't actually hold the code
 /// itself (or any reference to it), it just defines parameters that can be used
 /// to find the source span.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
 #[derive(Copy, Clone, Debug, Serialize)]
 pub struct Span {
     /// Distance into the source at which this span starts. Starts at `0`.
