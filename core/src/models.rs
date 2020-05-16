@@ -5,11 +5,11 @@
 use crate::ast::{LangValue, RegisterRef, StackRef};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
 /// The "hardware" that a program can execute on. This defines computing
 /// constraints. This is needed both at compile time and runtime.
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, Validate)]
 pub struct HardwareSpec {
     /// Number of registers available
@@ -24,6 +24,15 @@ pub struct HardwareSpec {
 }
 
 impl HardwareSpec {
+    #[cfg_attr(feature = "wasm", wasm_bindgen)]
+    pub fn new(num_registers: usize, num_stacks: usize,  max_stack_length: usize) -> Self {
+        HardwareSpec {
+            num_registers,
+            num_stacks,
+            max_stack_length
+        }
+    }
+
     /// Get a list of all [RegisterRef]s that exist for this hardware.
     pub fn all_register_refs(&self) -> Vec<RegisterRef> {
         let mut register_refs = vec![RegisterRef::InputLength];

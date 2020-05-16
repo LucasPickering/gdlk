@@ -1,14 +1,14 @@
 // Can only use these imports as types, the actual import needs to be async
 // import type is in ts 3.8 but webpack is sad when i use it for some reason
-import { HardwareSpec, compile, make_hardware_spec } from 'gdlk_wasm';
-export interface Span {
-  offset: number;
-  length: number;
-  start_line: number;
-  start_col: number;
-  end_line: number;
-  end_col: number;
-}
+import { HardwareSpec, compile, Span } from 'gdlk_wasm';
+// export interface Span {
+//   offset: number;
+//   length: number;
+//   start_line: number;
+//   start_col: number;
+//   end_line: number;
+//   end_col: number;
+// }
 
 export type CompiledRes = { instructions: Instruction[] } | { errors: Error[] };
 
@@ -19,10 +19,9 @@ export type Error = any;
 
 type CompileRes = 'ERROR: Invalid Hardware Spec' | CompiledRes;
 export default class Compiler {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static gdlk: {
     compile: typeof compile;
-    make_hardware_spec: typeof make_hardware_spec;
+    HardwareSpec: typeof HardwareSpec;
   };
 
   static async init(): Promise<void> {
@@ -38,7 +37,7 @@ export default class Compiler {
     num_stacks: number,
     max_stack_length: number
   ): HardwareSpec => {
-    return Compiler.gdlk.make_hardware_spec(
+    return new Compiler.gdlk.HardwareSpec(
       num_registers,
       num_stacks,
       max_stack_length

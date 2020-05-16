@@ -1,5 +1,7 @@
+#![deny(clippy::all, unused_must_use, unused_imports)]
 // https://prestonrichey.com/blog/react-rust-wasm/
-use gdlk::{Compiler, HardwareSpec, Valid};
+use gdlk::Valid;
+pub use gdlk::{Compiler, HardwareSpec, Span};
 
 use wasm_bindgen::{prelude::*, JsValue};
 #[wasm_bindgen]
@@ -12,18 +14,5 @@ pub fn compile(source: &str, hw_spec: HardwareSpec) -> JsValue {
     match Compiler::compile(source.to_string(), valid_spec) {
         Ok(res) => JsValue::from_serde(&res.program()).unwrap(),
         Err(err) => JsValue::from_serde(&err).unwrap(),
-    }
-}
-
-#[wasm_bindgen]
-pub fn make_hardware_spec(
-    num_registers: usize,
-    num_stacks: usize,
-    max_stack_length: usize,
-) -> HardwareSpec {
-    HardwareSpec {
-        num_registers: num_registers,
-        num_stacks: num_stacks,
-        max_stack_length: max_stack_length,
     }
 }
