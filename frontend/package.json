@@ -47,6 +47,7 @@
     "graphql": "^15.0.0",
     "http-proxy-middleware": "^1.0.3",
     "lodash": "^4.17.15",
+    "nodemon": "^2.0.4",
     "prettier": "^2.0.5",
     "react": "^16.13.1",
     "react-ace": "^8.1.0",
@@ -69,6 +70,7 @@
     "eject": "react-scripts eject",
     "lint": "eslint './src/**/*.{ts,tsx}'",
     "lint:fix": "eslint --fix './src/**/*.{ts,tsx}'",
-    "relay": "relay-compiler"
+    "relay": "relay-compiler",
+    "tsc": "tsc"
   }
 }
