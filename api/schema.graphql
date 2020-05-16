@@ -24,22 +24,48 @@ type Query {
   """
   Fetch a single node, of any type, via a UUID.
   """
-  node(id: ID!): Node @juniper(ownership: "owned")
+  node(
+    """
+    The UUID of the node to fetch.
+    """
+    id: ID!
+  ): Node @juniper(ownership: "owned")
 
   """
   Get a single user by their username.
   """
-  user(username: String!): UserNode @juniper(ownership: "owned")
+  user(
+    """
+    The username of the user to fetch.
+    """
+    username: String!
+  ): UserNode @juniper(ownership: "owned")
 
   """
   Get a single hardware spec by its slug.
   """
-  hardwareSpec(slug: String!): HardwareSpecNode @juniper(ownership: "owned")
+  hardwareSpec(
+    """
+    The unique slug of the hardware spec to fetch.
+    """
+    slug: String!
+  ): HardwareSpecNode @juniper(ownership: "owned")
+
   """
   All the hardware specs in the system.
   """
-  hardwareSpecs(first: Int, after: Cursor): HardwareSpecConnection!
-    @juniper(ownership: "owned")
+  hardwareSpecs(
+    """
+    The maximum number of results to return. If not provided, will be unlimited.
+    """
+    first: Int
+    """
+    The cursor AFTER which elements will start being included. The element
+    referred to by this cursor WILL NOT be in the output. The first element in
+    the output will be the element AFTER this cursor.
+    """
+    after: Cursor
+  ): HardwareSpecConnection! @juniper(ownership: "owned")
 }
 
 """
@@ -71,6 +97,7 @@ interface ConnectionInterface {
   filters will be applied to the count.
   """
   totalCount: Int! @juniper(ownership: "owned")
+
   """
   Metadata for the current page of data being requested.
   """
@@ -85,14 +112,17 @@ type PageInfo {
   The cursor of the first edge in the page. Null iff the page is empty.
   """
   startCursor: Cursor @juniper(infallible: true)
+
   """
   The cursor of the last edge in the page. Null iff the page is empty.
   """
   endCursor: Cursor @juniper(infallible: true)
+
   """
   Is there another page in the connection before this one?
   """
   hasPreviousPage: Boolean! @juniper(infallible: true, ownership: "owned")
+
   """
   Is there another page in the connection after this one?
   """
@@ -147,12 +177,28 @@ type HardwareSpecNode implements Node {
   """
   A single program spec that runs on this hardware.
   """
-  programSpec(slug: String!): ProgramSpecNode @juniper(ownership: "owned")
+  programSpec(
+    """
+    The unique slug of the program spec to fetch. Note that the slug is only
+    unique to this hardware spec, not globally!
+    """
+    slug: String!
+  ): ProgramSpecNode @juniper(ownership: "owned")
   """
   All the program specs that can run on this hardware spec.
   """
-  programSpecs(first: Int, after: Cursor): ProgramSpecConnection!
-    @juniper(ownership: "owned")
+  programSpecs(
+    """
+    The maximum number of results to return. If not provided, will be unlimited.
+    """
+    first: Int
+    """
+    The cursor AFTER which elements will start being included. The element
+    referred to by this cursor WILL NOT be in the output. The first element in
+    the output will be the element AFTER this cursor.
+    """
+    after: Cursor
+  ): ProgramSpecConnection! @juniper(ownership: "owned")
 }
 
 """
@@ -222,13 +268,29 @@ type ProgramSpecNode implements Node {
   """
   A single user's single solution to this program spec.
   """
-  userProgram(fileName: String!): UserProgramNode @juniper(ownership: "owned")
+  userProgram(
+    """
+    The unique name of the program to fetch. Note that this is only unique to this
+    program spec, not globally!
+    """
+    fileName: String!
+  ): UserProgramNode @juniper(ownership: "owned")
 
   """
   All of a single user's solutions to this program spec.
   """
-  userPrograms(first: Int, after: Cursor): UserProgramConnection!
-    @juniper(ownership: "owned")
+  userPrograms(
+    """
+    The maximum number of results to return. If not provided, will be unlimited.
+    """
+    first: Int
+    """
+    The cursor AFTER which elements will start being included. The element
+    referred to by this cursor WILL NOT be in the output. The first element in
+    the output will be the element AFTER this cursor.
+    """
+    after: Cursor
+  ): UserProgramConnection! @juniper(ownership: "owned")
 }
 
 """
@@ -339,14 +401,22 @@ type Mutation {
   """
   Create or update a user program by owner, program spec, and file name.
   """
-  saveUserProgram(input: SaveUserProgramInput!): SaveUserProgramPayload!
-    @juniper(ownership: "owned")
+  saveUserProgram(
+    """
+    All input fields.
+    """
+    input: SaveUserProgramInput!
+  ): SaveUserProgramPayload! @juniper(ownership: "owned")
 
   """
   Delete a user program by ID.
   """
-  deleteUserProgram(input: DeleteUserProgramInput!): DeleteUserProgramPayload!
-    @juniper(ownership: "owned")
+  deleteUserProgram(
+    """
+    All input fields.
+    """
+    input: DeleteUserProgramInput!
+  ): DeleteUserProgramPayload! @juniper(ownership: "owned")
 }
 
 """
