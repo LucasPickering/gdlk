@@ -1,14 +1,5 @@
 // Can only use these imports as types, the actual import needs to be async
-// import type is in ts 3.8 but webpack is sad when i use it for some reason
-import { HardwareSpec, compile, Span } from 'gdlk_wasm';
-// export interface Span {
-//   offset: number;
-//   length: number;
-//   start_line: number;
-//   start_col: number;
-//   end_line: number;
-//   end_col: number;
-// }
+import type { HardwareSpec, compile } from 'gdlk_wasm';
 
 export type CompiledRes = { instructions: Instruction[] } | { errors: Error[] };
 
