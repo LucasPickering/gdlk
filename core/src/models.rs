@@ -23,16 +23,25 @@ pub struct HardwareSpec {
     pub max_stack_length: usize,
 }
 
+// Functions that get exported to wasm
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
 impl HardwareSpec {
-    #[cfg_attr(feature = "wasm", wasm_bindgen)]
-    pub fn new(num_registers: usize, num_stacks: usize,  max_stack_length: usize) -> Self {
+    #[cfg_attr(feature = "wasm", wasm_bindgen(constructor))]
+    pub fn new(
+        num_registers: usize,
+        num_stacks: usize,
+        max_stack_length: usize,
+    ) -> Self {
         HardwareSpec {
             num_registers,
             num_stacks,
-            max_stack_length
+            max_stack_length,
         }
     }
+}
 
+// Functions that DON'T get exported to wasm
+impl HardwareSpec {
     /// Get a list of all [RegisterRef]s that exist for this hardware.
     pub fn all_register_refs(&self) -> Vec<RegisterRef> {
         let mut register_refs = vec![RegisterRef::InputLength];
