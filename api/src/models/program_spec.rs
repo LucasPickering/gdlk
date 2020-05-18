@@ -52,10 +52,10 @@ impl TryFrom<ProgramSpec> for Valid<gdlk::ProgramSpec> {
     type Error = ValidationErrors;
 
     fn try_from(other: ProgramSpec) -> Result<Self, Self::Error> {
-        Valid::validate(gdlk::ProgramSpec {
-            input: other.input,
-            expected_output: other.expected_output,
-        })
+        Valid::validate(gdlk::ProgramSpec::new(
+            other.input,
+            other.expected_output,
+        ))
     }
 }
 

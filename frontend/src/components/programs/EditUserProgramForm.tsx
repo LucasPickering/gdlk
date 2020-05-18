@@ -74,6 +74,7 @@ const EditUserProgramForm: React.FC<{
       }}
     >
       <TextField
+        autoFocus
         required
         label="File name"
         value={currentFileName}

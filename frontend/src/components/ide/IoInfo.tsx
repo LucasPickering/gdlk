@@ -1,10 +1,7 @@
 import React, { useContext } from 'react';
 import { IdeContext } from 'state/ide';
-import graphql from 'babel-plugin-relay/macro';
 import { makeStyles, Typography } from '@material-ui/core';
 import BufferDisplay from './BufferDisplay';
-import { createFragmentContainer, RelayProp } from 'react-relay';
-import { IoInfo_programSpec } from './__generated__/IoInfo_programSpec.graphql';
 import clsx from 'clsx';
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
@@ -19,11 +16,14 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
 
 const IoInfo: React.FC<{
   className?: string;
-  programSpec: IoInfo_programSpec;
-  relay: RelayProp;
-}> = ({ className, programSpec }) => {
+}> = ({ className }) => {
   const localClasses = useLocalStyles();
-  const { machineState } = useContext(IdeContext);
+  const { wasmProgramSpec, compiledState } = useContext(IdeContext);
+
+  const input = Array.from(wasmProgramSpec.input);
+  const expectedOutput = Array.from(wasmProgramSpec.expectedOutput);
+  const machineState =
+    compiledState?.type === 'compiled' ? compiledState.machineState : undefined;
 
   return (
     <div className={clsx(localClasses.ioInfo, className)}>
@@ -34,25 +34,18 @@ const IoInfo: React.FC<{
       <div className={localClasses.buffers}>
         <BufferDisplay
           label="Input"
-          values={machineState?.input ?? programSpec.input}
-          maxLength={programSpec.input.length}
+          values={machineState?.input ?? input}
+          maxLength={input.length}
         />
         <BufferDisplay
           label="Output"
-          values={programSpec.expectedOutput}
+          values={expectedOutput}
           secondaryValues={machineState?.output ?? []}
-          maxLength={programSpec.expectedOutput.length}
+          maxLength={expectedOutput.length}
         />
       </div>
     </div>
   );
 };
 
-export default createFragmentContainer(IoInfo, {
-  programSpec: graphql`
-    fragment IoInfo_programSpec on ProgramSpecNode {
-      input
-      expectedOutput
-    }
-  `,
-});
+export default IoInfo;

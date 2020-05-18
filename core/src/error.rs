@@ -1,5 +1,7 @@
 //! All error-related GDLK types.
 
+#[cfg(feature = "wasm")]
+use crate::ast::wasm::SourceElement;
 use crate::util::{self, Span};
 use failure::Fail;
 use serde::Serialize;
@@ -138,6 +140,10 @@ impl<E: SourceError> SourceErrorWrapper<E> {
             spanned_source: span.get_source_slice(src).into(),
         }
     }
+
+    pub fn span(&self) -> Span {
+        self.span
+    }
 }
 
 impl<E: SourceError> Display for SourceErrorWrapper<E> {
@@ -151,6 +157,17 @@ impl<E: SourceError> Display for SourceErrorWrapper<E> {
         )?;
         self.error.fmt_msg(f, &self.spanned_source)?;
         Ok(())
+    }
+}
+
+// This makes it a bit easier to send errors out to wasm
+#[cfg(feature = "wasm")]
+impl<E: SourceError> From<&SourceErrorWrapper<E>> for SourceElement {
+    fn from(error: &SourceErrorWrapper<E>) -> Self {
+        SourceElement {
+            text: error.to_string(),
+            span: error.span(),
+        }
     }
 }
 

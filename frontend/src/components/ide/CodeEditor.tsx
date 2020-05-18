@@ -1,8 +1,8 @@
 import React, { useContext } from 'react';
 import { makeStyles } from '@material-ui/core';
 import clsx from 'clsx';
-import { IdeContext } from 'state/ide';
-import AceEditor from 'react-ace';
+import { IdeContext, gdlkSpanToAce } from 'state/ide';
+import AceEditor, { IAnnotation, IMarker } from 'react-ace';
 import 'ace-builds/src-noconflict/mode-plain_text';
 import 'ace-builds/src-noconflict/theme-terminal';
 
@@ -12,9 +12,13 @@ const useLocalStyles = makeStyles(({ palette }) => ({
     overflowY: 'auto',
     backgroundColor: palette.background.default,
   },
+  errorSpan: {
+    position: 'absolute',
+    backgroundColor: palette.error.dark,
+  },
   activeInstruction: {
     position: 'absolute', // Don't remove this!
-    backgroundColor: palette.common.white, // TODO more contrast
+    backgroundColor: palette.grey[600],
   },
 }));
 
@@ -24,8 +28,62 @@ const useLocalStyles = makeStyles(({ palette }) => ({
  */
 const CodeEditor: React.FC<{ className?: string }> = ({ className }) => {
   const localClasses = useLocalStyles();
-  const { machineState, sourceCode, setSourceCode } = useContext(IdeContext);
-  const programCounter = machineState?.programCounter;
+  const { compiledState, sourceCode, setSourceCode } = useContext(IdeContext);
+
+  const markers: IMarker[] = [];
+  const annotations: IAnnotation[] = [];
+
+  switch (compiledState?.type) {
+    case 'compiled':
+      {
+        // Highlight the NEXT instruction to be executed
+        const {
+          machineState: { programCounter, runtimeError },
+        } = compiledState;
+        const nextInstruction = compiledState.instructions[programCounter];
+
+        if (nextInstruction) {
+          markers.push({
+            ...gdlkSpanToAce(nextInstruction.span),
+            className: localClasses.activeInstruction,
+            type: 'fullLine',
+          });
+        }
+
+        if (runtimeError) {
+          const aceSpan = gdlkSpanToAce(runtimeError.span);
+          markers.push({
+            ...aceSpan,
+            className: localClasses.activeInstruction,
+            type: 'fullLine',
+          });
+          annotations.push({
+            row: aceSpan.startRow,
+            column: aceSpan.startCol,
+            text: runtimeError.text,
+            type: 'error',
+          });
+        }
+      }
+      break;
+
+    case 'error':
+      compiledState.errors.forEach((error) => {
+        const aceSpan = gdlkSpanToAce(error.span);
+        markers.push({
+          ...aceSpan,
+          className: localClasses.errorSpan,
+          type: 'line',
+        });
+        annotations.push({
+          row: aceSpan.startRow,
+          column: aceSpan.startCol,
+          text: error.text,
+          type: 'error',
+        });
+      });
+      break;
+  }
 
   return (
     <div className={clsx(className, localClasses.codeEditor)}>
@@ -36,21 +94,8 @@ const CodeEditor: React.FC<{ className?: string }> = ({ className }) => {
         width="100%"
         height="100%"
         value={sourceCode}
-        markers={
-          // Highlight the NEXT instruction to be executed
-          programCounter !== undefined
-            ? [
-                {
-                  startRow: programCounter,
-                  startCol: 0,
-                  endRow: programCounter,
-                  endCol: 50,
-                  className: localClasses.activeInstruction,
-                  type: 'background',
-                },
-              ]
-            : []
-        }
+        annotations={annotations}
+        markers={markers}
         onChange={setSourceCode}
       />
     </div>

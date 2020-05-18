@@ -1,3 +1,5 @@
+#[cfg(feature = "wasm")]
+use crate::ast::wasm::{LangValueArrayMap, LangValueMap, SourceElement};
 use crate::{
     ast::{
         compiled::{Instruction, Program},
@@ -13,6 +15,8 @@ use crate::{
 use std::{
     cmp::Ordering, collections::HashMap, convert::TryInto, iter, num::Wrapping,
 };
+#[cfg(feature = "wasm")]
+use wasm_bindgen::{prelude::*, JsCast};
 
 /// A steppable program executor. Maintains the current state of the program,
 /// and execution can be progressed one instruction at a time.
@@ -21,7 +25,8 @@ use std::{
 /// a program. The current machine state can be obtained at any time, including
 /// execution stats (e.g. # cycles), which allows for handy visualizations of
 /// execution.
-#[derive(Debug)]
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+#[derive(Clone, Debug)]
 pub struct Machine {
     // Static data - this is copied from the input and shouldn't be included in
     // serialization. We store these ourselves instead of keeping references
@@ -52,11 +57,12 @@ pub struct Machine {
     cycle_count: usize,
 }
 
+// Functions that DON'T get exported to wasm
 impl Machine {
     /// Creates a new machine, ready to be executed.
     pub fn new(
-        hardware_spec: &Valid<HardwareSpec>,
-        program_spec: &Valid<ProgramSpec>,
+        hardware_spec: Valid<HardwareSpec>,
+        program_spec: Valid<&ProgramSpec>,
         program: Program<Span>,
         source: String,
     ) -> Self {
@@ -73,14 +79,14 @@ impl Machine {
 
         Self {
             // Static data
-            hardware_spec: *hardware_spec,
+            hardware_spec,
             program,
             source,
-            expected_output: program_spec.expected_output.clone(),
+            expected_output: program_spec.expected_output().into(),
 
             // Runtime state
             program_counter: 0,
-            input: program_spec.input.clone(),
+            input: program_spec.input().into(),
             output: Vec::new(),
             registers,
             stacks,
@@ -307,11 +313,6 @@ impl Machine {
         Ok(self.is_successful())
     }
 
-    /// Get the index of the next instruction to be executed.
-    pub fn program_counter(&self) -> usize {
-        self.program_counter
-    }
-
     /// Get the current input buffer.
     pub fn input(&self) -> &[LangValue] {
         self.input.as_slice()
@@ -339,14 +340,29 @@ impl Machine {
             .map(|stack_ref| (stack_ref, self.stacks[stack_ref.0].as_slice()))
             .collect()
     }
+}
+
+// Functions that get exported to wasm
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+impl Machine {
+    /// Get the index of the next instruction to be executed.
+    #[cfg_attr(
+        feature = "wasm",
+        wasm_bindgen(getter, js_name = "programCounter")
+    )]
+    pub fn program_counter(&self) -> usize {
+        self.program_counter
+    }
 
     /// Get the number of cycles, i.e. the number of instructions that have
     /// been run, during the current program execution.
+    #[cfg_attr(feature = "wasm", wasm_bindgen(getter, js_name = "cycleCount"))]
     pub fn cycle_count(&self) -> usize {
         self.cycle_count
     }
 
     /// Checks if this machine has finished executing.
+    #[cfg_attr(feature = "wasm", wasm_bindgen(getter, js_name = "isComplete"))]
     pub fn is_complete(&self) -> bool {
         self.program_counter >= self.program.instructions.len()
     }
@@ -356,9 +372,82 @@ impl Machine {
     /// 2. Input buffer has been exhausted (all input has been consumed)
     /// 3. Output buffer matches the expected output, as defined by the
     /// [ProgramSpec](ProgramSpec)
+    #[cfg_attr(
+        feature = "wasm",
+        wasm_bindgen(getter, js_name = "isSuccessful")
+    )]
     pub fn is_successful(&self) -> bool {
         self.is_complete()
             && self.input.is_empty()
             && self.output == self.expected_output
+    }
+
+    /// A wrapper for [Self::input], to be called from wasm.
+    #[cfg(feature = "wasm")]
+    #[wasm_bindgen(getter, js_name = "input")]
+    pub fn wasm_input(&self) -> Vec<LangValue> {
+        self.input.clone()
+    }
+
+    /// A wrapper for [Self::input], to be called from wasm.
+    #[cfg(feature = "wasm")]
+    #[wasm_bindgen(getter, js_name = "output")]
+    pub fn wasm_output(&self) -> Vec<LangValue> {
+        self.output.clone()
+    }
+
+    /// A wrapper for [Self::registers], to be called from wasm. We can't send
+    /// maps through wasm, so this returns a [JsValue] which is an object
+    /// mapping register names (strings) to their values (`LangValue`).
+    #[cfg(feature = "wasm")]
+    #[wasm_bindgen(getter, js_name = "registers")]
+    pub fn wasm_registers(&self) -> LangValueMap {
+        // Convert the keys of the register map to strings
+        let regs_by_name: HashMap<String, LangValue> = self
+            .registers()
+            .into_iter()
+            .map(|(reg_ref, reg_value)| (reg_ref.to_string(), reg_value))
+            .collect();
+        // Convert the hashmap to a js object. Be careful here!
+        JsValue::from_serde(&regs_by_name).unwrap().unchecked_into()
+    }
+
+    /// A wrapper for [Self::stacks], to be called from wasm. We can't send
+    /// maps through wasm, so this returns a [JsValue] which is an object
+    /// mapping stacks names (strings) to their values (`Vec<LangValue>`).
+    #[cfg(feature = "wasm")]
+    #[wasm_bindgen(getter, js_name = "stacks")]
+    pub fn wasm_stacks(&self) -> LangValueArrayMap {
+        // Convert the keys of the stacks map to strings
+        let stacks_by_name: HashMap<String, &[LangValue]> = self
+            .stacks()
+            .into_iter()
+            .map(|(stack_ref, stack_value)| {
+                (stack_ref.to_string(), stack_value)
+            })
+            .collect();
+        // Convert the hashmap to a js object. Be careful here!
+        JsValue::from_serde(&stacks_by_name)
+            .unwrap()
+            .unchecked_into()
+    }
+
+    /// A wrapper for [Self::execute_next], to be called from wasm.
+    #[cfg(feature = "wasm")]
+    #[doc(hidden)]
+    #[wasm_bindgen(js_name = "executeNext")]
+    pub fn wasm_execute_next(&mut self) -> Result<bool, JsValue> {
+        self.execute_next().map_err(|wrapped_error| {
+            let error = match wrapped_error.errors() {
+                [error] => error,
+                // If there is a runtime error, there should always be exactly 1
+                errors => panic!(
+                    "Expected exactly 1 runtime error, but got {:?}",
+                    errors
+                ),
+            };
+            let source_element: SourceElement = error.into();
+            JsValue::from_serde(&source_element).unwrap()
+        })
     }
 }

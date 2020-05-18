@@ -12,7 +12,7 @@ macro_rules! assert_runtime_error {
         let mut machine =
             Compiler::compile($src.into(), Valid::validate($hw_spec).unwrap())
                 .unwrap()
-                .allocate(&Valid::validate($program_spec).unwrap());
+                .allocate(Valid::validate($program_spec).unwrap());
 
         // Execute to completion
         let actual_error = machine.execute_all().unwrap_err();
@@ -28,7 +28,7 @@ fn test_stack_overflow() {
             num_stacks: 1,
             max_stack_length: 3,
         },
-        ProgramSpec::default(),
+        &ProgramSpec::default(),
         "
         SET RX0 4
         START:
@@ -44,7 +44,7 @@ fn test_stack_overflow() {
 fn test_empty_input() {
     assert_runtime_error!(
         HardwareSpec::default(),
-        ProgramSpec::default(),
+        &ProgramSpec::default(),
         "READ RX0",
         "Runtime error at 1:1: Read attempted while input is empty",
     );
@@ -58,7 +58,7 @@ fn test_empty_stack() {
             num_stacks: 1,
             max_stack_length: 3,
         },
-        ProgramSpec::default(),
+        &ProgramSpec::default(),
         "POP S0 RX0",
         "Runtime error at 1:5: Cannot pop from empty stack `S0`",
     );
@@ -68,10 +68,7 @@ fn test_empty_stack() {
 fn test_exceed_max_cycle_count() {
     assert_runtime_error!(
         HardwareSpec::default(),
-        ProgramSpec {
-            input: vec![],
-            expected_output: vec![],
-        },
+        &ProgramSpec::default(),
         "
         START:
         JMP START

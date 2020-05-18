@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
 import graphql from 'babel-plugin-relay/macro';
 import {
   makeStyles,
@@ -8,10 +8,9 @@ import {
   Radio,
 } from '@material-ui/core';
 import {
-  Build as IconBuild,
-  Replay as IconReplay,
   Pause as IconPause,
   PlayArrow as IconPlayArrow,
+  Refresh as IconRefresh,
   ChevronRight as IconChevronRight,
   Save as IconSave,
 } from '@material-ui/icons';
@@ -23,9 +22,10 @@ import { createFragmentContainer, RelayProp } from 'react-relay';
 import { IdeControls_programSpec } from './__generated__/IdeControls_programSpec.graphql';
 import clsx from 'clsx';
 import IconButton from 'components/common/IconButton';
+import { assertIsDefined } from 'util/guards';
 
-const DEFAULT_STEP_INTERVAL = 500; // ms between steps at 1x speed
-const STEP_SPEED_OPTIONS: number[] = [1, 5, 10];
+const DEFAULT_STEP_INTERVAL = 1000; // ms between steps at 1x speed
+const STEP_SPEED_OPTIONS: number[] = [1, 5, 20];
 
 const saveUserProgramMutation = graphql`
   mutation IdeControls_Mutation(
@@ -73,7 +73,9 @@ const IdeControls: React.FC<{
   relay: RelayProp;
 }> = ({ className, programSpec }) => {
   const localClasses = useLocalStyles();
-  const { machineState, sourceCode, wsStatus, wsSend } = useContext(IdeContext);
+  const { compiledState, sourceCode, executeNext, reset } = useContext(
+    IdeContext
+  );
   const [mutate, { loading: saveLoading }] = useMutation<IdeControls_Mutation>(
     saveUserProgramMutation
   );
@@ -81,30 +83,32 @@ const IdeControls: React.FC<{
   const [saveState, setSaveState] = useState<'success' | 'error' | undefined>();
   const [stepping, setStepping] = useState<boolean>(false);
   const [stepSpeed, setStepSpeed] = useState<number>(STEP_SPEED_OPTIONS[0]);
-
-  const wsConnected = wsStatus === 'connected';
-
-  // Effect to start/stop the auto-stepper
-  useEffect(() => {
-    if (wsConnected) {
-      if (stepping) {
-        wsSend({
-          type: 'autoStepStart',
-          content: {
-            interval: Math.round(DEFAULT_STEP_INTERVAL / stepSpeed),
-          },
-        });
-      } else {
-        wsSend({ type: 'autoStepStop' });
-      }
-    }
-  }, [wsConnected, wsSend, stepping, stepSpeed]);
+  const intervalIdRef = useRef<number | undefined>();
 
   const { userProgram } = programSpec;
-  // This shouldn't be possible, but we need to appease the type checker
-  if (!userProgram) {
-    throw new Error('`programSpec.userProgram` should not be null');
-  }
+  assertIsDefined(userProgram);
+  const machineState =
+    compiledState?.type === 'compiled' ? compiledState.machineState : undefined;
+
+  useEffect(() => {
+    window.clearInterval(intervalIdRef.current);
+
+    if (stepping) {
+      intervalIdRef.current = window.setInterval(
+        executeNext,
+        DEFAULT_STEP_INTERVAL / stepSpeed
+      );
+    }
+  }, [executeNext, stepping, stepSpeed, intervalIdRef]);
+
+  // When the program completes, stop the stepper
+  const isComplete = Boolean(machineState?.isComplete);
+  useEffect(() => {
+    if (isComplete) {
+      window.clearInterval(intervalIdRef.current);
+      setStepping(false);
+    }
+  }, [isComplete]);
 
   return (
     <div className={clsx(localClasses.controls, className)}>
@@ -130,32 +134,31 @@ const IdeControls: React.FC<{
         </IconButton>
 
         <IconButton
-          title={machineState ? 'Reset' : 'Compile'}
-          disabled={!wsConnected}
-          onClick={() => {
-            setStepping(false);
-            wsSend({ type: 'compile', content: { sourceCode } });
-          }}
-        >
-          {machineState ? <IconReplay /> : <IconBuild />}
-        </IconButton>
-
-        <IconButton
           title="Execute Next Instruction"
-          disabled={
-            !wsConnected || !machineState || machineState.isComplete || stepping
-          }
-          onClick={() => wsSend({ type: 'step' })}
+          disabled={!machineState || machineState.isComplete || stepping}
+          onClick={executeNext}
         >
           <IconChevronRight />
         </IconButton>
 
         <IconButton
           title={stepping ? 'Pause Execution' : 'Execute Program'}
-          disabled={!wsConnected || !machineState || machineState.isComplete}
+          disabled={!machineState || machineState.isComplete}
           onClick={() => setStepping((prev) => !prev)}
         >
           {stepping ? <IconPause /> : <IconPlayArrow />}
+        </IconButton>
+
+        <IconButton
+          title={'Reset Program'}
+          // Disable if the program hasn't started yet
+          disabled={!machineState || machineState.cycleCount === 0}
+          onClick={() => {
+            reset();
+            setStepping(false);
+          }}
+        >
+          <IconRefresh />
         </IconButton>
       </div>
 

@@ -2,10 +2,6 @@ import React, { useContext } from 'react';
 import { IdeContext } from 'state/ide';
 import { makeStyles, Typography } from '@material-ui/core';
 import BufferDisplay from './BufferDisplay';
-import { chain } from 'lodash';
-import graphql from 'babel-plugin-relay/macro';
-import { RelayProp, createFragmentContainer } from 'react-relay';
-import { StackInfo_hardwareSpec } from './__generated__/StackInfo_hardwareSpec.graphql';
 import clsx from 'clsx';
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
@@ -20,18 +16,15 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
 
 const StackInfo: React.FC<{
   className?: string;
-  hardwareSpec: StackInfo_hardwareSpec;
-  relay: RelayProp;
-}> = ({ className, hardwareSpec }) => {
+}> = ({ className }) => {
   const localClasses = useLocalStyles();
-  const { machineState } = useContext(IdeContext);
+  const { wasmHardwareSpec, compiledState } = useContext(IdeContext);
+  const machineState =
+    compiledState?.type === 'compiled' ? compiledState.machineState : undefined;
 
-  if (hardwareSpec.numStacks === 0) {
+  if (wasmHardwareSpec.num_stacks === 0) {
     return null;
   }
-
-  // TODO show empty stacks based on hardware spec when not compiled
-  const stacks = machineState?.stacks ?? {};
 
   return (
     <div className={clsx(localClasses.stackInfo, className)}>
@@ -40,28 +33,17 @@ const StackInfo: React.FC<{
       </Typography>
 
       <div className={localClasses.stacks}>
-        {chain(stacks)
-          .toPairs()
-          .sortBy(0)
-          .map(([name, values]) => (
-            <BufferDisplay
-              key={name}
-              label={name}
-              values={values}
-              maxLength={hardwareSpec.maxStackLength}
-            />
-          ))
-          .value()}
+        {wasmHardwareSpec.stacks.map((name) => (
+          <BufferDisplay
+            key={name}
+            label={name}
+            values={machineState?.stacks[name] ?? []}
+            maxLength={wasmHardwareSpec.max_stack_length}
+          />
+        ))}
       </div>
     </div>
   );
 };
 
-export default createFragmentContainer(StackInfo, {
-  hardwareSpec: graphql`
-    fragment StackInfo_hardwareSpec on HardwareSpecNode {
-      numStacks
-      maxStackLength
-    }
-  `,
-});
+export default StackInfo;

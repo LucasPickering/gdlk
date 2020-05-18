@@ -14,12 +14,12 @@ fn execute_expect_success(
     program_spec: ProgramSpec,
     src: &str,
 ) -> Machine {
-    let valid_program_spec = Valid::validate(program_spec).unwrap();
+    let valid_program_spec = Valid::validate(&program_spec).unwrap();
     // Compile from hardware+src
     let mut machine =
         Compiler::compile(src.into(), Valid::validate(hardware_spec).unwrap())
             .unwrap()
-            .allocate(&valid_program_spec);
+            .allocate(valid_program_spec);
 
     // Execute to completion
     let success = machine.execute_all().unwrap();
@@ -27,10 +27,7 @@ fn execute_expect_success(
     // Make sure program terminated successfully
     // Check each bit of state individually to make debugging easier
     assert_eq!(machine.input(), &[] as &[LangValue]);
-    assert_eq!(
-        machine.output(),
-        valid_program_spec.expected_output.as_slice()
-    );
+    assert_eq!(machine.output(), valid_program_spec.expected_output());
     // Final sanity check, in case we change the criteria for success
     assert!(success);
     machine
@@ -44,10 +41,7 @@ fn test_read_write() {
             num_stacks: 0,
             max_stack_length: 0,
         },
-        ProgramSpec {
-            input: vec![1, 2],
-            expected_output: vec![1, 2],
-        },
+        ProgramSpec::new(vec![1, 2], vec![1, 2]),
         "
         READ RX0
         WRITE RX0
@@ -65,10 +59,7 @@ fn test_set_push_pop() {
             num_stacks: 1,
             max_stack_length: 5,
         },
-        ProgramSpec {
-            input: vec![],
-            expected_output: vec![10, 5],
-        },
+        ProgramSpec::new(vec![], vec![10, 5]),
         "
         SET RX0 10
         PUSH RX0 S0
@@ -90,10 +81,7 @@ fn test_arithmetic() {
             num_stacks: 0,
             max_stack_length: 0,
         },
-        ProgramSpec {
-            input: vec![],
-            expected_output: vec![-3, 140],
-        },
+        ProgramSpec::new(vec![], vec![-3, 140]),
         "
         ADD RX0 1
         SUB RX0 2
@@ -118,10 +106,7 @@ fn test_cmp() {
             num_stacks: 0,
             max_stack_length: 0,
         },
-        ProgramSpec {
-            input: vec![],
-            expected_output: vec![-1, 0, 1, 1],
-        },
+        ProgramSpec::new(vec![], vec![-1, 0, 1, 1]),
         "
         CMP RX0 1 2
         WRITE RX0
@@ -140,10 +125,7 @@ fn test_cmp() {
 
 #[test]
 fn test_jumps() {
-    let program_spec = ProgramSpec {
-        input: vec![],
-        expected_output: vec![1],
-    };
+    let program_spec = ProgramSpec::new(vec![], vec![1]);
     execute_expect_success(
         HardwareSpec::default(),
         program_spec.clone(),
@@ -213,10 +195,10 @@ fn test_square_all() {
             num_stacks: 0,
             max_stack_length: 0,
         },
-        ProgramSpec {
-            input: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-            expected_output: vec![1, 4, 9, 16, 25, 36, 49, 64, 81, 100],
-        },
+        ProgramSpec::new(
+            vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            vec![1, 4, 9, 16, 25, 36, 49, 64, 81, 100],
+        ),
         "
         LOOP:
             JEZ RLI END
@@ -237,10 +219,7 @@ fn test_fibonacci() {
             num_stacks: 0,
             max_stack_length: 0,
         },
-        ProgramSpec {
-            input: vec![10],
-            expected_output: vec![0, 1, 1, 2, 3, 5, 8, 13, 21, 34],
-        },
+        ProgramSpec::new(vec![10], vec![0, 1, 1, 2, 3, 5, 8, 13, 21, 34]),
         "
         READ RX0
         SET RX1 0
@@ -266,10 +245,10 @@ fn test_insertion_sort() {
             num_stacks: 2,
             max_stack_length: 16,
         },
-        ProgramSpec {
-            input: vec![9, 3, 8, 4, 5, 1, 3, 8, 9, 5, 2, 10, 4, 1, 8],
-            expected_output: vec![1, 1, 2, 3, 3, 4, 4, 5, 5, 8, 8, 8, 9, 9, 10],
-        },
+        ProgramSpec::new(
+            vec![9, 3, 8, 4, 5, 1, 3, 8, 9, 5, 2, 10, 4, 1, 8],
+            vec![1, 1, 2, 3, 3, 4, 4, 5, 5, 8, 8, 8, 9, 9, 10],
+        ),
         "
         ; RX0:  the last element pulled off the input
         ; RX1:  the current element in the sorted list we're comparing to
@@ -328,10 +307,7 @@ fn test_insertion_sort() {
 fn test_cycle_count_simple() {
     let machine = execute_expect_success(
         HardwareSpec::default(),
-        ProgramSpec {
-            input: vec![1],
-            expected_output: vec![2],
-        },
+        ProgramSpec::new(vec![1], vec![2]),
         "
         READ RX0
         ADD RX0 1
@@ -345,10 +321,7 @@ fn test_cycle_count_simple() {
 fn test_cycle_count_jump() {
     let m1 = execute_expect_success(
         HardwareSpec::default(),
-        ProgramSpec {
-            input: vec![1, 2, 3],
-            expected_output: vec![1, 2, 3],
-        },
+        ProgramSpec::new(vec![1, 2, 3], vec![1, 2, 3]),
         "
         START:
         JEZ RLI END

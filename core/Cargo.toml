@@ -16,6 +16,8 @@ failure = "0.1"
 nom = "5.0"
 nom_locate = "2.0"
 serde = { version = "1.0", features = ["derive"] }
-validator = "0.10.0"
-validator_derive = "0.10.0"
+# validator = "0.10.0"
+# validator_derive = "0.10.0"
+validator = { git = "https://github.com/LucasPickering/validator", branch = "blanket-ref-impl" }
+validator_derive = { git = "https://github.com/LucasPickering/validator", branch = "blanket-ref-impl" }
 wasm-bindgen = { version = "0.2.58", optional = true  }
