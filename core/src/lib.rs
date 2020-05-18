@@ -13,10 +13,8 @@
 //!     num_stacks: 0,
 //!     max_stack_length: 0,
 //! }).unwrap();
-//! let program_spec = Valid::validate(ProgramSpec {
-//!     input: vec![1],
-//!     expected_output: vec![2],
-//! }).unwrap();
+//! let raw_program_spec = ProgramSpec::new(vec![1], vec![2]);
+//! let program_spec = Valid::validate(&raw_program_spec).unwrap();
 //!
 //! // Write your program
 //! let source: String = "
@@ -32,7 +30,7 @@
 //! ).unwrap();
 //!
 //! // Execute
-//! let mut machine = compiled.allocate(&program_spec);
+//! let mut machine = compiled.allocate(program_spec);
 //! machine.execute_all().unwrap();
 //! assert!(machine.is_successful());
 //! ```
@@ -101,16 +99,16 @@ impl Compiler<()> {
 }
 
 impl Compiler<Program<Span>> {
+    /// Returns the AST for the compiled program.
+    pub fn program(&self) -> &Program<Span> {
+        &self.ast
+    }
+
     /// Allocate a new [Machine] to execute a compiled program. The returned
     /// machine can then be executed. `program_spec` defines the parameters
     /// under which the program will execute.
-    pub fn allocate(self, program_spec: &Valid<ProgramSpec>) -> Machine {
-        Machine::new(&self.hardware_spec, program_spec, self.ast, self.source)
-    }
-
-    /// Returns the ast for the compiled program
-    pub fn program(self) -> Program<Span> {
-        self.ast
+    pub fn allocate(self, program_spec: Valid<&ProgramSpec>) -> Machine {
+        Machine::new(self.hardware_spec, program_spec, self.ast, self.source)
     }
 }
 

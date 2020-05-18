@@ -18,6 +18,7 @@ pub type RawSpan<'a> = LocatedSpan<&'a str>;
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
 #[derive(Copy, Clone, Debug, Serialize)]
 pub struct Span {
+    // TODO make these readonly and camel case in wasm
     /// Distance into the source at which this span starts. Starts at `0`.
     pub offset: usize,
     /// Number of characters that this span includes.

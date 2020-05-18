@@ -1,53 +1,51 @@
 import React from 'react';
-import { SocketSend, SocketConnectionStatus } from 'hooks/useWebSocket';
+import { Span, HardwareSpec, ProgramSpec, SourceElement } from 'gdlk_wasm';
+import { MachineState } from 'util/compile';
 
 export type LangValue = number;
 
 /**
- * See `Machine` type in the `core` crate for a description of fields.
+ * A span in the format that Ace likes. This is distinctly different from the
+ * Span we get from gdlk, and we'll need to explicitly convert between the two.
  */
-export interface MachineState {
-  programCounter: number;
-  input: LangValue[];
-  output: LangValue[];
-  registers: Record<string, LangValue>;
-  stacks: Record<string, LangValue[]>;
-  cycleCount: number;
-  isComplete: boolean;
-  isSuccessful: boolean;
+export interface AceSpan {
+  startRow: number;
+  startCol: number;
+  endRow: number;
+  endCol: number;
 }
 
-export type OutgoingIdeEvent =
-  | {
-      type: 'compile';
-      content: { sourceCode: string };
-    }
-  | { type: 'step' }
-  | { type: 'autoStepStart'; content: { interval: number } }
-  | { type: 'autoStepStop' };
+export function gdlkSpanToAce(span: Span): AceSpan {
+  return {
+    startRow: span.start_line - 1,
+    startCol: span.start_col - 1,
+    endRow: span.end_line - 1,
+    endCol: span.end_col,
+  };
+}
 
-export type IncomingIdeEvent =
+export type CompiledState =
   | {
-      type: 'machineState';
-      content: MachineState;
+      type: 'compiled';
+      instructions: SourceElement[];
+      machineState: MachineState;
     }
-  | { type: 'malformedMessage'; content: string }
-  | {
-      type: 'compileError';
-      // TODO add content field
-    }
-  | {
-      type: 'runtimeError';
-      // TODO add content field
-    }
-  | { type: 'noCompilation' };
+  | { type: 'error'; errors: SourceElement[] };
 
+/**
+ * The context data that gets shared throughout the IDE. This is designed in
+ * order to isolate the wasm logic from all  children. Wasm interactions can get
+ * weird, so we want to manage that all in the root. All accesses by the
+ * children should be safe.
+ */
 export interface IdeContextType {
-  machineState: MachineState | undefined;
+  wasmHardwareSpec: HardwareSpec;
+  wasmProgramSpec: ProgramSpec;
   sourceCode: string;
+  compiledState: CompiledState | undefined;
   setSourceCode: (newSourceCode: string) => void;
-  wsStatus: SocketConnectionStatus;
-  wsSend: SocketSend<OutgoingIdeEvent>;
+  executeNext: () => void;
+  reset: () => void;
 }
 
 export const IdeContext = React.createContext<IdeContextType>(

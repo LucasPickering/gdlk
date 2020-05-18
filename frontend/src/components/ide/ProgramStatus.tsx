@@ -11,17 +11,16 @@ const useLocalStyles = makeStyles(({ spacing }) => ({
 
 const ProgramStatus: React.FC<{ className?: string }> = ({ className }) => {
   const localClasses = useLocalStyles();
-  const { machineState } = useContext(IdeContext);
+  const { compiledState } = useContext(IdeContext);
+
+  const machineState =
+    compiledState?.type === 'compiled' ? compiledState.machineState : undefined;
 
   return (
     <div className={clsx(className, localClasses.programStatus)}>
-      {machineState && (
-        <>
-          <div>CPU Cycles: {machineState.cycleCount}</div>
-          {machineState.isComplete && (
-            <div>{machineState.isSuccessful ? 'SUCCESS' : 'FAILURE'}</div>
-          )}
-        </>
+      <div>CPU Cycles: {machineState?.cycleCount ?? '-'}</div>
+      {machineState?.isComplete && (
+        <div>{machineState?.isSuccessful ? 'SUCCESS' : 'FAILURE'}</div>
       )}
     </div>
   );
