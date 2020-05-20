@@ -5,6 +5,7 @@ import { BrowserRouter, Switch, Route } from 'react-router-dom';
 import theme from 'util/theme';
 import HomePage from './HomePage';
 import HardwareSpecDetailsView from './hardware/HardwareSpecDetailsView';
+import LoginPage from './LoginPage';
 import ProgramSpecView from './programs/ProgramSpecView';
 import NotFoundPage from './NotFoundPage';
 import PageContainer from './common/PageContainer';
@@ -40,6 +41,10 @@ const App: React.FC = () => {
 
                     <Route path="/docs">
                       <DocsPage />
+                    </Route>
+
+                    <Route path="/login" exact>
+                      <LoginPage />
                     </Route>
 
                     {/* Hardware routes */}

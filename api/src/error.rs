@@ -6,9 +6,9 @@ use diesel::result::DatabaseErrorKind;
 use failure::Fail;
 use juniper::{DefaultScalarValue, FieldError, IntoFieldError};
 use log::error;
+use openid::error::{ClientError, Error as OpenIdError};
 use std::fmt::Debug;
 use validator::{ValidationError, ValidationErrors, ValidationErrorsKind};
-
 pub type ResponseResult<T> = Result<T, ResponseError>;
 
 /// An error that can occur while handling an HTTP request. These errors should
@@ -44,6 +44,15 @@ pub enum ResponseError {
     /// Wrapper for Diesel's error type
     #[fail(display = "Database error: {}", 0)]
     DieselError(#[cause] diesel::result::Error),
+
+    /// Wrapper for openid's client error type
+    /// Even though its called client, its a server side error
+    #[fail(display = "{}", 0)]
+    OpenIdClientError(#[cause] ClientError),
+
+    /// Wrapper for openid's error type
+    #[fail(display = "{}", 0)]
+    OpenIdError(#[cause] OpenIdError),
 }
 
 impl From<r2d2::Error> for ResponseError {
@@ -64,6 +73,18 @@ impl From<diesel::result::Error> for ResponseError {
 impl From<ValidationErrors> for ResponseError {
     fn from(other: ValidationErrors) -> Self {
         Self::ValidationErrors(other)
+    }
+}
+
+impl From<ClientError> for ResponseError {
+    fn from(other: ClientError) -> Self {
+        Self::OpenIdClientError(other)
+    }
+}
+
+impl From<OpenIdError> for ResponseError {
+    fn from(other: OpenIdError) -> Self {
+        Self::OpenIdError(other)
     }
 }
 

@@ -5,3 +5,4 @@ analysis/
 build/
 target/
 **/__generated__/
+.env
