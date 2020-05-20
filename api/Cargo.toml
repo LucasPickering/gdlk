@@ -9,6 +9,7 @@ edition = "2018"
 
 [dependencies]
 actix = "0.9"
+actix-identity = "0.2.1"
 actix-web = "2.0"
 actix-web-actors = "2.0"
 actix-rt = "1.0"
@@ -21,7 +22,9 @@ juniper = "0.14.2"
 # juniper-from-schema = "0.5.2"
 juniper-from-schema = { git = "https://github.com/LucasPickering/juniper-from-schema", branch = "fragment-bug-workaround" }
 log = "^0.4.8"
+openid = "0.3"
 r2d2 = "0.8"
+reqwest = "0.10.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 uuid = "^0.7.0"
