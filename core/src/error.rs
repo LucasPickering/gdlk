@@ -84,11 +84,13 @@ impl SourceError for CompileError {
 /// the interpreter. Interpreter bugs will always panic.
 #[derive(Debug, Serialize)]
 pub enum RuntimeError {
+    /// DIV attempted with a zero divisor
+    DivideByZero,
     /// READ attempted while input is empty
     EmptyInput,
-    /// Tried to push onto stack that is at capacity
+    /// PUSH attemped onto a stack that is at capacity
     StackOverflow,
-    /// POP attempted while stack is empty
+    /// POP attempted from an empty stack
     EmptyStack,
     /// Too many cycles in the program
     TooManyCycles,
@@ -101,6 +103,7 @@ impl SourceError for RuntimeError {
 
     fn fmt_msg(&self, f: &mut Formatter<'_>, spanned_src: &str) -> fmt::Result {
         match self {
+            Self::DivideByZero => write!(f, "Divide by zero"),
             Self::StackOverflow => {
                 write!(f, "Overflow on stack `{}`", spanned_src)
             }

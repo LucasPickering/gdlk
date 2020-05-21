@@ -150,6 +150,11 @@ impl<'a> Parse<'a> for Operator<Span> {
                 |(dst, src)| Operator::Mul(dst, src),
             ),
             tag_with_args(
+                "DIV",
+                tuple((register_ref_arg, value_source_arg)),
+                |(dst, src)| Operator::Div(dst, src),
+            ),
+            tag_with_args(
                 "CMP",
                 tuple((register_ref_arg, value_source_arg, value_source_arg)),
                 |(dst, src_1, src_2)| Operator::Cmp(dst, src_1, src_2),
