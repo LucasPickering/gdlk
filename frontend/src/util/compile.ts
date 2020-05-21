@@ -135,7 +135,6 @@ export class CompilerWrapper {
 
       return {
         type: 'compiled',
-        // Do NOT try to change this to a spread!
         instructions: result.instructions,
         machine: new MachineWrapper(result.machine),
       };
