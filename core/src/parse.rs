@@ -5,8 +5,8 @@ use crate::{
         StackRef, UserRegisterId, ValueSource,
     },
     consts::{
-        INPUT_LENGTH_REGISTER_REF, STACK_LENGTH_REGISTER_REF_TAG,
-        STACK_REF_TAG, USER_REGISTER_REF_TAG,
+        INPUT_LENGTH_REGISTER_REF, NULL_REGISTER_REF,
+        STACK_LENGTH_REGISTER_REF_TAG, STACK_REF_TAG, USER_REGISTER_REF_TAG,
     },
     error::{CompileError, SourceErrorWrapper, WithSource},
     util::{RawSpan, Span},
@@ -89,6 +89,8 @@ impl<'a> Parse<'a> for StackRef {
 impl<'a> Parse<'a> for RegisterRef {
     fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
         alt((
+            // "RZR" => RegisterRef::Null
+            map(tag_no_case(NULL_REGISTER_REF), |_| RegisterRef::Null),
             // "RLI" => RegisterRef::InputLength
             map(tag_no_case(INPUT_LENGTH_REGISTER_REF), |_| {
                 RegisterRef::InputLength
@@ -529,6 +531,7 @@ mod tests {
                 Set RX1 4
                 SET RX1 RLI
                 SET RX1 RS0
+                SET RX1 RZR
                 "
             )
             .unwrap()
@@ -578,6 +581,22 @@ mod tests {
                         span(4, 17, 4, 28)
                     ),),
                     span(4, 17, 4, 28)
+                ),
+                Node(
+                    Statement::Operator(Node(
+                        Operator::Set(
+                            Node(RegisterRef::User(1), span(5, 21, 5, 24)),
+                            Node(
+                                ValueSource::Register(Node(
+                                    RegisterRef::Null,
+                                    span(5, 25, 5, 28)
+                                ),),
+                                span(5, 25, 5, 28)
+                            )
+                        ),
+                        span(5, 17, 5, 28)
+                    ),),
+                    span(5, 17, 5, 28)
                 ),
             ]
         );

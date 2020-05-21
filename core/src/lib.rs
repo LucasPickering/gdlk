@@ -36,6 +36,7 @@
 //! ```
 
 #![deny(clippy::all, unused_must_use, unused_imports)]
+#![feature(or_patterns)]
 
 // Re-export dependencies that consumers may need
 pub use validator;

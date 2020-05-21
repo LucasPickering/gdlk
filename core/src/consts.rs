@@ -7,6 +7,8 @@ pub const MAX_CYCLE_COUNT: usize = 1_000_000;
 
 /// The prefix that indicates a stack reference.
 pub const STACK_REF_TAG: &str = "S";
+/// The string that refers to the null register.
+pub const NULL_REGISTER_REF: &str = "RZR";
 /// The string that refers to the input length register.
 pub const INPUT_LENGTH_REGISTER_REF: &str = "RLI";
 /// The prefix that indicates a reference to a stack length register.

@@ -5,8 +5,8 @@
 
 use crate::{
     consts::{
-        INPUT_LENGTH_REGISTER_REF, STACK_LENGTH_REGISTER_REF_TAG,
-        STACK_REF_TAG, USER_REGISTER_REF_TAG,
+        INPUT_LENGTH_REGISTER_REF, NULL_REGISTER_REF,
+        STACK_LENGTH_REGISTER_REF_TAG, STACK_REF_TAG, USER_REGISTER_REF_TAG,
     },
     util::Span,
 };
@@ -67,6 +67,9 @@ impl Display for StackRef {
 /// means the user can read and write freely from/to it.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum RegisterRef {
+    /// This register is both readable and writable, but it also produces zero
+    /// when read from, and anything written to it is thrown away.
+    Null,
     /// Read-only register that provides the number of elements remaining
     /// in the input buffer
     InputLength,
@@ -80,6 +83,7 @@ pub enum RegisterRef {
 impl Display for RegisterRef {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Null => write!(f, "{}", NULL_REGISTER_REF),
             Self::InputLength => write!(f, "{}", INPUT_LENGTH_REGISTER_REF),
             Self::StackLength(stack_id) => {
                 write!(f, "{}{}", STACK_LENGTH_REGISTER_REF_TAG, stack_id)

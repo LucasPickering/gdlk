@@ -178,8 +178,10 @@ fn validate_writable(
 ) {
     // Only User registers are writable, all others cause an error.
     match reg_ref_node {
-        Node(RegisterRef::User(_), _) => {}
-        Node(_, span) => errors.push((CompileError::UnwritableRegister, *span)),
+        Node(RegisterRef::Null | RegisterRef::User(_), _) => {}
+        Node(RegisterRef::InputLength | RegisterRef::StackLength(_), span) => {
+            errors.push((CompileError::UnwritableRegister, *span))
+        }
     }
 }
 
