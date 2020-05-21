@@ -236,6 +236,16 @@ impl Machine {
                             .0,
                         );
                     }
+                    Operator::Div(dst, src) => {
+                        let divisor = self.get_val_from_src(&src);
+                        let dividend = self.get_reg(*dst.value());
+                        if divisor != 0 {
+                            // This does flooring division
+                            self.set_reg(&dst, dividend / divisor);
+                        } else {
+                            return Err((RuntimeError::DivideByZero, *span));
+                        }
+                    }
                     Operator::Cmp(dst, src_1, src_2) => {
                         let val_1 = self.get_val_from_src(&src_1);
                         let val_2 = self.get_val_from_src(&src_2);

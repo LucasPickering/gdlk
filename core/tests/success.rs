@@ -74,7 +74,7 @@ fn test_set_push_pop() {
 }
 
 #[test]
-fn test_arithmetic() {
+fn test_add_sub_mul() {
     execute_expect_success(
         HardwareSpec {
             num_registers: 2,
@@ -94,6 +94,41 @@ fn test_arithmetic() {
         MUL RX0 RX1
         SUB RX0 RX1
         WRITE RX0
+        ",
+    );
+}
+
+#[test]
+fn test_div() {
+    execute_expect_success(
+        HardwareSpec::default(),
+        ProgramSpec::new(vec![], vec![2, 3, -33, 4, 0, 0]),
+        "
+        SET RX0 6
+        DIV RX0 3
+        WRITE RX0 ; 2
+
+        SET RX0 11
+        DIV RX0 3
+        WRITE RX0 ; 3 (rounds down)
+
+        SET RX0 -100
+        DIV RX0 3
+        WRITE RX0 ; -33
+
+        SET RX0 -32
+        DIV RX0 -8
+        WRITE RX0 ; 4
+
+        SET RX0 0
+        DIV RX0 -8
+        WRITE RX0 ; 0
+
+        SET RX0 10
+        DIV RX0 20
+        WRITE RX0 ; 0
+
+        ; divide by zero test lives with the runtime error tests
         ",
     );
 }

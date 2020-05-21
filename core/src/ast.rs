@@ -113,11 +113,12 @@ pub enum ValueSource<T> {
 /// NOTE: All arithmetic operations are wrapping (for overflow/underflow).
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Operator<T> {
-    /// Reads one value from the input buffer to a register
+    /// Reads one value from the input buffer to a register. If the input is
+    /// empty, triggers a runtime error.
     Read(Node<RegisterRef, T>),
-    /// Writes a value to the output buffer
+    /// Writes a value to the output buffer.
     Write(Node<ValueSource<T>, T>),
-    /// Sets a register to a value
+    /// Sets a register to a value.
     Set(Node<RegisterRef, T>, Node<ValueSource<T>, T>),
     /// Adds two values. Puts the result in the first argument.
     Add(Node<RegisterRef, T>, Node<ValueSource<T>, T>),
@@ -126,20 +127,24 @@ pub enum Operator<T> {
     Sub(Node<RegisterRef, T>, Node<ValueSource<T>, T>),
     /// Multiplies the two values. Puts the result in the first argument.
     Mul(Node<RegisterRef, T>, Node<ValueSource<T>, T>),
+    /// Divides the first value by the second. Puts the result in the first
+    /// argument. Any remainder from the division is thrown away, i.e. the
+    /// result is floored. If the divisor is zero, triggers a runtime error.
+    Div(Node<RegisterRef, T>, Node<ValueSource<T>, T>),
     /// Compares the last two arguments, and stores the comparison result in
     /// the first register. Result is -1 if the first value is less than the
     /// second, 0 if they are equal, and 1 if the first value is greater. The
     /// result will **never** be any value other than -1, 0, or 1.
-    ///
-    /// TODO: maybe we should remove this op?
     Cmp(
         Node<RegisterRef, T>,
         Node<ValueSource<T>, T>,
         Node<ValueSource<T>, T>,
     ),
-    /// Pushes the value in a register onto the given stack
+    /// Pushes the value in a register onto the given stack. If the stack is
+    /// already at capacity, triggers a runtime error.
     Push(Node<ValueSource<T>, T>, Node<StackRef, T>),
-    /// Pops the top value off the given stack into a register
+    /// Pops the top value off the given stack into a register. If the stack is
+    /// empty, triggers a runtime error.
     Pop(Node<StackRef, T>, Node<RegisterRef, T>),
 }
 

@@ -106,7 +106,8 @@ impl Validate for SpanNode<Operator<Span>> {
             Operator::Set(reg_ref, val_src)
             | Operator::Add(reg_ref, val_src)
             | Operator::Sub(reg_ref, val_src)
-            | Operator::Mul(reg_ref, val_src) => {
+            | Operator::Mul(reg_ref, val_src)
+            | Operator::Div(reg_ref, val_src) => {
                 // Make sure the first reg is valid and writable, and the
                 // second is a valid value source
                 reg_ref.validate(context, errors);

@@ -21,6 +21,19 @@ macro_rules! assert_runtime_error {
 }
 
 #[test]
+fn test_divide_by_zero() {
+    assert_runtime_error!(
+        HardwareSpec::default(),
+        &ProgramSpec::default(),
+        "
+        SET RX0 1
+        DIV RX0 0
+        ",
+        "Runtime error at 3:9: Divide by zero",
+    );
+}
+
+#[test]
 fn test_stack_overflow() {
     assert_runtime_error!(
         HardwareSpec {
