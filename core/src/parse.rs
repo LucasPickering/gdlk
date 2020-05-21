@@ -50,7 +50,17 @@ trait Parse<'a>: Sized {
 // covers StackId and UserRegisterId
 impl<'a> Parse<'a> for usize {
     fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
-        map_res(digit1, |s: RawSpan| s.fragment().parse::<usize>())(input)
+        map_res(digit1, |s: RawSpan| {
+            let frag = s.fragment();
+
+            // If the string has unnecessary leading zeroes, reject it. Use an
+            // empty error for convenience, its value won't be used anyway.
+            if frag.len() > 1 && frag.starts_with('0') {
+                Err(())
+            } else {
+                s.fragment().parse::<usize>().map_err(|_| ())
+            }
+        })(input)
     }
 }
 

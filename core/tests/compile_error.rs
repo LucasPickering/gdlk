@@ -36,7 +36,7 @@ macro_rules! assert_parse_error {
 
 #[test]
 fn test_parse_errors() {
-    // Operators
+    // Register references
     assert_parse_error!(
         "
         READ RX0
@@ -54,13 +54,25 @@ fn test_parse_errors() {
         "READ RW0",
         "Syntax error at 1:6: Expected register reference"
     );
-    assert_parse_error!("RAD RX0", "Syntax error at 1:1: Expected statement",);
-    assert_parse_error!("READE RX0", "Syntax error at 1:1: Expected statement",);
-    assert_parse_error!("PUSH STEVE S0", "Syntax error at 1:6: Expected value");
+    assert_parse_error!(
+        "READ RX01",
+        "Syntax error at 1:6: Expected register reference"
+    );
+
+    // Stack references
     assert_parse_error!(
         "PUSH RX0 T0",
         "Syntax error at 1:10: Expected stack reference",
     );
+    assert_parse_error!(
+        "PUSH RX0 S01",
+        "Syntax error at 1:10: Expected stack reference",
+    );
+
+    // Operators
+    assert_parse_error!("RAD RX0", "Syntax error at 1:1: Expected statement",);
+    assert_parse_error!("READE RX0", "Syntax error at 1:1: Expected statement",);
+    assert_parse_error!("PUSH STEVE S0", "Syntax error at 1:6: Expected value");
     assert_parse_error!(
         "READ RX1 WRITE RX2",
         "Syntax error at 1:10: Expected end of statement",
