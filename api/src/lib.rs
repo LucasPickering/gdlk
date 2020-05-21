@@ -14,6 +14,3 @@ pub mod models;
 pub mod schema;
 pub mod server;
 pub mod util;
-// Commenting this out so we don't have to maintain it - we may want to come
-// back to it at some point
-// mod vfs;
