@@ -111,7 +111,7 @@ const ProgramIde: React.FC<{
   // This wasm value is NOT safe to share outside this component. It's stored
   // in a ref because it contains pointers, which often don't reflect changed
   // values to React. As such, making it a state field would be useless. This
-  // valu ehas to be manually transformed into compiledState after changes.
+  // value has to be manually transformed into compiledState after changes.
   const compileResult = useRef<CompileResult | undefined>();
 
   const [sourceCode, setSourceCode] = useState<string>(userProgram.sourceCode);
