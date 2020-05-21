@@ -99,7 +99,7 @@ DEBUG=1 cargo make test
 We use nightly Rust. Here's a list of reasons why. If this list every gets empty, we should switch to stable.
 
 - Rust features
-  - [const_fn](https://github.com/rust-lang/rust/issues/57563)
+  - [or_patterns](https://github.com/rust-lang/rust/issues/54883)
 - Rustfmt
   - [merge_imports](https://github.com/rust-lang/rustfmt/issues/3362)
   - [wrap_comments](https://github.com/rust-lang/rustfmt/issues/3347)

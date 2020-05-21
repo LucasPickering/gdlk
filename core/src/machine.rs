@@ -112,6 +112,7 @@ impl Machine {
     /// it isn't valid.
     fn get_reg(&self, reg: RegisterRef) -> LangValue {
         match reg {
+            RegisterRef::Null => 0,
             // These conversion unwraps are safe because we know that input
             // and stack lengths are bounded by validation rules to fit into an
             // i32 (max length is 256 at the time of writing this)
@@ -128,10 +129,13 @@ impl Machine {
     /// Will panic if it isn't valid/writable.
     fn set_reg(&mut self, reg: &SpanNode<RegisterRef>, value: LangValue) {
         match reg.value() {
+            RegisterRef::Null => {} // /dev/null behavior - trash any input
+            RegisterRef::InputLength | RegisterRef::StackLength(_) => {
+                panic!("Unwritable register {:?}", reg)
+            }
             RegisterRef::User(reg_id) => {
                 self.registers[*reg_id] = value;
             }
-            _ => panic!("Unwritable register {:?}", reg),
         }
     }
 

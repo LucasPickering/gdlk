@@ -34,6 +34,21 @@ fn execute_expect_success(
 }
 
 #[test]
+fn test_register_null() {
+    execute_expect_success(
+        HardwareSpec::default(),
+        ProgramSpec::new(vec![1, 2], vec![0, 0]),
+        "
+        READ RZR    ; the 1 gets clobbered
+        WRITE RZR   ; writes 0
+        READ RZR    ; the 2 gets clobbered
+        SET RZR 3   ; does nothing
+        WRITE RZR   ; writes 0
+        ",
+    );
+}
+
+#[test]
 fn test_read_write() {
     execute_expect_success(
         HardwareSpec {
