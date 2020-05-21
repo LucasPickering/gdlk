@@ -7,5 +7,4 @@ if (!target) {
 
 module.exports = function (app) {
   app.use(createProxyMiddleware('/api', { target }));
-  app.use(createProxyMiddleware('/ws', { target, ws: true }));
 };

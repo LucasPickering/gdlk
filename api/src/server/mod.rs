@@ -1,7 +1,6 @@
 //! All code related to the webserver. Basically anything that calls Actix
 //! lives here.
 mod gql;
-// mod websocket;
 
 pub use crate::server::gql::{create_gql_schema, Context, GqlSchema};
 use crate::util::Pool;
@@ -54,7 +53,6 @@ pub async fn run_server(pool: Pool, host: String) -> io::Result<()> {
             // routes
             .service(route_graphql)
             .service(route_graphiql)
-        // .service(websocket::ws_program_specs_by_slugs)
     })
     .bind(host)?
     .run()
