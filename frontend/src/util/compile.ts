@@ -32,8 +32,8 @@ export interface MachineState {
   registers: Record<string, LangValue>;
   stacks: Record<string, LangValue[]>;
   cycleCount: number;
-  isComplete: boolean;
-  isSuccessful: boolean;
+  terminated: boolean;
+  successful: boolean;
   runtimeError: SourceElement | undefined;
 }
 
@@ -43,12 +43,11 @@ export interface MachineState {
  */
 export class MachineWrapper {
   private machine: Machine;
-  private runtimeError: SourceElement | undefined;
   private _state: MachineState;
 
   constructor(machine: Machine) {
     this.machine = machine;
-    this._state = MachineWrapper.getMachineState(machine, undefined);
+    this._state = MachineWrapper.getMachineState(machine);
   }
 
   /**
@@ -57,10 +56,7 @@ export class MachineWrapper {
    * @param runtimeError The current time error, if one has been encountered
    * @return A state object fit for React consumption
    */
-  private static getMachineState(
-    machine: Machine,
-    runtimeError: SourceElement | undefined
-  ): MachineState {
+  private static getMachineState(machine: Machine): MachineState {
     return {
       programCounter: machine.programCounter,
       input: Array.from(machine.input),
@@ -68,9 +64,9 @@ export class MachineWrapper {
       registers: machine.registers,
       stacks: machine.stacks,
       cycleCount: machine.cycleCount,
-      isComplete: machine.isComplete,
-      isSuccessful: machine.isSuccessful,
-      runtimeError,
+      terminated: machine.terminated,
+      successful: machine.successful,
+      runtimeError: machine.error,
     };
   }
 
@@ -78,10 +74,7 @@ export class MachineWrapper {
    * Helper to refresh the current state based on the current wasm values.
    */
   private updateState(): void {
-    this._state = MachineWrapper.getMachineState(
-      this.machine,
-      this.runtimeError
-    );
+    this._state = MachineWrapper.getMachineState(this.machine);
   }
 
   /**
@@ -89,17 +82,7 @@ export class MachineWrapper {
    * the step is run to reflect the new state.
    */
   executeNext(): void {
-    try {
-      this.machine.executeNext();
-    } catch (e) {
-      // Make sure this is the error type we expect
-      if (isSourceElement(e)) {
-        this.runtimeError = e;
-      } else {
-        // Unrecognized error, throw it back up
-        throw e;
-      }
-    }
+    this.machine.executeNext();
     this.updateState();
   }
 

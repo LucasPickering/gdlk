@@ -14,7 +14,7 @@ macro_rules! assert_compile_errors {
                 .unwrap_err()
                 .errors()
                 .iter()
-                .map(|err| format!("{}", err))
+                .map(|err| err.to_string())
                 .collect();
         let strs: Vec<&str> =
             actual_errors.iter().map(String::as_str).collect();
@@ -30,7 +30,7 @@ macro_rules! assert_parse_error {
             Valid::validate(HardwareSpec::default()).unwrap(),
         )
         .unwrap_err();
-        assert_eq!(format!("{}", actual_errors), $expected_error);
+        assert_eq!(actual_errors.to_string(), $expected_error);
     };
 }
 

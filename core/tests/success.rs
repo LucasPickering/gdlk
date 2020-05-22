@@ -2,40 +2,39 @@
 //! these tests should compile successfully, and execute with a successful
 //! outcome.
 
-use gdlk::{
-    ast::LangValue, Compiler, HardwareSpec, Machine, ProgramSpec, Valid,
-};
+use gdlk::{ast::LangValue, Compiler, HardwareSpec, ProgramSpec, Valid};
 
 /// Compiles the program for the given hardware, and executes it against the
 /// program spec. Panics if the compile fails or the execution isn't
 /// successful.
-fn execute_expect_success(
-    hardware_spec: HardwareSpec,
-    program_spec: ProgramSpec,
-    src: &str,
-) -> Machine {
-    let valid_program_spec = Valid::validate(&program_spec).unwrap();
-    // Compile from hardware+src
-    let mut machine =
-        Compiler::compile(src.into(), Valid::validate(hardware_spec).unwrap())
-            .unwrap()
-            .allocate(valid_program_spec);
+macro_rules! assert_success {
+    ($hardware_spec:expr, $program_spec:expr, $src:expr $(,)?) => {{
+        let program_spec_val = $program_spec;
+        let valid_program_spec = Valid::validate(&program_spec_val).unwrap();
+        // Compile from hardware+src
+        let mut machine = Compiler::compile(
+            $src.into(),
+            Valid::validate($hardware_spec).unwrap(),
+        )
+        .unwrap()
+        .allocate(valid_program_spec);
 
-    // Execute to completion
-    let success = machine.execute_all().unwrap();
+        // Execute to completion
+        let success = machine.execute_all().unwrap();
 
-    // Make sure program terminated successfully
-    // Check each bit of state individually to make debugging easier
-    assert_eq!(machine.input(), &[] as &[LangValue]);
-    assert_eq!(machine.output(), valid_program_spec.expected_output());
-    // Final sanity check, in case we change the criteria for success
-    assert!(success);
-    machine
+        // Make sure program terminated successfully
+        // Check each bit of state individually to make debugging easier
+        assert_eq!(machine.input(), &[] as &[LangValue]);
+        assert_eq!(machine.output(), valid_program_spec.expected_output());
+        // Final sanity check, in case we change the criteria for success
+        assert!(success);
+        machine
+    }};
 }
 
 #[test]
 fn test_register_null() {
-    execute_expect_success(
+    assert_success!(
         HardwareSpec::default(),
         ProgramSpec::new(vec![1, 2], vec![0, 0]),
         "
@@ -50,7 +49,7 @@ fn test_register_null() {
 
 #[test]
 fn test_read_write() {
-    execute_expect_success(
+    assert_success!(
         HardwareSpec {
             num_registers: 1,
             num_stacks: 0,
@@ -68,7 +67,7 @@ fn test_read_write() {
 
 #[test]
 fn test_set_push_pop() {
-    execute_expect_success(
+    assert_success!(
         HardwareSpec {
             num_registers: 2,
             num_stacks: 1,
@@ -90,7 +89,7 @@ fn test_set_push_pop() {
 
 #[test]
 fn test_add_sub_mul() {
-    execute_expect_success(
+    assert_success!(
         HardwareSpec {
             num_registers: 2,
             num_stacks: 0,
@@ -115,7 +114,7 @@ fn test_add_sub_mul() {
 
 #[test]
 fn test_div() {
-    execute_expect_success(
+    assert_success!(
         HardwareSpec::default(),
         ProgramSpec::new(vec![], vec![2, 3, -33, 4, 0, 0]),
         "
@@ -150,7 +149,7 @@ fn test_div() {
 
 #[test]
 fn test_cmp() {
-    execute_expect_success(
+    assert_success!(
         HardwareSpec {
             num_registers: 2,
             num_stacks: 0,
@@ -176,7 +175,7 @@ fn test_cmp() {
 #[test]
 fn test_jumps() {
     let program_spec = ProgramSpec::new(vec![], vec![1]);
-    execute_expect_success(
+    assert_success!(
         HardwareSpec::default(),
         program_spec.clone(),
         "
@@ -187,7 +186,7 @@ fn test_jumps() {
         WRITE 1
         ",
     );
-    execute_expect_success(
+    assert_success!(
         HardwareSpec::default(),
         program_spec.clone(),
         "
@@ -199,7 +198,7 @@ fn test_jumps() {
         JEZ 1 BAD
         ",
     );
-    execute_expect_success(
+    assert_success!(
         HardwareSpec::default(),
         program_spec.clone(),
         "
@@ -211,7 +210,7 @@ fn test_jumps() {
         JNZ 0 BAD
         ",
     );
-    execute_expect_success(
+    assert_success!(
         HardwareSpec::default(),
         program_spec.clone(),
         "
@@ -223,7 +222,7 @@ fn test_jumps() {
         JLZ 0 BAD
         ",
     );
-    execute_expect_success(
+    assert_success!(
         HardwareSpec::default(),
         program_spec,
         "
@@ -239,7 +238,7 @@ fn test_jumps() {
 
 #[test]
 fn test_square_all() {
-    execute_expect_success(
+    assert_success!(
         HardwareSpec {
             num_registers: 1,
             num_stacks: 0,
@@ -263,7 +262,7 @@ fn test_square_all() {
 
 #[test]
 fn test_fibonacci() {
-    execute_expect_success(
+    assert_success!(
         HardwareSpec {
             num_registers: 4,
             num_stacks: 0,
@@ -289,7 +288,7 @@ fn test_fibonacci() {
 
 #[test]
 fn test_insertion_sort() {
-    execute_expect_success(
+    assert_success!(
         HardwareSpec {
             num_registers: 3,
             num_stacks: 2,
@@ -355,7 +354,7 @@ fn test_insertion_sort() {
 
 #[test]
 fn test_cycle_count_simple() {
-    let machine = execute_expect_success(
+    let machine = assert_success!(
         HardwareSpec::default(),
         ProgramSpec::new(vec![1], vec![2]),
         "
@@ -369,15 +368,16 @@ fn test_cycle_count_simple() {
 
 #[test]
 fn test_cycle_count_jump() {
-    let m1 = execute_expect_success(
+    // Make sure jumps count as one cycle
+    let m1 = assert_success!(
         HardwareSpec::default(),
         ProgramSpec::new(vec![1, 2, 3], vec![1, 2, 3]),
         "
         START:
-        JEZ RLI END
-        READ RX0
-        WRITE RX0
-        JMP START
+        JEZ RLI END ; 1, 5, 9, 13
+        READ RX0    ; 2, 6, 10
+        WRITE RX0   ; 3, 7, 11
+        JMP START   ; 4, 8, 12
         END:
         ",
     );
@@ -386,5 +386,16 @@ fn test_cycle_count_jump() {
 
 #[test]
 fn test_parse_empty_file() {
-    execute_expect_success(HardwareSpec::default(), ProgramSpec::default(), "");
+    assert_success!(HardwareSpec::default(), ProgramSpec::default(), "");
+}
+
+#[test]
+fn test_execute_after_termination() {
+    // Excuting after a normal termination returns false
+    let mut machine = assert_success!(
+        HardwareSpec::default(),
+        ProgramSpec::default(),
+        "SET RX0 0",
+    );
+    assert_eq!(machine.execute_next().unwrap(), false);
 }

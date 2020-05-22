@@ -32,7 +32,7 @@
 //! // Execute
 //! let mut machine = compiled.allocate(program_spec);
 //! machine.execute_all().unwrap();
-//! assert!(machine.is_successful());
+//! assert!(machine.successful());
 //! ```
 
 #![deny(clippy::all, unused_must_use, unused_imports)]

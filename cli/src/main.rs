@@ -94,7 +94,7 @@ fn run(opt: Opt) -> Fallible<()> {
             // Compile and execute
             let mut machine =
                 Compiler::compile(source, hw_spec)?.allocate(program_spec);
-            let success = machine.execute_all()?;
+            let success = machine.execute_all().map_err(Clone::clone)?;
 
             println!(
                 "Registers: {:#?}
