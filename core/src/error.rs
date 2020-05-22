@@ -22,7 +22,7 @@ pub trait SourceError: 'static + Send + Sync + Debug + Serialize {
 /// An error that occurs during compilation of a program. The error will be
 /// due to a flaw in the program. This indicates a user error, _not_ an internal
 /// compiler error. Compiler bugs will always cause a panic.
-#[derive(Debug, Serialize)]
+#[derive(Copy, Clone, Debug, Serialize)]
 pub enum CompileError {
     /// Failed to parse the program because of a syntax error. `expected` is
     /// the name of the type of element that was expected where the error
@@ -82,7 +82,7 @@ impl SourceError for CompileError {
 /// An error that occurs during execution of a program. The error will be
 /// due to a flaw in the program. This indicates a user error, _not_ a bug in
 /// the interpreter. Interpreter bugs will always panic.
-#[derive(Debug, Serialize)]
+#[derive(Copy, Clone, Debug, Serialize)]
 pub enum RuntimeError {
     /// DIV attempted with a zero divisor
     DivideByZero,
@@ -92,7 +92,7 @@ pub enum RuntimeError {
     StackOverflow,
     /// POP attempted from an empty stack
     EmptyStack,
-    /// Too many cycles in the program
+    /// Execution attempted after the program has hit the CPU cycle limit
     TooManyCycles,
 }
 
@@ -128,7 +128,7 @@ impl SourceError for RuntimeError {
 /// - The offending chunk of source code itself
 ///
 /// This type on its own can be formatted, without any external data.
-#[derive(Debug, Fail, Serialize)]
+#[derive(Clone, Debug, Fail, Serialize)]
 pub struct SourceErrorWrapper<E: SourceError> {
     error: E,
     span: Span,
@@ -177,7 +177,7 @@ impl<E: SourceError> From<&SourceErrorWrapper<E>> for SourceElement {
 /// A wrapper around of a collection of errors. This holds the errors as well as
 /// the source code, and can be used to render associated source code with each
 /// error.
-#[derive(Debug, Fail, Serialize)]
+#[derive(Clone, Debug, Fail, Serialize)]
 pub struct WithSource<E: SourceError> {
     errors: Vec<SourceErrorWrapper<E>>,
     #[serde(skip)]

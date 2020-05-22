@@ -55,6 +55,10 @@ pub struct Machine {
     /// The number of instructions that have been executed so far. This is not
     /// unique, so repeated instructions are counted multiple times.
     cycle_count: usize,
+    /// Stores a runtime error, if one has occurred. Once the error occurs,
+    /// this should be populated and from then on, the machine has terminated
+    /// and can no longer execute.
+    error: Option<WithSource<RuntimeError>>,
 }
 
 // Functions that DON'T get exported to wasm
@@ -93,6 +97,7 @@ impl Machine {
 
             // Performance stats
             cycle_count: 0,
+            error: None,
         }
     }
 
@@ -181,6 +186,11 @@ impl Machine {
     /// is the same as [Self::execute_next], except the error needs to be
     /// wrapped before being handed to the user.
     fn execute_next_inner(&mut self) -> Result<bool, (RuntimeError, Span)> {
+        // We've previously hit an error, prevent further execution
+        if self.error.is_some() {
+            return Ok(false);
+        }
+
         let instr_node: SpanNode<Instruction<Span>> =
             match self.program.instructions.get(self.program_counter) {
                 Some(instr_node) => *instr_node,
@@ -302,29 +312,49 @@ impl Machine {
         Ok(true)
     }
 
-    /// Executes the next instruction in the program. Return value:
-    /// - `Ok(true)`: One instruction was executed, machine state was updated
-    /// - `Ok(false)`: No instructions left to execute, machine state was not
-    ///   changed
-    /// - `Err((error, span))`: An error occurred. The error and the span of the
-    ///   source that caused it are returned
-    pub fn execute_next(&mut self) -> Result<bool, WithSource<RuntimeError>> {
-        self.execute_next_inner().map_err(|(error, span)| {
-            WithSource::new(
-                iter::once(SourceErrorWrapper::new(error, span, &self.source)),
-                self.source.clone(),
-            )
-        })
+    /// Executes the next instruction in the program.
+    ///
+    /// # Returns
+    /// - `Ok(true)` if the instruction executed normally
+    /// - `Ok(false)` if the instruction didn't execute because the program has
+    ///   already terminated
+    /// - `Err(error)` if an error occurred. The error is returned, with the
+    ///   source information of the offending instruction
+    pub fn execute_next(&mut self) -> Result<bool, &WithSource<RuntimeError>> {
+        match self.execute_next_inner() {
+            Ok(b) => Ok(b),
+            Err((error, span)) => {
+                // Store the error in self, then return a ref to it
+                self.error = Some(WithSource::new(
+                    iter::once(SourceErrorWrapper::new(
+                        error,
+                        span,
+                        &self.source,
+                    )),
+                    self.source.clone(),
+                ));
+                Err(self.error.as_ref().unwrap())
+            }
+        }
     }
 
     /// Executes this machine until termination (or error). All instructions are
-    /// executed until [is_complete](Machine::is_complete) returns true. Returns
-    /// the value of [is_successful](Machine::is_successful) upon termination.
-    pub fn execute_all(&mut self) -> Result<bool, WithSource<RuntimeError>> {
-        while !self.is_complete() {
-            self.execute_next()?;
+    /// executed until [Self::terminated] returns true. Returns the value of
+    /// [Self::successful] upon termination.
+    pub fn execute_all(&mut self) -> Result<bool, &WithSource<RuntimeError>> {
+        // We can't return the error directly from the loop because of a bug
+        // in the borrow checker. Instead, we have to play lifetime tetris.
+        while !self.terminated() {
+            if self.execute_next().is_err() {
+                break;
+            }
         }
-        Ok(self.is_successful())
+
+        // Check if an error occurred, and return it if so
+        match &self.error {
+            None => Ok(self.successful()),
+            Some(error) => Err(error),
+        }
     }
 
     /// Get the current input buffer.
@@ -354,6 +384,12 @@ impl Machine {
             .map(|stack_ref| (stack_ref, self.stacks[stack_ref.0].as_slice()))
             .collect()
     }
+
+    /// Get the runtime error that halted execution of this machine. If no error
+    /// has occurred, return `None`.
+    pub fn error(&self) -> Option<&WithSource<RuntimeError>> {
+        self.error.as_ref()
+    }
 }
 
 // Functions that get exported to wasm
@@ -375,23 +411,26 @@ impl Machine {
         self.cycle_count
     }
 
-    /// Checks if this machine has finished executing.
-    #[cfg_attr(feature = "wasm", wasm_bindgen(getter, js_name = "isComplete"))]
-    pub fn is_complete(&self) -> bool {
+    /// Checks if this machine has finished executing. This could be by normal
+    /// completion or by runtime error.
+    #[cfg_attr(feature = "wasm", wasm_bindgen(getter, js_name = "terminated"))]
+    pub fn terminated(&self) -> bool {
+        // Check for normal complete
         self.program_counter >= self.program.instructions.len()
+        // Check for a runtime error
+            || self.error.is_some()
     }
 
     /// Checks if this machine has completed successfully. The criteria are:
-    /// 1. Program is complete (all instructions have been executed)
-    /// 2. Input buffer has been exhausted (all input has been consumed)
-    /// 3. Output buffer matches the expected output, as defined by the
+    /// 1. Program is terminated (all instructions have been executed)
+    /// 2. Program terminated normally (a runtime error did NOT occur)
+    /// 3. Input buffer has been exhausted (all input has been consumed)
+    /// 4. Output buffer matches the expected output, as defined by the
     /// [ProgramSpec](ProgramSpec)
-    #[cfg_attr(
-        feature = "wasm",
-        wasm_bindgen(getter, js_name = "isSuccessful")
-    )]
-    pub fn is_successful(&self) -> bool {
-        self.is_complete()
+    #[cfg_attr(feature = "wasm", wasm_bindgen(getter, js_name = "successful"))]
+    pub fn successful(&self) -> bool {
+        self.terminated()
+            && self.error.is_none()
             && self.input.is_empty()
             && self.output == self.expected_output
     }
@@ -446,22 +485,32 @@ impl Machine {
             .unchecked_into()
     }
 
-    /// A wrapper for [Self::execute_next], to be called from wasm.
+    /// A wrapper for [Self::error], to be called from wasm. We can't send
+    /// maps through wasm, so this returns a simplified error as a
+    /// [SourceElement].
     #[cfg(feature = "wasm")]
-    #[doc(hidden)]
-    #[wasm_bindgen(js_name = "executeNext")]
-    pub fn wasm_execute_next(&mut self) -> Result<bool, JsValue> {
-        self.execute_next().map_err(|wrapped_error| {
-            let error = match wrapped_error.errors() {
-                [error] => error,
-                // If there is a runtime error, there should always be exactly 1
+    #[wasm_bindgen(getter, js_name = "error")]
+    pub fn wasm_error(&self) -> Option<SourceElement> {
+        self.error.as_ref().map(|wrapped_error| {
+            // If an error is present, there should always be exactly one
+            match wrapped_error.errors() {
+                [error] => error.into(),
                 errors => panic!(
                     "Expected exactly 1 runtime error, but got {:?}",
                     errors
                 ),
-            };
-            let source_element: SourceElement = error.into();
-            JsValue::from_serde(&source_element).unwrap()
+            }
         })
+    }
+
+    /// A wrapper for [Self::execute_next], to be called from wasm. We throw
+    /// away the error because it simplifies the logic on the TS side. That
+    /// error is accessible via [Self::wasm_error] anyway.
+    #[cfg(feature = "wasm")]
+    #[doc(hidden)]
+    #[wasm_bindgen(js_name = "executeNext")]
+    pub fn wasm_execute_next(&mut self) -> bool {
+        // If an error occurred, that means something executed, so return true
+        self.execute_next().unwrap_or(true)
     }
 }

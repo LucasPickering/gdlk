@@ -7,24 +7,25 @@ use gdlk::{Compiler, HardwareSpec, ProgramSpec, Valid};
 /// program spec, and expects a runtime error. Panics if the program executes
 /// successfully, or if the wrong set of errors is returned.
 macro_rules! assert_runtime_error {
-    ($hw_spec:expr,$program_spec:expr, $src:expr, $expected_error:expr $(,)?) => {
+    ($hw_spec:expr,$program_spec:expr, $src:expr, $expected_error:expr $(,)?) => {{
         // Compile from hardware+src
         let mut machine =
             Compiler::compile($src.into(), Valid::validate($hw_spec).unwrap())
                 .unwrap()
-                .allocate(Valid::validate($program_spec).unwrap());
+                .allocate(Valid::validate(&($program_spec)).unwrap());
 
         // Execute to completion
         let actual_error = machine.execute_all().unwrap_err();
-        assert_eq!(format!("{}", actual_error), $expected_error);
-    };
+        assert_eq!(actual_error.to_string(), $expected_error);
+        machine
+    }};
 }
 
 #[test]
 fn test_divide_by_zero() {
     assert_runtime_error!(
         HardwareSpec::default(),
-        &ProgramSpec::default(),
+        ProgramSpec::default(),
         "
         SET RX0 1
         DIV RX0 0
@@ -41,7 +42,7 @@ fn test_stack_overflow() {
             num_stacks: 1,
             max_stack_length: 3,
         },
-        &ProgramSpec::default(),
+        ProgramSpec::default(),
         "
         SET RX0 4
         START:
@@ -57,7 +58,7 @@ fn test_stack_overflow() {
 fn test_empty_input() {
     assert_runtime_error!(
         HardwareSpec::default(),
-        &ProgramSpec::default(),
+        ProgramSpec::default(),
         "READ RX0",
         "Runtime error at 1:1: Read attempted while input is empty",
     );
@@ -71,7 +72,7 @@ fn test_empty_stack() {
             num_stacks: 1,
             max_stack_length: 3,
         },
-        &ProgramSpec::default(),
+        ProgramSpec::default(),
         "POP S0 RX0",
         "Runtime error at 1:5: Cannot pop from empty stack `S0`",
     );
@@ -81,7 +82,7 @@ fn test_empty_stack() {
 fn test_exceed_max_cycle_count() {
     assert_runtime_error!(
         HardwareSpec::default(),
-        &ProgramSpec::default(),
+        ProgramSpec::default(),
         "
         START:
         JMP START
@@ -89,4 +90,36 @@ fn test_exceed_max_cycle_count() {
         "Runtime error at 3:9: Maximum number of cycles reached, \
             cannot execute instruction `JMP START`",
     );
+}
+
+#[test]
+fn test_execute_after_error() {
+    // Excuting after an error returns false
+    let mut machine = assert_runtime_error!(
+        HardwareSpec::default(),
+        ProgramSpec::default(),
+        "READ RX0",
+        "Runtime error at 1:1: Read attempted while input is empty"
+    );
+    assert_eq!(machine.execute_next().unwrap(), false);
+}
+
+#[test]
+fn test_no_success_on_error() {
+    // Make sure that if a program reaches a success state, but has further
+    // instructions, then an error occurs, the execution is NOT considered
+    // successful
+    let machine = assert_runtime_error!(
+        HardwareSpec::default(),
+        ProgramSpec::new(vec![1], vec![1]),
+        "
+        READ RX0
+        WRITE RX0
+        ; if we were to exit here, it would be successful
+        READ RX0 ; runtime error!
+        ",
+        "Runtime error at 5:9: Read attempted while input is empty"
+    );
+
+    assert_eq!(machine.successful(), false);
 }

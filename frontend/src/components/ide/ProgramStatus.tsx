@@ -19,8 +19,8 @@ const ProgramStatus: React.FC<{ className?: string }> = ({ className }) => {
   return (
     <div className={clsx(className, localClasses.programStatus)}>
       <div>CPU Cycles: {machineState?.cycleCount ?? '-'}</div>
-      {machineState?.isComplete && (
-        <div>{machineState?.isSuccessful ? 'SUCCESS' : 'FAILURE'}</div>
+      {machineState?.terminated && (
+        <div>{machineState?.successful ? 'SUCCESS' : 'FAILURE'}</div>
       )}
     </div>
   );

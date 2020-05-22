@@ -101,14 +101,14 @@ const IdeControls: React.FC<{
     }
   }, [executeNext, stepping, stepSpeed, intervalIdRef]);
 
-  // When the program completes, stop the stepper
-  const isComplete = Boolean(machineState?.isComplete);
+  // When the program terminates, stop the stepper
+  const terminated = Boolean(machineState?.terminated);
   useEffect(() => {
-    if (isComplete) {
+    if (terminated) {
       window.clearInterval(intervalIdRef.current);
       setStepping(false);
     }
-  }, [isComplete]);
+  }, [terminated]);
 
   return (
     <div className={clsx(localClasses.controls, className)}>
@@ -135,7 +135,7 @@ const IdeControls: React.FC<{
 
         <IconButton
           title="Execute Next Instruction"
-          disabled={!machineState || machineState.isComplete || stepping}
+          disabled={!machineState || machineState.terminated || stepping}
           onClick={executeNext}
         >
           <IconChevronRight />
@@ -143,7 +143,7 @@ const IdeControls: React.FC<{
 
         <IconButton
           title={stepping ? 'Pause Execution' : 'Execute Program'}
-          disabled={!machineState || machineState.isComplete}
+          disabled={!machineState || machineState.terminated}
           onClick={() => setStepping((prev) => !prev)}
         >
           {stepping ? <IconPause /> : <IconPlayArrow />}
