@@ -83,6 +83,34 @@ jobs:
           command: test
           args: -p gdlk
 
+  test-wasm:
+    name: "[WASM] Test"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('Cargo.lock') }}
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('Cargo.lock') }}
+      - name: Cache cargo build
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('Cargo.lock') }}
+      - name: Install wasm-pack
+        run: curl -sSLf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
+      - name: Run tests
+        working-directory: wasm
+        # I couldn't get browser tests to work, but node is fine since we aren't
+        # doing any DOM stuff
+        run: wasm-pack test --node
+
   test-api:
     name: "[API] Test"
     runs-on: ubuntu-latest

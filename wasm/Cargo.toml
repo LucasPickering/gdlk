@@ -8,10 +8,16 @@ authors = [
 edition = "2018"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
+# We use wasm-pack for tests instead of cargo
+test = false
 
 [dependencies]
 gdlk = { path = "../core", features = ["wasm"] }
 wasm-bindgen = { version = "0.2.62", features = ["serde-serialize"] }
 serde = "^1.0.59"
 serde_derive = "^1.0.59"
+
+[dev-dependencies]
+maplit = "^1.0.0"
+wasm-bindgen-test = "0.3.12"

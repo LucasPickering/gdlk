@@ -2,12 +2,13 @@
 // https://prestonrichey.com/blog/react-rust-wasm/
 use gdlk::{ast::wasm::SourceElementArray, Valid};
 pub use gdlk::{
-    ast::{compiled::Program, wasm::SourceElement},
+    ast::{compiled::Program, wasm::SourceElement, LangValue},
     Compiler, HardwareSpec, Machine, ProgramSpec, Span,
 };
 use wasm_bindgen::{prelude::*, JsCast};
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct CompileSuccess {
     program: Program<Span>,
     machine: Machine,
@@ -27,10 +28,13 @@ impl CompileSuccess {
             .program
             .instructions
             .iter()
-            .map(|instr| SourceElement {
-                // TODO use doc string here or something
-                text: format!("{:?}", instr),
-                span: instr.1,
+            .map(|instr| {
+                let span = instr.1;
+                SourceElement {
+                    // TODO use doc string here or something
+                    text: "TODO".into(),
+                    span,
+                }
             })
             .collect();
         JsValue::from_serde(&instructions).unwrap().unchecked_into()
