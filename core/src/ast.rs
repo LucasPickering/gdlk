@@ -227,13 +227,13 @@ pub mod compiled {
 #[cfg(feature = "wasm")]
 pub mod wasm {
     use crate::Span;
-    use serde::Serialize;
+    use serde::{Deserialize, Serialize};
     use wasm_bindgen::prelude::*;
 
     /// Something that can map to source code. This can be some AST node, or
     /// an error, or something similar.
     #[wasm_bindgen]
-    #[derive(Clone, Debug, Serialize)]
+    #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
     pub struct SourceElement {
         #[wasm_bindgen(skip)]
         pub text: String,

@@ -1,0 +1,5 @@
+[tasks.test]
+command = "wasm-pack"
+# I couldn't get browser tests to work, but node is fine since we aren't
+# doing any DOM stuff
+args = ["test", "--node"]

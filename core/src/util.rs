@@ -1,6 +1,6 @@
 use nom::Slice;
 use nom_locate::LocatedSpan;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{
     fmt::{self, Formatter},
     iter,
@@ -16,7 +16,7 @@ pub type RawSpan<'a> = LocatedSpan<&'a str>;
 /// itself (or any reference to it), it just defines parameters that can be used
 /// to find the source span.
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
-#[derive(Copy, Clone, Debug, Serialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Span {
     // TODO make these readonly and camel case in wasm
     /// Distance into the source at which this span starts. Starts at `0`.
@@ -218,7 +218,6 @@ macro_rules! debug {
 }
 
 // Only needed in tests
-#[cfg(test)]
 impl PartialEq<Span> for Span {
     fn eq(&self, other: &Self) -> bool {
         // Skip offset and length, just to make testing a bit easier

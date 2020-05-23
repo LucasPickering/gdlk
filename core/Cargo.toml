@@ -7,9 +7,8 @@ authors = [
 ]
 edition = "2018"
 
-
 [features]
-wasm=["wasm-bindgen"]
+wasm = ["wasm-bindgen"]
 
 [dependencies]
 failure = "0.1"
@@ -20,4 +19,8 @@ serde = { version = "1.0", features = ["derive"] }
 # validator_derive = "0.10.0"
 validator = { git = "https://github.com/LucasPickering/validator", branch = "blanket-ref-impl" }
 validator_derive = { git = "https://github.com/LucasPickering/validator", branch = "blanket-ref-impl" }
-wasm-bindgen = { version = "0.2.58", optional = true  }
+
+[dependencies.wasm-bindgen]
+version = "0.2.58"
+features = ["serde-serialize"]
+optional = true

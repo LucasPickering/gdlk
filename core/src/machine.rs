@@ -204,6 +204,11 @@ impl Machine {
             return Err((RuntimeError::TooManyCycles, *instr_node.metadata()));
         }
 
+        // If we've reached this point, we know we're going to execute the
+        // instruction. Increment the cycle count now so that if we exit with
+        // an error, it still counts.
+        self.cycle_count += 1;
+
         // Execute the instruction. For most instructions, the number of
         // instructions to consume is just 1. For jumps though, it can vary.
         let instr = instr_node.value();
@@ -307,7 +312,6 @@ impl Machine {
         // cause all kinds of fuckery in release mode.
         self.program_counter =
             (self.program_counter as isize + instrs_to_consume) as usize;
-        self.cycle_count += 1;
         debug!(println!("Executed {:?}\n\tState: {:?}", instr, self));
         Ok(true)
     }

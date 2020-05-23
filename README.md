@@ -85,6 +85,14 @@ You can run tests with:
 cargo make test # In the root, or any sub-crate
 ```
 
+Note: for API tests, you will need the database running. You can do this with either of these commands:
+
+```sh
+docker-compose up
+# OR
+docker-compose run --service-ports db
+```
+
 ### Debugging
 
 If you have a GDLK program or test failing, you can have the GDLK compiler and interpreter output additional debug information by setting `DEBUG=1`.
