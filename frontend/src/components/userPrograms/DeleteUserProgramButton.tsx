@@ -6,7 +6,7 @@ import { Delete as IconDelete } from '@material-ui/icons';
 import { DeleteUserProgramButton_Mutation } from './__generated__/DeleteUserProgramButton_Mutation.graphql';
 import ConfirmationDialog from 'components/common/ConfirmationDialog';
 
-const saveUserProgramMutation = graphql`
+const deleteUserProgramMutation = graphql`
   mutation DeleteUserProgramButton_Mutation($userProgramId: ID!) {
     deleteUserProgram(input: { userProgramId: $userProgramId }) {
       deletedId
@@ -15,7 +15,7 @@ const saveUserProgramMutation = graphql`
 `;
 
 /**
- * A button that delets a user program (with a confirmation modal).
+ * A button that deletes a user program (with a confirmation modal).
  *
  * @param programSpecId The ID of the program that owns this solution
  * @param userProgramId The user program being deleted
@@ -27,7 +27,7 @@ const DeleteUserProgramButton: React.FC<{
   fileName: string;
 }> = ({ programSpecId, userProgramId, fileName }) => {
   const [mutate, { loading }] = useMutation<DeleteUserProgramButton_Mutation>(
-    saveUserProgramMutation
+    deleteUserProgramMutation
   );
   const [confirmationOpen, setConfirmationOpen] = useState<boolean>(false);
 
@@ -62,7 +62,8 @@ const DeleteUserProgramButton: React.FC<{
                 deletedIDFieldName: 'deletedId',
               },
             ],
-            onCompleted: () => setConfirmationOpen(false),
+            // If the delete is successful, this component will unmount,
+            // so we don't have to close the modal manually
           });
         }}
         onClose={() => setConfirmationOpen(false)}
