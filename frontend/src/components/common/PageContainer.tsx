@@ -13,10 +13,13 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   },
   pageBody: {
     width: '100%',
-    height: '100%',
   },
-  pageBodyPadding: {
+  pageBodyNotFullScreen: {
     padding: spacing(2),
+  },
+  pageBodyFullScreen: {
+    height: '100%',
+    overflowY: 'hidden',
   },
   pageFooter: {
     marginTop: 'auto',
@@ -57,7 +60,9 @@ const PageContainer: React.FC<Props> & { defaultProps: Partial<Props> } = ({
       <div
         className={clsx(
           localClasses.pageBody,
-          !fullScreen && localClasses.pageBodyPadding
+          fullScreen
+            ? localClasses.pageBodyFullScreen
+            : localClasses.pageBodyNotFullScreen
         )}
       >
         {children}

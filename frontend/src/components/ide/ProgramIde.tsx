@@ -26,8 +26,8 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => {
   const border = `2px solid ${palette.divider}`;
   return {
     programIde: {
-      minWidth: '100%',
-      minHeight: '100%',
+      width: '100%',
+      height: '100%',
       display: 'grid',
       gridTemplateRows: 'auto auto 1fr 1fr',
       gridTemplateColumns: 'auto 1fr auto auto',
@@ -213,7 +213,7 @@ const ProgramIde: React.FC<{
         <ProgramStatus className={localClasses.programStatus} />
         <IdeControls
           className={localClasses.controls}
-          programSpec={programSpec}
+          userProgram={userProgram}
         />
         <StackInfo className={localClasses.stackInfo} />
         <CodeEditor className={localClasses.editor} />
@@ -252,8 +252,8 @@ export default createFragmentContainer(ProgramIdeWrapper, {
         id
         input
         expectedOutput
-        ...IdeControls_programSpec @arguments(fileName: $fileName)
         userProgram(fileName: $fileName) {
+          ...IdeControls_userProgram
           sourceCode
         }
       }
