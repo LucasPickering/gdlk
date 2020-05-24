@@ -74,3 +74,11 @@ impl Factory for NewUserProgram<'_> {
             .unwrap()
     }
 }
+
+#[derive(Clone, Debug, PartialEq, Identifiable, AsChangeset)]
+#[table_name = "user_programs"]
+pub struct ModifiedUserProgram<'a> {
+    pub id: Uuid,
+    pub file_name: Option<&'a str>,
+    pub source_code: Option<&'a str>,
+}

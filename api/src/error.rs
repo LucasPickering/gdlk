@@ -2,9 +2,11 @@
 
 use crate::util;
 use actix_web::HttpResponse;
+use diesel::result::DatabaseErrorKind;
 use failure::Fail;
 use juniper::{DefaultScalarValue, FieldError, IntoFieldError};
 use log::error;
+use std::fmt::Debug;
 use validator::{ValidationError, ValidationErrors, ValidationErrorsKind};
 
 pub type ResponseResult<T> = Result<T, ResponseError>;
@@ -13,17 +15,35 @@ pub type ResponseResult<T> = Result<T, ResponseError>;
 /// all at least somewhat meaningful to the user.
 #[derive(Debug, Fail)]
 pub enum ResponseError {
+    // ===== Client errors =====
+    /// User tried to tried to reference a non-existent resource. Be careful
+    /// with this! This should NOT be to respond to queries where the missing
+    /// resource was directly queried. E.g. if querying hardware specs by slug,
+    /// and there is no row with the given slug, the API should return `None`,
+    /// NOT this variant! This should be returned when the user implicitly
+    /// assumes a resource exists when it does not. For example, insert a new
+    /// row and specifying a FK to a related row. If that FK is invalid, that
+    /// would be a good time to return this variant.
+    #[fail(display = "Not found")]
+    NotFound,
+
+    /// User tried to use some unique identifier that already exists. This
+    /// could occur during a create, rename, etc.
+    #[fail(display = "This resource already exists")]
+    AlreadyExists,
+
+    /// Wrapper for validator's error type
+    #[fail(display = "Validator error: {}", 0)]
+    ValidationErrors(#[cause] validator::ValidationErrors),
+
+    // ===== Server Errors =====
     /// Wrapper for R2D2's error type
-    #[fail(display = "{}", 0)]
+    #[fail(display = "Database error: {}", 0)]
     R2d2Error(#[cause] r2d2::Error),
 
     /// Wrapper for Diesel's error type
-    #[fail(display = "{}", 0)]
+    #[fail(display = "Database error: {}", 0)]
     DieselError(#[cause] diesel::result::Error),
-
-    /// Wrapper for validator's error type
-    #[fail(display = "{}", 0)]
-    ValidationErrors(#[cause] validator::ValidationErrors),
 }
 
 impl From<r2d2::Error> for ResponseError {
@@ -62,8 +82,12 @@ impl IntoFieldError for ResponseError {
 // Actix error
 impl actix_web::ResponseError for ResponseError {
     fn error_response(&self) -> HttpResponse {
-        // Convert everything to a 500
-        HttpResponse::InternalServerError().into()
+        match self {
+            // 409
+            Self::AlreadyExists => HttpResponse::Conflict().into(),
+            // Everything else becomes a 500
+            _ => HttpResponse::InternalServerError().into(),
+        }
     }
 }
 
@@ -105,6 +129,63 @@ fn validation_to_field_error(errors: ValidationErrors) -> FieldError {
     }
 
     FieldError::new("Input validation error(s)", convert_errors(errors))
+}
+
+/// A struct to make it easier to make database errors to API response errors.
+/// By default we assume any DB error to be a server-side problem, and we log
+/// and propagate the error. Some DB errors indicate an issue with client input
+/// though. In those cases, we need to map the DB error to some other output.
+/// This struct encapsulates the most common of these mappings. The main
+/// behavior is accessible via [Self::convert].
+///
+/// Disclaimer: I wrote this in a hurry. It probably has burrs and gaps. Feel
+/// free to refactor it later.
+#[derive(Copy, Clone, Debug, Default)]
+pub struct DbErrorConverter {
+    /// Convert DB foreign key violation to [ResponseError::NotFound]? Useful
+    /// when inserting or modifying foreign keys. Read the description for
+    /// [ResponseError::NotFound] for more info on when this should and
+    /// shouldn't be used.
+    pub fk_violation_to_not_found: bool,
+
+    /// Convert DB unique violations to [ResponseError::AlreadyExists]? Useful
+    /// for insert statements, or updates where all or part of a unique
+    /// field can be changed.
+    pub unique_violation_to_exists: bool,
+}
+
+impl DbErrorConverter {
+    /// If the result is an error, convert it from a Diesel error to a
+    /// [ResponseError]. If the result is `Ok`, just return it.
+    pub fn convert<T: Debug>(
+        self,
+        result: Result<T, diesel::result::Error>,
+    ) -> Result<T, ResponseError> {
+        match result {
+            Ok(val) => Ok(val),
+
+            // FK is invalid
+            Err(diesel::result::Error::DatabaseError(
+                DatabaseErrorKind::ForeignKeyViolation,
+                _,
+            )) if self.fk_violation_to_not_found => {
+                Err(ResponseError::NotFound)
+            }
+
+            // Object already exists
+            Err(diesel::result::Error::DatabaseError(
+                DatabaseErrorKind::UniqueViolation,
+                _,
+            )) if self.unique_violation_to_exists => {
+                Err(ResponseError::AlreadyExists)
+            }
+
+            // Add more conversions here
+
+            // Fall back to the built in converion from ResponseError
+            Err(err) => Err(err.into()),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -173,6 +254,66 @@ mod tests {
                     },
                 }
             })
+        );
+    }
+
+    #[test]
+    fn test_db_error_converter() {
+        use diesel::result::Error;
+        let default = DbErrorConverter::default();
+        // We need lambdas around these values because we have to move them
+        // and diesel's Error doesn't implement Clone
+        let make_fk_violation_error = || {
+            Error::DatabaseError(
+                DatabaseErrorKind::ForeignKeyViolation,
+                Box::new(String::new()),
+            )
+        };
+        let make_unique_violation_error = || {
+            Error::DatabaseError(
+                DatabaseErrorKind::UniqueViolation,
+                Box::new(String::new()),
+            )
+        };
+
+        // Default - all flags off
+        assert_eq!(default.convert(Ok(3)).unwrap(), 3);
+        assert_eq!(
+            default
+                .convert::<()>(Err(make_fk_violation_error()))
+                .unwrap_err()
+                .to_string(),
+            ResponseError::DieselError(make_fk_violation_error()).to_string()
+        );
+        assert_eq!(
+            default
+                .convert::<()>(Err(make_unique_violation_error()))
+                .unwrap_err()
+                .to_string(),
+            ResponseError::DieselError(make_unique_violation_error())
+                .to_string()
+        );
+
+        // Test each flag individually
+        assert_eq!(
+            DbErrorConverter {
+                fk_violation_to_not_found: true,
+                ..Default::default()
+            }
+            .convert::<()>(Err(make_fk_violation_error()))
+            .unwrap_err()
+            .to_string(),
+            ResponseError::NotFound.to_string()
+        );
+        assert_eq!(
+            DbErrorConverter {
+                unique_violation_to_exists: true,
+                ..Default::default()
+            }
+            .convert::<()>(Err(make_unique_violation_error()))
+            .unwrap_err()
+            .to_string(),
+            ResponseError::AlreadyExists.to_string()
         );
     }
 }

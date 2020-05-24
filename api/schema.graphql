@@ -399,14 +399,26 @@ The root mutation.
 """
 type Mutation {
   """
-  Create or update a user program by owner, program spec, and file name.
+  Create a new user program spec and file name (belonging to the current user).
+  An error is returned if there is already a user program with this program
+  spec ID/file name, or if the program spec ID is invalid.
   """
-  saveUserProgram(
+  createUserProgram(
     """
     All input fields.
     """
-    input: SaveUserProgramInput!
-  ): SaveUserProgramPayload! @juniper(ownership: "owned")
+    input: CreateUserProgramInput!
+  ): CreateUserProgramPayload! @juniper(ownership: "owned")
+
+  """
+  Modify a existing user program.
+  """
+  updateUserProgram(
+    """
+    All input fields.
+    """
+    input: UpdateUserProgramInput!
+  ): UpdateUserProgramPayload! @juniper(ownership: "owned")
 
   """
   Delete a user program by ID.
@@ -420,31 +432,59 @@ type Mutation {
 }
 
 """
-Input to the `saveUserProgram` mutation.
+Input to the `createUserProgram` mutation.
 """
-input SaveUserProgramInput {
+input CreateUserProgramInput {
   """
   The program spec for which this source was written.
   """
   programSpecId: ID!
-
   """
   The name of the program source file.
   """
   fileName: String!
-
   """
-  The source code for the program.
+  The source code for the new file. If not given, it will be an empty string.
   """
-  sourceCode: String!
+  sourceCode: String
 }
 
 """
 Output from the `saveUserProgram` mutation.
 """
-type SaveUserProgramPayload {
+type CreateUserProgramPayload {
   """
-  The created/updated user program.
+  The created user program.
+  """
+  userProgramEdge: UserProgramEdge!
+    @juniper(infallible: true, ownership: "owned")
+}
+
+"""
+Input to the `saveUserProgram` mutation.
+"""
+input UpdateUserProgramInput {
+  """
+  The program spec for which this source was written.
+  """
+  id: ID!
+  """
+  The new name for the file. If not given, the existing name will be kept.
+  """
+  fileName: String
+  """
+  The new source code for the file. If not given, the existing source code
+  will be kept.
+  """
+  sourceCode: String
+}
+
+"""
+Output from the `saveUserProgram` mutation.
+"""
+type UpdateUserProgramPayload {
+  """
+  The updated user program.
   """
   userProgramEdge: UserProgramEdge
     @juniper(infallible: true, ownership: "owned")
