@@ -1,25 +1,22 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { RelayPaginationProp, createPaginationContainer } from 'react-relay';
 import graphql from 'babel-plugin-relay/macro';
-import { Add as IconAdd } from '@material-ui/icons';
 import { UserProgramsTable_programSpec } from './__generated__/UserProgramsTable_programSpec.graphql';
 import {
   makeStyles,
-  Dialog,
-  DialogTitle,
-  DialogContent,
   TableBody,
   TableContainer,
   TableRow,
   TableCell,
   Table,
   TableHead,
-  Button,
 } from '@material-ui/core';
 import Link from 'components/common/Link';
 import { useRouteMatch } from 'react-router-dom';
-import EditUserProgramForm from './EditUserProgramForm';
 import DeleteUserProgramButton from './DeleteUserProgramButton';
+import EditUserProgramButton from './EditUserProgramButton';
+import CreateUserProgramButton from './CreateUserProgramButton';
+import CopyUserProgramButton from './CopyUserProgramButton';
 
 const useLocalStyles = makeStyles(({ spacing }) => ({
   newSolutionButton: {
@@ -33,68 +30,48 @@ const UserProgramsTable: React.FC<{
 }> = ({ programSpec }) => {
   const localClasses = useLocalStyles();
   const { url } = useRouteMatch();
-  const [newSolutionModalOpen, setNewSolutionModalOpen] = useState<boolean>(
-    false
-  );
 
   return (
-    <>
-      <TableContainer>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>File Name</TableCell>
-              <TableCell>Actions</TableCell>
+    <TableContainer>
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>File Name</TableCell>
+            <TableCell>Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {/* One row per existing solution */}
+          {programSpec.userPrograms.edges.map(({ node: userProgram }) => (
+            <TableRow key={userProgram.id}>
+              <TableCell>
+                <Link to={`${url}/${userProgram.fileName}`}>
+                  {userProgram.fileName}
+                </Link>
+              </TableCell>
+
+              <TableCell>
+                <EditUserProgramButton userProgram={userProgram} />
+                <CopyUserProgramButton
+                  programSpecId={programSpec.id}
+                  userProgram={userProgram}
+                />
+                <DeleteUserProgramButton
+                  programSpecId={programSpec.id}
+                  userProgramId={userProgram.id}
+                  fileName={userProgram.fileName}
+                />
+              </TableCell>
             </TableRow>
-          </TableHead>
-          <TableBody>
-            {/* One row per existing solution */}
-            {programSpec.userPrograms.edges.map(({ node: userProgram }) => (
-              <TableRow key={userProgram.fileName}>
-                <TableCell>
-                  <Link to={`${url}/${userProgram.fileName}`}>
-                    {userProgram.fileName}
-                  </Link>
-                </TableCell>
+          ))}
+        </TableBody>
+      </Table>
 
-                <TableCell>
-                  <DeleteUserProgramButton
-                    programSpecId={programSpec.id}
-                    userProgramId={userProgram.id}
-                    fileName={userProgram.fileName}
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-
-        <Button
-          className={localClasses.newSolutionButton}
-          startIcon={<IconAdd />}
-          size="small"
-          onClick={() => setNewSolutionModalOpen(true)}
-        >
-          New Solution
-        </Button>
-      </TableContainer>
-
-      <Dialog
-        aria-labelledby="edit-user-program-dialog-title"
-        open={newSolutionModalOpen}
-        onClose={() => setNewSolutionModalOpen(false)}
-      >
-        <DialogTitle id="edit-user-program-dialog-title">
-          Create new solution
-        </DialogTitle>
-        <DialogContent>
-          <EditUserProgramForm
-            programSpecId={programSpec.id}
-            onCompleted={() => setNewSolutionModalOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
-    </>
+      <CreateUserProgramButton
+        className={localClasses.newSolutionButton}
+        programSpecId={programSpec.id}
+      />
+    </TableContainer>
   );
 };
 
@@ -116,6 +93,8 @@ export default createPaginationContainer(
             node {
               id
               fileName
+              ...EditUserProgramButton_userProgram
+              ...CopyUserProgramButton_userProgram
             }
           }
         }

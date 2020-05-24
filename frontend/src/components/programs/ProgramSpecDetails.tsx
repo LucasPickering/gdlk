@@ -3,7 +3,7 @@ import { RelayProp, createFragmentContainer } from 'react-relay';
 import graphql from 'babel-plugin-relay/macro';
 import { ProgramSpecDetails_programSpec } from './__generated__/ProgramSpecDetails_programSpec.graphql';
 import { Card, CardContent, Typography, makeStyles } from '@material-ui/core';
-import UserProgramsTable from './UserProgramsTable';
+import UserProgramsTable from '../userPrograms/UserProgramsTable';
 import HardwareSpecSummary from 'components/hardware/HardwareSpecSummary';
 import SimpleTable from 'components/common/SimpleTable';
 import Link from 'components/common/Link';
