@@ -19,27 +19,16 @@ import { IdeContext } from 'state/ide';
 import { useMutation } from 'relay-hooks';
 import { IdeControls_Mutation } from './__generated__/IdeControls_Mutation.graphql';
 import { createFragmentContainer, RelayProp } from 'react-relay';
-import { IdeControls_programSpec } from './__generated__/IdeControls_programSpec.graphql';
+import { IdeControls_userProgram } from './__generated__/IdeControls_userProgram.graphql';
 import clsx from 'clsx';
 import IconButton from 'components/common/IconButton';
-import { assertIsDefined } from 'util/guards';
 
 const DEFAULT_STEP_INTERVAL = 1000; // ms between steps at 1x speed
 const STEP_SPEED_OPTIONS: number[] = [1, 5, 20];
 
 const saveUserProgramMutation = graphql`
-  mutation IdeControls_Mutation(
-    $programSpecId: ID!
-    $fileName: String!
-    $sourceCode: String!
-  ) {
-    saveUserProgram(
-      input: {
-        programSpecId: $programSpecId
-        fileName: $fileName
-        sourceCode: $sourceCode
-      }
-    ) {
+  mutation IdeControls_Mutation($id: ID!, $sourceCode: String!) {
+    updateUserProgram(input: { id: $id, sourceCode: $sourceCode }) {
       userProgramEdge {
         node {
           sourceCode
@@ -69,9 +58,9 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
  */
 const IdeControls: React.FC<{
   className?: string;
-  programSpec: IdeControls_programSpec;
+  userProgram: IdeControls_userProgram;
   relay: RelayProp;
-}> = ({ className, programSpec }) => {
+}> = ({ className, userProgram }) => {
   const localClasses = useLocalStyles();
   const { compiledState, sourceCode, executeNext, reset } = useContext(
     IdeContext
@@ -85,8 +74,6 @@ const IdeControls: React.FC<{
   const [stepSpeed, setStepSpeed] = useState<number>(STEP_SPEED_OPTIONS[0]);
   const intervalIdRef = useRef<number | undefined>();
 
-  const { userProgram } = programSpec;
-  assertIsDefined(userProgram);
   const machineState =
     compiledState?.type === 'compiled' ? compiledState.machineState : undefined;
 
@@ -121,8 +108,7 @@ const IdeControls: React.FC<{
             setSaveState(undefined);
             mutate({
               variables: {
-                programSpecId: programSpec.id,
-                fileName: userProgram.fileName,
+                id: userProgram.id,
                 sourceCode,
               },
               onCompleted: () => setSaveState('success'),
@@ -199,14 +185,10 @@ const IdeControls: React.FC<{
 };
 
 export default createFragmentContainer(IdeControls, {
-  programSpec: graphql`
-    fragment IdeControls_programSpec on ProgramSpecNode
-      @argumentDefinitions(fileName: { type: "String!" }) {
+  userProgram: graphql`
+    fragment IdeControls_userProgram on UserProgramNode {
       id
-      userProgram(fileName: $fileName) {
-        fileName
-        sourceCode
-      }
+      sourceCode
     }
   `,
 });
