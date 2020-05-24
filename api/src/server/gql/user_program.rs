@@ -6,8 +6,9 @@ use crate::{
         internal::{GenericEdge, NodeType},
         program_spec::ProgramSpecNode,
         user::UserNode,
-        ConnectionPageParams, Context, Cursor, DeleteUserProgramPayloadFields,
-        PageInfo, SaveUserProgramPayloadFields, UserProgramConnectionFields,
+        ConnectionPageParams, Context, CreateUserProgramPayloadFields, Cursor,
+        DeleteUserProgramPayloadFields, PageInfo,
+        UpdateUserProgramPayloadFields, UserProgramConnectionFields,
         UserProgramEdgeFields, UserProgramNodeFields,
     },
     util,
@@ -193,11 +194,25 @@ impl UserProgramConnectionFields for UserProgramConnection {
     }
 }
 
-pub struct SaveUserProgramPayload {
+pub struct CreateUserProgramPayload {
+    pub user_program: models::UserProgram,
+}
+
+impl CreateUserProgramPayloadFields for CreateUserProgramPayload {
+    fn field_user_program_edge(
+        &self,
+        _executor: &juniper::Executor<'_, Context>,
+        _trail: &QueryTrail<'_, UserProgramEdge, Walked>,
+    ) -> UserProgramEdge {
+        GenericEdge::from_db_row(self.user_program.clone(), 0)
+    }
+}
+
+pub struct UpdateUserProgramPayload {
     pub user_program: Option<models::UserProgram>,
 }
 
-impl SaveUserProgramPayloadFields for SaveUserProgramPayload {
+impl UpdateUserProgramPayloadFields for UpdateUserProgramPayload {
     fn field_user_program_edge(
         &self,
         _executor: &juniper::Executor<'_, Context>,

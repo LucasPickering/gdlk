@@ -9,10 +9,10 @@ use gdlk_api::{
     server::{create_gql_schema, Context, GqlSchema},
     util,
 };
-use juniper::{
-    graphql_value, DefaultScalarValue, ExecutionError, InputValue, Variables,
-};
+use juniper::{ExecutionError, InputValue, Variables};
 use maplit::hashmap;
+use serde::Serialize;
+use serde_json::json;
 use std::{collections::HashMap, sync::Arc};
 use uuid::Uuid;
 
@@ -53,10 +53,10 @@ fn new_program_spec(
     }
 }
 
-/// Wrap a vec into a GraphQL value. This will wrap each child in the value,
-/// then wrap the vec itself.
-fn to_gql_list<T: Into<juniper::Value>>(list: Vec<T>) -> juniper::Value {
-    juniper::Value::List(list.into_iter().map(|v| v.into()).collect())
+/// Convert a serializable value into a JSON value.
+fn to_json<T: Serialize>(input: T) -> serde_json::Value {
+    let serialized: String = serde_json::to_string(&input).unwrap();
+    serde_json::from_str(&serialized).unwrap()
 }
 
 /// Helper type for setting up and executing test GraphQL queries
@@ -81,24 +81,25 @@ impl QueryRunner {
         &'a self,
         query: &'a str,
         vars: HashMap<&str, InputValue>,
-    ) -> (
-        juniper::Value<DefaultScalarValue>,
-        Vec<ExecutionError<DefaultScalarValue>>,
-    ) {
+    ) -> (serde_json::Value, Vec<serde_json::Value>) {
         // Map &strs to Strings
         let converted_vars = vars
             .into_iter()
             .map(|(k, v)| (k.to_string(), v))
             .collect::<Variables>();
 
-        juniper::execute(
-            query,
-            None,
-            &self.schema,
-            &converted_vars,
-            &self.context,
-        )
-        .unwrap()
+        let (data, errors): (juniper::Value<_>, Vec<ExecutionError<_>>) =
+            juniper::execute(
+                query,
+                None,
+                &self.schema,
+                &converted_vars,
+                &self.context,
+            )
+            .unwrap();
+
+        // Map the output data to JSON, for easier comparison
+        (to_json(data), errors.into_iter().map(to_json).collect())
     }
 }
 
@@ -153,9 +154,9 @@ fn test_field_node() {
                 }
             ),
             (
-                graphql_value!({
+                json!({
                     "node": {
-                        "id": (id.to_string()),
+                        "id": id.to_string(),
                     }
                 }),
                 vec![]
@@ -173,8 +174,8 @@ fn test_field_node() {
                 }
             ),
             (
-                graphql_value!({
-                    "node": None,
+                json!({
+                    "node": serde_json::Value::Null,
                 }),
                 vec![]
             )
@@ -204,7 +205,7 @@ fn test_field_user() {
             hashmap! { "username" => InputValue::scalar("user1") }
         ),
         (
-            graphql_value!({
+            json!({
                 "user": {
                     "id": (user_id.to_string()),
                     "username": "user1"
@@ -220,7 +221,7 @@ fn test_field_user() {
             query,
             hashmap! { "username" => InputValue::scalar("unknown_user") }
         ),
-        (graphql_value!({ "user": None }), vec![])
+        (json!({ "user": serde_json::Value::Null }), vec![])
     );
 }
 
@@ -253,7 +254,7 @@ fn test_field_hardware_spec() {
             }
         ),
         (
-            graphql_value!({
+            json!({
                 "hardwareSpec": {
                     "id": (hardware_spec_id.to_string()),
                     "slug": "hw1",
@@ -272,7 +273,7 @@ fn test_field_hardware_spec() {
             query,
             hashmap! { "slug" => InputValue::scalar("unknown_hw_spec") }
         ),
-        (graphql_value!({ "hardwareSpec": None }), vec![])
+        (json!({ "hardwareSpec": serde_json::Value::Null }), vec![])
     );
 }
 
@@ -308,7 +309,7 @@ fn test_field_hardware_specs() {
     assert_eq!(
         runner.query(query, hashmap! {}),
         (
-            graphql_value!({
+            json!({
                 "hardwareSpecs": {
                     "totalCount": 3,
                     "pageInfo": {
@@ -353,7 +354,7 @@ fn test_field_hardware_specs() {
             }
         ),
         (
-            graphql_value!({
+            json!({
                 "hardwareSpecs": {
                     "totalCount": 3,
                     "pageInfo": {
@@ -422,7 +423,7 @@ fn test_field_hardware_spec_program_spec() {
             }
         ),
         (
-            graphql_value!({
+            json!({
                 "hardwareSpec": {
                     "programSpec": {
                         "slug": "prog1",
@@ -464,9 +465,9 @@ fn test_field_hardware_spec_program_spec() {
             }
         ),
         (
-            graphql_value!({
+            json!({
                 "hardwareSpec": {
-                    "programSpec": None,
+                    "programSpec": serde_json::Value::Null,
                     "programSpecs": {
                         "totalCount": 3,
                         "edges": []
@@ -517,13 +518,13 @@ fn test_program_spec() {
             }
         ),
         (
-            graphql_value!({
+            json!({
                 "hardwareSpec": {
                     "programSpec": {
-                        "id": (program_spec_id.to_string()),
+                        "id": program_spec_id.to_string(),
                         "slug": "prog1",
-                        "input": (to_gql_list(vec![1, 2, 3])),
-                        "expectedOutput": (to_gql_list(vec![1, 2, 3])),
+                        "input": vec![1, 2, 3],
+                        "expectedOutput": vec![1, 2, 3],
                         "hardwareSpec": {
                             "slug": "hw1"
                         }
@@ -619,7 +620,7 @@ fn test_program_spec_user_program() {
             }
         ),
         (
-            graphql_value!({
+            json!({
                 "hardwareSpec": {
                     "programSpec": {
                         "userProgram": {
@@ -662,7 +663,7 @@ fn test_program_spec_user_program() {
 }
 
 #[test]
-fn test_save_user_program() {
+fn test_create_user_program() {
     let runner = QueryRunner::new().unwrap();
     let conn: &PgConnection = &runner.context.get_db_conn().unwrap();
 
@@ -671,6 +672,7 @@ fn test_save_user_program() {
         new_program_spec("prog1", new_hardware_spec("hw1").create(conn).id)
             .create(conn)
             .id;
+    // We'll test collisions against this
     models::NewUserProgram {
         user_id,
         program_spec_id,
@@ -679,12 +681,12 @@ fn test_save_user_program() {
     }
     .create(conn);
     let query = r#"
-        mutation SaveUserProgramMutation(
+        mutation CreateUserProgramMutation(
             $programSpecId: ID!,
             $fileName: String!,
-            $sourceCode: String!,
+            $sourceCode: String,
         ) {
-            saveUserProgram(input: {
+            createUserProgram(input: {
                 programSpecId: $programSpecId,
                 fileName: $fileName,
                 sourceCode: $sourceCode,
@@ -716,8 +718,8 @@ fn test_save_user_program() {
             }
         ),
         (
-            graphql_value!({
-                "saveUserProgram": {
+            json!({
+                "createUserProgram": {
                     "userProgramEdge": {
                         "node": {
                             "fileName": "new.gdlk",
@@ -736,23 +738,119 @@ fn test_save_user_program() {
         )
     );
 
-    // Known user+program spec combo, overwriting an existing solution
+    // Known user+program spec combo, colliding with an existing solution
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                        "userId" => InputValue::scalar(user_id.to_string()),
+                        "programSpecId" =>
+            InputValue::scalar(program_spec_id.to_string()),
+            "fileName" => InputValue::scalar("existing.gdlk"),         }
+        ),
+        (
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 7, "column": 13}],
+                "message": "This resource already exists",
+                "path": ["createUserProgram"],
+            })]
+        )
+    );
+
+    // Unknown user+program spec combo
     assert_eq!(
         runner.query(
             query,
             hashmap! {
                 "userId" => InputValue::scalar(user_id.to_string()),
-                "programSpecId" => InputValue::scalar(program_spec_id.to_string()),
-                "fileName" => InputValue::scalar("existing.gdlk"),
+                "programSpecId" => InputValue::scalar("garbage"),
+                "fileName" => InputValue::scalar("new.gdlk"),
+            }
+        ),
+        (
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 7, "column": 13}],
+                "message": "Not found",
+                "path": ["createUserProgram"],
+            })]
+        )
+    );
+}
+
+#[test]
+fn test_update_user_program() {
+    let runner = QueryRunner::new().unwrap();
+    let conn: &PgConnection = &runner.context.get_db_conn().unwrap();
+
+    // Initialize data
+    let user_id = new_user("user1").create(conn).id;
+    let program_spec_id =
+        new_program_spec("prog1", new_hardware_spec("hw1").create(conn).id)
+            .create(conn)
+            .id;
+    let user_program = models::NewUserProgram {
+        user_id,
+        program_spec_id,
+        file_name: "existing.gdlk",
+        source_code: "READ RX0",
+    }
+    .create(conn);
+    // Use this to test collisions
+    models::NewUserProgram {
+        user_id,
+        program_spec_id,
+        file_name: "existing2.gdlk",
+        source_code: "READ RX0",
+    }
+    .create(conn);
+
+    let query = r#"
+        mutation UpdateUserProgramMutation(
+            $id: ID!,
+            $fileName: String!,
+            $sourceCode: String,
+        ) {
+            updateUserProgram(input: {
+                id: $id,
+                fileName: $fileName,
+                sourceCode: $sourceCode,
+            }) {
+                userProgramEdge {
+                    node {
+                        id
+                        fileName
+                        sourceCode
+                        user {
+                            username
+                        }
+                        programSpec {
+                            slug
+                        }
+                    }
+                }
+            }
+        }
+    "#;
+
+    // Known user program, with a new file name and source code
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "id" => InputValue::scalar(user_program.id.to_string()),
+                "fileName" => InputValue::scalar("new.gdlk"),
                 "sourceCode" => InputValue::scalar("WRITE RX0"),
             }
         ),
         (
-            graphql_value!({
-                "saveUserProgram": {
+            json!({
+                "updateUserProgram": {
                     "userProgramEdge": {
-                        "node":{
-                            "fileName": "existing.gdlk",
+                        "node": {
+                            "id": (user_program.id.to_string()),
+                            "fileName": "new.gdlk",
                             "sourceCode": "WRITE RX0",
                             "user": {
                                 "username": "user1"
@@ -768,24 +866,43 @@ fn test_save_user_program() {
         )
     );
 
-    // Unknown user+program spec combo
+    // Unknown user program
     assert_eq!(
         runner.query(
             query,
             hashmap! {
-                "userId" => InputValue::scalar(user_id.to_string()),
-                "programSpecId" => InputValue::scalar("garbage"),
+                "id" => InputValue::scalar("bogus".to_string()),
                 "fileName" => InputValue::scalar("new.gdlk"),
-                "sourceCode" => InputValue::scalar("READ RX0"),
+                "sourceCode" => InputValue::scalar("WRITE RX0"),
             }
         ),
         (
-            graphql_value!({
-                "saveUserProgram": {
-                    "userProgramEdge": None
+            json!({
+                "updateUserProgram": {
+                    "userProgramEdge": serde_json::Value::Null
                 }
             }),
             vec![]
+        )
+    );
+
+    // Known user program, rename to collide with another program
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "id" => InputValue::scalar(user_program.id.to_string()),
+                "fileName" => InputValue::scalar("existing2.gdlk"),
+                "sourceCode" => InputValue::scalar("WRITE RX0"),
+            }
+        ),
+        (
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 7, "column": 13}],
+                "message": "This resource already exists",
+                "path": ["updateUserProgram"],
+            })]
         )
     );
 }
@@ -825,7 +942,7 @@ fn test_delete_user_program() {
             }
         ),
         (
-            graphql_value!({
+            json!({
                 "deleteUserProgram": {
                     "deletedId": (user_program_id.to_string())
                 }
@@ -853,9 +970,9 @@ fn test_delete_user_program() {
             }
         ),
         (
-            graphql_value!({
+            json!({
                 "deleteUserProgram": {
-                    "deletedId": None
+                    "deletedId": serde_json::Value::Null
                 }
             }),
             vec![]
