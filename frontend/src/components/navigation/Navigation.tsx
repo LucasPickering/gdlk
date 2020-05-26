@@ -23,6 +23,7 @@ const LINKS = [
     label: 'Home',
     exact: true,
   },
+  { to: '/docs', label: 'Docs' },
 ];
 
 const useLocalStyles = makeStyles(({ spacing }) => ({

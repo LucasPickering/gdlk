@@ -1,24 +1,23 @@
 const path = require('path');
 const WasmPackPlugin = require('@wasm-tool/wasm-pack-plugin');
 
-module.exports = function override(config, env) {
-  // Set up wasm-pack
-  const wasmExtensionRegExp = /\.wasm$/;
+const WASM_EXT_RGX = /\.wasm$/;
 
+module.exports = function override(config) {
   config.resolve.extensions.push('.wasm');
 
-  config.module.rules.forEach((rule) => {
-    (rule.oneOf || []).forEach((oneOf) => {
-      if (oneOf.loader && oneOf.loader.indexOf('file-loader') >= 0) {
-        // Make file-loader ignore WASM files
-        oneOf.exclude.push(wasmExtensionRegExp);
-      }
-    });
-  });
+  // Make file-loader ignore file types that we customize
+  const oneOfRule = config.module.rules.find((rule) => Boolean(rule.oneOf));
+  if (oneOfRule) {
+    const fileLoaderRule = oneOfRule.oneOf.find((rule) =>
+      Boolean(rule.loader && rule.loader.includes('file-loader'))
+    );
+    fileLoaderRule.exclude.push(WASM_EXT_RGX);
+  }
 
-  // Add a dedicated loader for WASM
+  // Add markdown and wasm loaders
   config.module.rules.push({
-    test: wasmExtensionRegExp,
+    test: WASM_EXT_RGX,
     include: path.resolve(__dirname, 'src'),
     use: [{ loader: require.resolve('wasm-loader'), options: {} }],
   });

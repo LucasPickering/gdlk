@@ -68,8 +68,8 @@
     "build": "react-app-rewired build",
     "test": "react-app-rewired test",
     "eject": "react-scripts eject",
-    "lint": "eslint './src/**/*.{ts,tsx}'",
-    "lint:fix": "eslint --fix './src/**/*.{ts,tsx}'",
+    "lint": "eslint .",
+    "lint:fix": "eslint --fix .",
     "lint:gql": "graphql-schema-linter",
     "relay": "relay-compiler",
     "tsc": "tsc"

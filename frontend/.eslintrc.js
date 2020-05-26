@@ -48,6 +48,16 @@ module.exports = {
   },
   overrides: [
     {
+      // Special config files
+      files: ['config-overrides.js', 'src/setupProxy.js'],
+      parserOptions: {
+        ecmaVersion: 3,
+      },
+      rules: {
+        '@typescript-eslint/no-var-requires': 'off',
+      },
+    },
+    {
       files: ['*.test.ts'],
       plugins: ['jest'],
       env: {

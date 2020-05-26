@@ -10,6 +10,7 @@ import NotFoundPage from './NotFoundPage';
 import PageContainer from './common/PageContainer';
 import environment from 'util/environment';
 import { RelayEnvironmentProvider } from 'relay-hooks';
+import DocsPage from 'components/docs/DocsPage';
 
 const ProgramIdeView = React.lazy(() => import('./ide/ProgramIdeView'));
 
@@ -35,6 +36,10 @@ const App: React.FC = () => {
                   <Switch>
                     <Route path="/" exact>
                       <HomePage />
+                    </Route>
+
+                    <Route path="/docs">
+                      <DocsPage />
                     </Route>
 
                     {/* Hardware routes */}
