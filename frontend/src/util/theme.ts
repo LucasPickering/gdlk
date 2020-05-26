@@ -16,7 +16,7 @@ const theme: Theme = createMuiTheme({
     // Makes math for `rem` font sizes easy
     // https://www.sitepoint.com/understanding-and-using-rem-units-in-css/
     htmlFontSize: 10,
-    fontFamily: 'monospace',
+    fontFamily: 'Consolas',
     fontWeightLight: 400,
     fontWeightRegular: 600,
     fontWeightMedium: 600,
