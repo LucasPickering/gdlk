@@ -1803,7 +1803,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "validator"
 version = "0.10.0"
-source = "git+https://github.com/LucasPickering/validator?branch=blanket-ref-impl#52e3170bbe4ece139f042c1b145dff54301d776d"
+source = "git+https://github.com/LucasPickering/validator?branch=blanket-ref-impl#f51e0d671880b32a574060c642e405c590dd0974"
 dependencies = [
  "idna 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1817,7 +1817,7 @@ dependencies = [
 [[package]]
 name = "validator_derive"
 version = "0.10.0"
-source = "git+https://github.com/LucasPickering/validator?branch=blanket-ref-impl#52e3170bbe4ece139f042c1b145dff54301d776d"
+source = "git+https://github.com/LucasPickering/validator?branch=blanket-ref-impl#f51e0d671880b32a574060c642e405c590dd0974"
 dependencies = [
  "if_chain 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
