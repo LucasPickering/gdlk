@@ -47,14 +47,14 @@ const HardwareSpecPanel: React.FC<{
   const localClasses = useLocalStyles();
 
   return (
-    <ExpansionPanel>
+    <ExpansionPanel component="section">
       <ExpansionPanelSummary
         classes={{ content: localClasses.panelHeader }}
         expandIcon={<IconExpandMore />}
         aria-controls={`hardware-${hardwareSpec.slug}-content`}
         id={`hardware-${hardwareSpec.slug}-header`}
       >
-        <Typography variant="h5">{hardwareSpec.slug}</Typography>
+        <Typography variant="h3">{hardwareSpec.slug}</Typography>
 
         <Typography variant="body1">
           {hardwareSpec.programSpecs.totalCount} puzzles

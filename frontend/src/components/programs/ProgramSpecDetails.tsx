@@ -31,14 +31,12 @@ const ProgramSpecDetails: React.FC<{
 }> = ({ programSpec }) => {
   const localClasses = useLocalStyles();
   return (
-    <Card>
+    <Card component="section">
       <CardContent>
-        <Typography variant="h5" component="h2">
-          {programSpec.slug}
-        </Typography>
+        <Typography variant="h1">{programSpec.slug}</Typography>
 
         <div className={localClasses.specSection}>
-          <Typography variant="h6" component="h3">
+          <Typography variant="h2">
             Hardware Specs (
             <Link to={`/hardware/${programSpec.hardwareSpec.slug}`}>
               {programSpec.hardwareSpec.slug}
@@ -49,9 +47,7 @@ const ProgramSpecDetails: React.FC<{
         </div>
 
         <div className={localClasses.specSection}>
-          <Typography variant="h6" component="h3">
-            Program Specs
-          </Typography>
+          <Typography variant="h2">Program Specs</Typography>
 
           <SimpleTable
             data={[
@@ -64,9 +60,7 @@ const ProgramSpecDetails: React.FC<{
           />
         </div>
 
-        <Typography variant="h6" component="h3">
-          Solutions
-        </Typography>
+        <Typography variant="h2">Solutions</Typography>
         <UserProgramsTable programSpec={programSpec} />
       </CardContent>
     </Card>

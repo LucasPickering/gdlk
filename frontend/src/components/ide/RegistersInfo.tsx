@@ -45,9 +45,7 @@ const RegistersInfo: React.FC<{
 
   return (
     <div className={clsx(localClasses.registersInfo, className)}>
-      <Typography component="h3" variant="h6">
-        Registers
-      </Typography>
+      <Typography variant="h3">Registers</Typography>
 
       <div className={localClasses.registers}>
         {wasmHardwareSpec.registers.map((name) => (
