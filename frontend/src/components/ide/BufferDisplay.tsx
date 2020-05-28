@@ -1,7 +1,7 @@
 import React from 'react';
 import { LangValue } from 'state/ide';
 import { makeStyles, Typography } from '@material-ui/core';
-import { range } from 'lodash';
+import { range } from 'lodash-es';
 import clsx from 'clsx';
 import LangValueDisplay from './LangValueDisplay';
 

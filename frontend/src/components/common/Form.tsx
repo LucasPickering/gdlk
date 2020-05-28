@@ -1,6 +1,6 @@
 import { makeStyles } from '@material-ui/core';
 import React from 'react';
-import { noop } from 'lodash';
+import { noop } from 'lodash-es';
 import clsx from 'clsx';
 
 const useLocalStyles = makeStyles(({ spacing }) => ({
