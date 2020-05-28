@@ -172,7 +172,7 @@ const ProgramIde: React.FC<{
     [wasmHardwareSpec, wasmProgramSpec, updateCompiledState]
   );
 
-  const executeNext = (): void => {
+  const executeNext = useCallback((): void => {
     if (compileResult.current?.type === 'compiled') {
       compileResult.current.machine.executeNext();
       // We need to manually refresh since the wasm pointers won't change
@@ -183,7 +183,7 @@ const ProgramIde: React.FC<{
         'Program is not compiled, cannot execute next instruction.'
       );
     }
-  };
+  }, [compileResult, updateCompiledState]);
 
   // When either spec or the source changes, invalidate the compiled program
   useEffect(() => {
