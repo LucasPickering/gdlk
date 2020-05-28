@@ -27,9 +27,7 @@ const IoInfo: React.FC<{
 
   return (
     <div className={clsx(localClasses.ioInfo, className)}>
-      <Typography component="h3" variant="h6">
-        I/O
-      </Typography>
+      <Typography variant="h3">I/O</Typography>
 
       <div className={localClasses.buffers}>
         <BufferDisplay

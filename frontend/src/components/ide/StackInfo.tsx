@@ -36,9 +36,7 @@ const StackInfo: React.FC<{
 
   return (
     <div className={clsx(localClasses.stackInfo, className)}>
-      <Typography component="h3" variant="h6">
-        Stacks
-      </Typography>
+      <Typography variant="h3">Stacks</Typography>
 
       <div className={localClasses.stacks}>
         {wasmHardwareSpec.stacks.map((name) => (
