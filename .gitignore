@@ -1,6 +1,7 @@
 .vscode/
 pkg/
 node_modules/
+analysis/
 build/
 target/
 **/__generated__/
