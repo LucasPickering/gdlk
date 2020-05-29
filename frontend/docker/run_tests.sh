@@ -1,6 +1,9 @@
 #!/bin/sh
 
+set -ex
+
 npm install
+npm run wasm-pack
 npm run relay
 npm run tsc
 npm run lint

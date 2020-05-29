@@ -1,11 +1,15 @@
 import React, { ReactNode } from 'react';
-import { makeStyles, Paper, Typography } from '@material-ui/core';
+import {
+  makeStyles,
+  Card,
+  CardContent,
+  Typography,
+  CardHeader,
+} from '@material-ui/core';
 import Link from 'components/common/Link';
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   docs: {
-    padding: spacing(2),
-
     '& code': {
       color: palette.text.secondary,
     },
@@ -239,115 +243,118 @@ const DocsPage: React.FC = () => {
   // This HTML is rendered directly from our own docs file, so this is safe
   const localClasses = useLocalStyles();
   return (
-    <Paper className={localClasses.docs}>
-      <Typography variant="h1">GDLK Documentation</Typography>
-
-      <section>
-        <Typography variant="h2">API Reference</Typography>
-
+    <Card className={localClasses.docs}>
+      <CardHeader
+        title={<Typography variant="h1">GDLK Documentation</Typography>}
+      />
+      <CardContent>
         <section>
-          <Typography variant="h3">Values</Typography>
-          <Typography>
-            All GDLK values are integers in the range{' '}
-            <code>[-32768, 32767]</code>. Encoding systems can be built on top
-            of these values, but all hardware operations are performed on these
-            integers.
-          </Typography>
-
-          <Typography id="values--overflow-and-underflow" variant="h4">
-            Overflow & Underflow
-          </Typography>
-          <Typography>
-            When an arithmetic instruction causes a value to go above the max to
-            below the min, the value wraps around. For example,{' '}
-            <code>32767 + 1 = -32768</code>, and <code>-32768 - 1 = 32767</code>
-            .
-          </Typography>
-        </section>
-
-        <section>
-          <Typography variant="h3">Input & Output</Typography>
-          <Typography>TODO</Typography>
-        </section>
-
-        <section>
-          <Typography id="instructions" variant="h3">
-            Instructions
-          </Typography>
-          <table>
-            <thead>
-              <tr>
-                <th>Instruction</th>
-                <th>Arguments</th>
-                <th>Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              {INSTRUCTIONS.map(({ name, args, summary }) => (
-                <tr key={name}>
-                  <td>
-                    <code>{name}</code>
-                  </td>
-                  <td>
-                    <code>{args.map((arg) => `<${arg}>`).join(' ')}</code>
-                  </td>
-                  <td>{summary}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {INSTRUCTIONS.map(
-            ({ name, args, summary, moreInfo, errorCases, examples }) => (
-              <section key={name}>
-                <Typography variant="h4">{name}</Typography>
-
-                <code>
-                  {name} {args.map((arg) => `<${arg}>`).join(' ')}
-                </code>
-
-                <Typography>
-                  {summary} {moreInfo}
-                </Typography>
-
-                {errorCases && (
-                  <>
-                    <Typography variant="h5">Errors</Typography>
-                    <ul>
-                      {errorCases.map((errorCase, i) => (
-                        <li key={i}>{errorCase}</li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-
-                <Typography variant="h5">Examples</Typography>
-                <pre>
-                  <code>{examples.join('\n')}</code>
-                </pre>
-              </section>
-            )
-          )}
-        </section>
-
-        <section>
-          <Typography variant="h3">Registers</Typography>
-          <Typography>TODO</Typography>
-        </section>
-
-        <section>
-          <Typography variant="h3">Stacks</Typography>
-          <Typography>TODO</Typography>
+          <Typography variant="h2">Language Reference</Typography>
 
           <section>
-            <Typography id="stacks--capacity" variant="h4">
-              Capacity
+            <Typography variant="h3">Values</Typography>
+            <Typography>
+              All GDLK values are integers in the range{' '}
+              <code>[-32768, 32767]</code>. Encoding systems can be built on top
+              of these values, but all hardware operations are performed on
+              these integers.
+            </Typography>
+
+            <Typography id="values--overflow-and-underflow" variant="h4">
+              Overflow & Underflow
+            </Typography>
+            <Typography>
+              When an arithmetic instruction causes a value to go above the max
+              to below the min, the value wraps around. For example,{' '}
+              <code>32767 + 1 = -32768</code>, and{' '}
+              <code>-32768 - 1 = 32767</code>.
             </Typography>
           </section>
-          <Typography>TODO</Typography>
+
+          <section>
+            <Typography variant="h3">Input & Output</Typography>
+            <Typography>TODO</Typography>
+          </section>
+
+          <section>
+            <Typography id="instructions" variant="h3">
+              Instructions
+            </Typography>
+            <table>
+              <thead>
+                <tr>
+                  <th>Instruction</th>
+                  <th>Arguments</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                {INSTRUCTIONS.map(({ name, args, summary }) => (
+                  <tr key={name}>
+                    <td>
+                      <code>{name}</code>
+                    </td>
+                    <td>
+                      <code>{args.map((arg) => `<${arg}>`).join(' ')}</code>
+                    </td>
+                    <td>{summary}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {INSTRUCTIONS.map(
+              ({ name, args, summary, moreInfo, errorCases, examples }) => (
+                <section key={name}>
+                  <Typography variant="h4">{name}</Typography>
+
+                  <code>
+                    {name} {args.map((arg) => `<${arg}>`).join(' ')}
+                  </code>
+
+                  <Typography>
+                    {summary} {moreInfo}
+                  </Typography>
+
+                  {errorCases && (
+                    <>
+                      <Typography variant="h5">Errors</Typography>
+                      <ul>
+                        {errorCases.map((errorCase, i) => (
+                          <li key={i}>{errorCase}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+
+                  <Typography variant="h5">Examples</Typography>
+                  <pre>
+                    <code>{examples.join('\n')}</code>
+                  </pre>
+                </section>
+              )
+            )}
+          </section>
+
+          <section>
+            <Typography variant="h3">Registers</Typography>
+            <Typography>TODO</Typography>
+          </section>
+
+          <section>
+            <Typography variant="h3">Stacks</Typography>
+            <Typography>TODO</Typography>
+
+            <section>
+              <Typography id="stacks--capacity" variant="h4">
+                Capacity
+              </Typography>
+            </section>
+            <Typography>TODO</Typography>
+          </section>
         </section>
-      </section>
-    </Paper>
+      </CardContent>
+    </Card>
   );
 };
 

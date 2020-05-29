@@ -4,7 +4,7 @@ import { ThemeProvider } from '@material-ui/styles';
 import { BrowserRouter, Switch, Route } from 'react-router-dom';
 import theme from 'util/theme';
 import HomePage from './HomePage';
-import HardwareSpecView from './hardware/HardwareSpecView';
+import HardwareSpecDetailsView from './hardware/HardwareSpecDetailsView';
 import ProgramSpecView from './programs/ProgramSpecView';
 import NotFoundPage from './NotFoundPage';
 import PageContainer from './common/PageContainer';
@@ -44,7 +44,7 @@ const App: React.FC = () => {
 
                     {/* Hardware routes */}
                     <Route path="/hardware/:hwSlug" exact>
-                      <HardwareSpecView />
+                      <HardwareSpecDetailsView />
                     </Route>
                     <Route path="/hardware/:hwSlug/puzzles/:programSlug" exact>
                       <ProgramSpecView />

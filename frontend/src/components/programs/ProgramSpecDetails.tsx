@@ -2,8 +2,14 @@ import React from 'react';
 import { RelayProp, createFragmentContainer } from 'react-relay';
 import graphql from 'babel-plugin-relay/macro';
 import { ProgramSpecDetails_programSpec } from './__generated__/ProgramSpecDetails_programSpec.graphql';
-import { Card, CardContent, Typography, makeStyles } from '@material-ui/core';
-import UserProgramsTable from '../userPrograms/UserProgramsTable';
+import {
+  Card,
+  CardContent,
+  Typography,
+  makeStyles,
+  Grid,
+} from '@material-ui/core';
+import UserProgramsCard from '../userPrograms/UserProgramsCard';
 import HardwareSpecSummary from 'components/hardware/HardwareSpecSummary';
 import SimpleTable from 'components/common/SimpleTable';
 import Link from 'components/common/Link';
@@ -31,45 +37,53 @@ const ProgramSpecDetails: React.FC<{
 }> = ({ programSpec }) => {
   const localClasses = useLocalStyles();
   return (
-    <Card component="section">
-      <CardContent>
-        <Typography variant="h1">{programSpec.slug}</Typography>
+    <Grid container>
+      <Grid item xs={12}>
+        <Typography variant="h1">
+          <Link to={`/hardware/${programSpec.hardwareSpec.slug}`}>
+            {programSpec.hardwareSpec.slug}
+          </Link>
+          {' / '}
+          {programSpec.slug}
+        </Typography>
+      </Grid>
 
-        <div className={localClasses.specSection}>
-          <Typography variant="h2">
-            Hardware Specs (
-            <Link to={`/hardware/${programSpec.hardwareSpec.slug}`}>
-              {programSpec.hardwareSpec.slug}
-            </Link>
-            )
-          </Typography>
-          <HardwareSpecSummary hardwareSpec={programSpec.hardwareSpec} />
-        </div>
+      <Grid item sm={6} xs={12}>
+        <Card>
+          <CardContent>
+            <div className={localClasses.specSection}>
+              <Typography variant="h2">Hardware Spec</Typography>
+              <HardwareSpecSummary hardwareSpec={programSpec.hardwareSpec} />
+            </div>
 
-        <div className={localClasses.specSection}>
-          <Typography variant="h2">Program Specs</Typography>
+            <div className={localClasses.specSection}>
+              <Typography variant="h2">Details</Typography>
 
-          <SimpleTable
-            data={[
-              { label: 'Input', value: programSpec.input.join(' ') },
-              {
-                label: 'Expected Output',
-                value: programSpec.expectedOutput.join(' '),
-              },
-            ]}
-          />
-        </div>
+              <SimpleTable
+                data={[
+                  { label: 'Input', value: programSpec.input.join(' ') },
+                  {
+                    label: 'Expected Output',
+                    value: programSpec.expectedOutput.join(' '),
+                  },
+                ]}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </Grid>
 
-        <Typography variant="h2">Solutions</Typography>
-        <UserProgramsTable programSpec={programSpec} />
-      </CardContent>
-    </Card>
+      <Grid item sm={6} xs={12}>
+        <UserProgramsCard programSpec={programSpec} />
+      </Grid>
+    </Grid>
   );
 };
 
 export default createFragmentContainer(ProgramSpecDetails, {
   programSpec: graphql`
     fragment ProgramSpecDetails_programSpec on ProgramSpecNode {
+      id
       slug
       input
       expectedOutput
@@ -77,7 +91,7 @@ export default createFragmentContainer(ProgramSpecDetails, {
         slug
         ...HardwareSpecSummary_hardwareSpec
       }
-      ...UserProgramsTable_programSpec
+      ...UserProgramsCard_programSpec
     }
   `,
 });

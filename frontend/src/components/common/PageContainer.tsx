@@ -15,6 +15,7 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
     width: '100%',
   },
   pageBodyNotFullScreen: {
+    maxWidth: 1280,
     padding: spacing(2),
     paddingBottom: 0,
   },

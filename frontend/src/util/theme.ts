@@ -44,6 +44,17 @@ const theme: Theme = responsiveFontSizes(
     },
 
     props: {
+      MuiCard: {
+        component: 'section',
+      },
+      MuiCardHeader: {
+        // CardHeader enforces that the component is always 'span' which is shit
+        // so we just supply our own Typography everywhere
+        disableTypography: false,
+      },
+      MuiGrid: {
+        spacing: 2,
+      },
       MuiSnackbar: {
         autoHideDuration: 3000,
         anchorOrigin: { vertical: 'bottom', horizontal: 'left' },

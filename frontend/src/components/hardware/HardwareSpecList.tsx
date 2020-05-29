@@ -2,23 +2,48 @@ import React from 'react';
 import { createPaginationContainer, RelayPaginationProp } from 'react-relay';
 import graphql from 'babel-plugin-relay/macro';
 import { HardwareSpecList_query } from './__generated__/HardwareSpecList_query.graphql';
-import { Button } from '@material-ui/core';
-import HardwareSpecPanel from './HardwareSpecPanel';
+import {
+  Button,
+  CardContent,
+  CardActions,
+  List,
+  makeStyles,
+} from '@material-ui/core';
+import HardwareSpecListItem from './HardwareSpecListItem';
+
+const useLocalStyles = makeStyles(() => ({
+  hardwareSpecList: {
+    // Just rely on the card's padding
+    padding: 0,
+  },
+}));
 
 const HardwareSpecList: React.FC<{
   query: HardwareSpecList_query;
   relay: RelayPaginationProp;
 }> = ({ query, relay: { hasMore, loadMore } }) => {
+  const localClasses = useLocalStyles();
+
   return (
-    <div>
-      {query.hardwareSpecs.edges.map(({ node: hardwareSpec }) => (
-        <HardwareSpecPanel
-          key={hardwareSpec.slug}
-          hardwareSpec={hardwareSpec}
-        />
-      ))}
-      {hasMore() && <Button onClick={() => loadMore(1)}>Load More</Button>}
-    </div>
+    <>
+      <CardContent>
+        <List className={localClasses.hardwareSpecList} dense>
+          {query.hardwareSpecs.edges.map(({ node: hardwareSpec }) => (
+            <HardwareSpecListItem
+              key={hardwareSpec.id}
+              hardwareSpec={hardwareSpec}
+            />
+          ))}
+        </List>
+      </CardContent>
+      {hasMore() && (
+        <CardActions>
+          <Button size="small" onClick={() => loadMore(5)}>
+            Show More
+          </Button>
+        </CardActions>
+      )}
+    </>
   );
 };
 
@@ -36,8 +61,8 @@ export default createPaginationContainer(
           @connection(key: "HardwareSpecList_hardwareSpecs") {
           edges {
             node {
-              slug
-              ...HardwareSpecPanel_hardwareSpec
+              id
+              ...HardwareSpecListItem_hardwareSpec
             }
           }
         }

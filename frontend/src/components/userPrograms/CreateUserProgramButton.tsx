@@ -69,7 +69,7 @@ const CreateUserProgramButton: React.FC<{
                     parentID: programSpecId,
                     connectionInfo: [
                       {
-                        key: 'UserProgramsTable_userPrograms',
+                        key: 'UserProgramsCard_userPrograms',
                         rangeBehavior: 'append',
                       },
                     ],
