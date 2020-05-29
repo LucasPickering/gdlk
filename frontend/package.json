@@ -17,7 +17,7 @@
   "dependencies": {
     "@material-ui/core": "^4.9.11",
     "@material-ui/icons": "^4.9.1",
-    "@material-ui/lab": "^4.0.0-alpha.51",
+    "@material-ui/lab": "^4.0.0-alpha.54",
     "@material-ui/styles": "^4.9.10",
     "@testing-library/jest-dom": "^5.5.0",
     "@testing-library/react": "^9.5.0",
@@ -69,10 +69,11 @@
     "build": "react-app-rewired build",
     "test": "react-app-rewired test",
     "eject": "react-scripts eject",
+    "wasm-pack": "cd ../wasm; wasm-pack build",
     "analyze": "mkdir -p analysis && source-map-explorer 'build/static/js/*.js' --html > analysis/index.html",
     "clean": "rm -rf node_modules **/__generated__",
-    "lint": "eslint .",
-    "lint:fix": "eslint --fix .",
+    "lint": "eslint './**/*.{js,ts,tsx}'",
+    "lint:fix": "npm run lint -- --fix",
     "lint:gql": "graphql-schema-linter",
     "relay": "relay-compiler",
     "tsc": "tsc"

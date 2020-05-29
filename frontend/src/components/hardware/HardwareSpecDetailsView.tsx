@@ -1,7 +1,7 @@
 import React from 'react';
 import graphql from 'babel-plugin-relay/macro';
-import ProgramSpecList from './ProgramSpecList';
-import { HardwareSpecViewQuery } from './__generated__/HardwareSpecViewQuery.graphql';
+import HardwareSpecDetails from './HardwareSpecDetails';
+import { HardwareSpecDetailsViewQuery } from './__generated__/HardwareSpecDetailsViewQuery.graphql';
 import { useParams } from 'react-router-dom';
 import QueryResult from 'components/common/QueryResult';
 import NotFoundPage from 'components/NotFoundPage';
@@ -14,19 +14,19 @@ const HardwareSpecView: React.FC = () => {
   const { hwSlug } = useParams<RouteParams>();
 
   return (
-    <QueryResult<HardwareSpecViewQuery>
+    <QueryResult<HardwareSpecDetailsViewQuery>
       query={graphql`
-        query HardwareSpecViewQuery($hwSlug: String!) {
+        query HardwareSpecDetailsViewQuery($hwSlug: String!) {
           hardwareSpec(slug: $hwSlug) {
             id
-            ...ProgramSpecList_hardwareSpec @arguments(count: 1)
+            ...HardwareSpecDetails_hardwareSpec
           }
         }
       `}
       variables={{ hwSlug }}
       render={({ props }) => {
         if (props?.hardwareSpec) {
-          return <ProgramSpecList hardwareSpec={props.hardwareSpec} />;
+          return <HardwareSpecDetails hardwareSpec={props.hardwareSpec} />;
         }
 
         return <NotFoundPage />;

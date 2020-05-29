@@ -55,7 +55,7 @@ const DeleteUserProgramButton: React.FC<{
                 parentID: programSpecId,
                 connectionKeys: [
                   {
-                    key: 'UserProgramsTable_userPrograms',
+                    key: 'UserProgramsCard_userPrograms',
                   },
                 ],
                 pathToConnection: ['programSpec', 'userPrograms'],

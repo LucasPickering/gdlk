@@ -1,20 +1,14 @@
 import React, { useState, useContext, useEffect, useRef } from 'react';
 import graphql from 'babel-plugin-relay/macro';
-import {
-  makeStyles,
-  Snackbar,
-  FormControlLabel,
-  RadioGroup,
-  Radio,
-} from '@material-ui/core';
+import { makeStyles, Snackbar } from '@material-ui/core';
 import {
   Pause as IconPause,
   PlayArrow as IconPlayArrow,
   Refresh as IconRefresh,
-  ChevronRight as IconChevronRight,
+  NavigateNext as IconNavigateNext,
   Save as IconSave,
 } from '@material-ui/icons';
-import { Alert } from '@material-ui/lab';
+import { Alert, ToggleButton, ToggleButtonGroup } from '@material-ui/lab';
 import { IdeContext } from 'state/ide';
 import { useMutation } from 'relay-hooks';
 import { IdeControls_Mutation } from './__generated__/IdeControls_Mutation.graphql';
@@ -24,7 +18,7 @@ import clsx from 'clsx';
 import IconButton from 'components/common/IconButton';
 
 const DEFAULT_STEP_INTERVAL = 1000; // ms between steps at 1x speed
-const STEP_SPEED_OPTIONS: number[] = [1, 5, 20];
+const STEP_SPEED_OPTIONS: number[] = [2, 20];
 
 const saveUserProgramMutation = graphql`
   mutation IdeControls_Mutation($id: ID!, $sourceCode: String!) {
@@ -42,6 +36,7 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   controls: {
     display: 'flex',
     justifyContent: 'end',
+    alignItems: 'center',
 
     backgroundColor: palette.background.default,
   },
@@ -50,6 +45,9 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   },
   speedSelect: {
     padding: spacing(1),
+  },
+  speedSelectButton: {
+    minWidth: 48,
   },
 }));
 
@@ -124,7 +122,7 @@ const IdeControls: React.FC<{
           disabled={!machineState || machineState.terminated || stepping}
           onClick={executeNext}
         >
-          <IconChevronRight />
+          <IconNavigateNext />
         </IconButton>
 
         <IconButton
@@ -148,22 +146,23 @@ const IdeControls: React.FC<{
         </IconButton>
       </div>
 
-      <RadioGroup
-        classes={{ root: localClasses.speedSelect }}
-        name="Execution Speed"
-        row
+      <ToggleButtonGroup
+        className={localClasses.speedSelect}
         value={stepSpeed}
-        onChange={(e) => setStepSpeed(parseInt(e.target.value, 10))}
+        exclusive
+        onChange={(e, newStepSpeed) => setStepSpeed(newStepSpeed)}
       >
-        {STEP_SPEED_OPTIONS.map((speed) => (
-          <FormControlLabel
+        {STEP_SPEED_OPTIONS.map((speed, i) => (
+          <ToggleButton
+            className={localClasses.speedSelectButton}
             key={speed}
             value={speed}
-            control={<Radio />}
-            label={`${speed}x`}
-          />
+            aria-label={`${speed} times speed`}
+          >
+            {'>'.repeat(i + 1)}
+          </ToggleButton>
         ))}
-      </RadioGroup>
+      </ToggleButtonGroup>
 
       {/* Save success notification */}
       <Snackbar
