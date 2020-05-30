@@ -421,13 +421,64 @@ type UserProgramConnection implements ConnectionInterface {
 # +-----------------------------+
 
 """
-The root mutation.
+The root mutation. Some general notes about mutations:
+- Slugs are generally derived from names, and cannot be set or changed manually
+- Slugs are unique among some pool of rows. Because they are derived, it is
+  possible to have two different values convert to the same slug, causing a
+  collision. Keep this in mind.
+- Slugs cannot be changed, in order to prevent breaking URLs.
+- When modifying, if a field that is required on the node type is not required
+  in the mutation input, then supplying no value will cause it to not change.
 """
 type Mutation {
   """
-  Create a new user program spec and file name (belonging to the current user).
-  An error is returned if there is already a user program with this program
-  spec ID/file name, or if the program spec ID is invalid.
+  Create a new hardware spec. An error is returned if the given name is
+  already taken, or if the slug derived from that name is already taken.
+  """
+  createHardwareSpec(
+    """
+    All input fields.
+    """
+    input: CreateHardwareSpecInput!
+  ): CreateHardwareSpecPayload! @juniper(ownership: "owned")
+
+  """
+  Modify an existing hardware spec. The spec to modify will be identified by
+  ID, and any field that is given a value will be updated.
+  """
+  updateHardwareSpec(
+    """
+    All input fields.
+    """
+    input: UpdateHardwareSpecInput!
+  ): UpdateHardwareSpecPayload! @juniper(ownership: "owned")
+
+  """
+  Create a new program spec. An error is returned if the given name is
+  already taken, or if the slug derived from that name is already taken.
+  """
+  createProgramSpec(
+    """
+    All input fields.
+    """
+    input: CreateProgramSpecInput!
+  ): CreateProgramSpecPayload! @juniper(ownership: "owned")
+
+  """
+  Modify an existing program spec. The spec to modify will be identified by
+  ID, and any field that is given a value will be updated.
+  """
+  updateProgramSpec(
+    """
+    All input fields.
+    """
+    input: UpdateProgramSpecInput!
+  ): UpdateProgramSpecPayload! @juniper(ownership: "owned")
+
+  """
+  Create a new user program with a program spec and file name (belonging to the
+  current user). An error is returned if there is already a user program with
+  this program spec ID/file name, or if the program spec ID is invalid.
   """
   createUserProgram(
     """
@@ -458,6 +509,151 @@ type Mutation {
 }
 
 """
+Input to the `createHardwareSpec` mutation.
+"""
+input CreateHardwareSpecInput {
+  """
+  The name of the hardware spec (must be unique).
+  """
+  name: String!
+  """
+  See `numRegisters` field on `HardwareSpecNode`.
+  """
+  numRegisters: Int!
+  """
+  See `numStacks` field on `HardwareSpecNode`.
+  """
+  numStacks: Int!
+  """
+  See `maxStackLength` field on `HardwareSpecNode`.
+  """
+  maxStackLength: Int!
+}
+
+"""
+Output from the `createHardwareSpec` mutation.
+"""
+type CreateHardwareSpecPayload {
+  """
+  The created hardware spec.
+  """
+  hardwareSpecEdge: HardwareSpecEdge!
+    @juniper(infallible: true, ownership: "owned")
+}
+
+"""
+Input to the `updateHardwareSpec` mutation.
+"""
+input UpdateHardwareSpecInput {
+  """
+  The ID of the existing hardware spec to modify.
+  """
+  id: ID!
+  """
+  The new name of the hardware spec (must be unique).
+  """
+  name: String
+  """
+  See `numRegisters` field on `HardwareSpecNode`.
+  """
+  numRegisters: Int
+  """
+  See `numStacks` field on `HardwareSpecNode`.
+  """
+  numStacks: Int
+  """
+  See `maxStackLength` field on `HardwareSpecNode`.
+  """
+  maxStackLength: Int
+}
+
+"""
+Output from the `updateHardwareSpec` mutation.
+"""
+type UpdateHardwareSpecPayload {
+  """
+  The modified hardware spec. `null` if the ID did not match any hardware specs.
+  """
+  hardwareSpecEdge: HardwareSpecEdge
+    @juniper(infallible: true, ownership: "owned")
+}
+
+"""
+Input to the `createProgramSpec` mutation.
+"""
+input CreateProgramSpecInput {
+  """
+  The ID of the hardware spec to create this program spec under.
+  """
+  hardwareSpecId: ID!
+
+  """
+  The name of the new program spec (must be unique).
+  """
+  name: String!
+  """
+  A description of the problem that this program spec defines.
+  """
+  description: String!
+  """
+  See `input` field on `ProgramSpecNode`.
+  """
+  input: [Int!]!
+  """
+  See `expectedOutput` field on `ProgramSpecNode`.
+  """
+  expectedOutput: [Int!]!
+}
+
+"""
+Output from the `createProgramSpec` mutation.
+"""
+type CreateProgramSpecPayload {
+  """
+  The created program spec.
+  """
+  programSpecEdge: ProgramSpecEdge!
+    @juniper(infallible: true, ownership: "owned")
+}
+
+"""
+Input to the `updateProgramSpec` mutation.
+"""
+input UpdateProgramSpecInput {
+  """
+  The ID of the existing program spec to modify.
+  """
+  id: ID!
+  """
+  The new name of the program spec (must be unique).
+  """
+  name: String
+  """
+  A description of the problem that this program spec defines.
+  """
+  description: String
+  """
+  See `input` field on `ProgramSpecNode`.
+  """
+  input: [Int!]
+  """
+  See `expectedOutput` field on `ProgramSpecNode`.
+  """
+  expectedOutput: [Int!]
+}
+
+"""
+Output from the `updateProgramSpec` mutation.
+"""
+type UpdateProgramSpecPayload {
+  """
+  The modified program spec. `null` if the ID did not match any program specs.
+  """
+  programSpecEdge: ProgramSpecEdge
+    @juniper(infallible: true, ownership: "owned")
+}
+
+"""
 Input to the `createUserProgram` mutation.
 """
 input CreateUserProgramInput {
@@ -476,7 +672,7 @@ input CreateUserProgramInput {
 }
 
 """
-Output from the `saveUserProgram` mutation.
+Output from the `createUserProgram` mutation.
 """
 type CreateUserProgramPayload {
   """
@@ -487,7 +683,7 @@ type CreateUserProgramPayload {
 }
 
 """
-Input to the `saveUserProgram` mutation.
+Input to the `updateUserProgram` mutation.
 """
 input UpdateUserProgramInput {
   """
@@ -506,11 +702,11 @@ input UpdateUserProgramInput {
 }
 
 """
-Output from the `saveUserProgram` mutation.
+Output from the `updateUserProgram` mutation.
 """
 type UpdateUserProgramPayload {
   """
-  The updated user program.
+  The updated user program. `null` if the ID did not match any user programs.
   """
   userProgramEdge: UserProgramEdge
     @juniper(infallible: true, ownership: "owned")

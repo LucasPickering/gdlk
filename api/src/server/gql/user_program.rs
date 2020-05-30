@@ -4,11 +4,9 @@ use crate::{
     schema::user_programs,
     server::gql::{
         internal::{GenericEdge, NodeType},
-        program_spec::ProgramSpecNode,
-        user::UserNode,
         ConnectionPageParams, Context, CreateUserProgramPayloadFields, Cursor,
-        DeleteUserProgramPayloadFields, PageInfo,
-        UpdateUserProgramPayloadFields, UserProgramConnectionFields,
+        DeleteUserProgramPayloadFields, PageInfo, ProgramSpecNode,
+        UpdateUserProgramPayloadFields, UserNode, UserProgramConnectionFields,
         UserProgramEdgeFields, UserProgramNodeFields,
     },
     util,

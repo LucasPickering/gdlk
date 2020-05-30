@@ -16,8 +16,8 @@ table! {
         name -> Varchar,
         description -> Text,
         hardware_spec_id -> Uuid,
-        input -> Array<Int2>,
-        expected_output -> Array<Int2>,
+        input -> Array<Int4>,
+        expected_output -> Array<Int4>,
     }
 }
 

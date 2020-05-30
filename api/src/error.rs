@@ -32,6 +32,11 @@ pub enum ResponseError {
     #[fail(display = "This resource already exists")]
     AlreadyExists,
 
+    /// User tried to perform an update mutation, but didn't given any values
+    /// to change.
+    #[fail(display = "No fields were given to update")]
+    NoUpdate,
+
     /// Wrapper for validator's error type
     #[fail(display = "Validator error: {}", 0)]
     ValidationErrors(#[cause] validator::ValidationErrors),
@@ -173,6 +178,10 @@ pub struct DbErrorConverter {
     /// for insert statements, or updates where all or part of a unique
     /// field can be changed.
     pub unique_violation_to_exists: bool,
+
+    /// Convert [diesel::result::Error::QueryBuilderError] to
+    /// [ResponseError::NoUpdate].
+    pub query_builder_to_no_update: bool,
 }
 
 impl DbErrorConverter {
@@ -199,6 +208,16 @@ impl DbErrorConverter {
                 _,
             )) if self.unique_violation_to_exists => {
                 Err(ResponseError::AlreadyExists)
+            }
+
+            // User didn't specify any fields to update
+            Err(diesel::result::Error::QueryBuilderError(msg))
+                if self.query_builder_to_no_update
+                // Currently this is the only way a QueryBuilderError can occur,
+                // but diesel could change that so keep this error to be safe
+                    && msg.to_string().contains("no changes to save") =>
+            {
+                Err(ResponseError::NoUpdate)
             }
 
             // Add more conversions here
@@ -279,9 +298,9 @@ mod tests {
     }
 
     #[test]
-    fn test_db_error_converter() {
+    fn test_db_error_converter_base_case() {
         use diesel::result::Error;
-        let default = DbErrorConverter::default();
+        let converter = DbErrorConverter::default();
         // We need lambdas around these values because we have to move them
         // and diesel's Error doesn't implement Clone
         let make_fk_violation_error = || {
@@ -297,44 +316,75 @@ mod tests {
             )
         };
 
-        // Default - all flags off
-        assert_eq!(default.convert(Ok(3)).unwrap(), 3);
+        // Check all error types with all flags off
+        assert_eq!(converter.convert(Ok(3)).unwrap(), 3);
         assert_eq!(
-            default
+            converter
                 .convert::<()>(Err(make_fk_violation_error()))
                 .unwrap_err()
                 .to_string(),
             ResponseError::DieselError(make_fk_violation_error()).to_string()
         );
         assert_eq!(
-            default
+            converter
                 .convert::<()>(Err(make_unique_violation_error()))
                 .unwrap_err()
                 .to_string(),
             ResponseError::DieselError(make_unique_violation_error())
                 .to_string()
         );
+    }
 
-        // Test each flag individually
+    #[test]
+    fn test_db_error_converter_fk_violation() {
         assert_eq!(
             DbErrorConverter {
                 fk_violation_to_not_found: true,
                 ..Default::default()
             }
-            .convert::<()>(Err(make_fk_violation_error()))
+            .convert::<()>(Err(diesel::result::Error::DatabaseError(
+                DatabaseErrorKind::ForeignKeyViolation,
+                Box::new(String::new()),
+            )))
             .unwrap_err()
             .to_string(),
             ResponseError::NotFound.to_string()
         );
+    }
+
+    #[test]
+    fn test_db_error_converter_unique_violation() {
         assert_eq!(
             DbErrorConverter {
                 unique_violation_to_exists: true,
                 ..Default::default()
             }
-            .convert::<()>(Err(make_unique_violation_error()))
+            .convert::<()>(Err(diesel::result::Error::DatabaseError(
+                DatabaseErrorKind::UniqueViolation,
+                Box::new(String::new()),
+            )))
             .unwrap_err()
             .to_string(),
             ResponseError::AlreadyExists.to_string()
+        );
+    }
+
+    #[test]
+    fn test_db_error_converter_query_builder() {
+        assert_eq!(
+            DbErrorConverter {
+                query_builder_to_no_update: true,
+                ..Default::default()
+            }
+            .convert::<()>(Err(diesel::result::Error::QueryBuilderError(
+                // If diesel ever changes the message, this will be invalid.
+                // We need to rely on API integration tests to catch that
+                "There are no changes to save. This query cannot be built"
+                    .into(),
+            )))
+            .unwrap_err()
+            .to_string(),
+            ResponseError::NoUpdate.to_string()
         );
     }
 }
