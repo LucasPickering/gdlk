@@ -32,9 +32,9 @@ fn new_user(username: &str) -> models::NewUser {
     models::NewUser { username }
 }
 
-fn new_hardware_spec(slug: &str) -> models::NewHardwareSpec {
+fn new_hardware_spec(name: &str) -> models::NewHardwareSpec {
     models::NewHardwareSpec {
-        slug,
+        name,
         num_registers: 1,
         num_stacks: 0,
         max_stack_length: 0,
@@ -42,11 +42,12 @@ fn new_hardware_spec(slug: &str) -> models::NewHardwareSpec {
 }
 
 fn new_program_spec(
-    slug: &str,
+    name: &str,
     hardware_spec_id: Uuid,
 ) -> models::NewProgramSpec {
     models::NewProgramSpec {
-        slug,
+        name,
+        description: "Program spec!",
         hardware_spec_id,
         input: Vec::new(),
         expected_output: Vec::new(),
@@ -486,7 +487,8 @@ fn test_program_spec() {
 
     let hardware_spec_id = new_hardware_spec("hw1").create(conn).id;
     let program_spec_id = models::NewProgramSpec {
-        slug: "prog1",
+        name: "prog1",
+        description: "Program spec!",
         hardware_spec_id,
         input: vec![1, 2, 3],
         expected_output: vec![1, 2, 3],

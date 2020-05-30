@@ -2,6 +2,7 @@ table! {
     hardware_specs (id) {
         id -> Uuid,
         slug -> Varchar,
+        name -> Varchar,
         num_registers -> Int4,
         num_stacks -> Int4,
         max_stack_length -> Int4,
@@ -12,6 +13,8 @@ table! {
     program_specs (id) {
         id -> Uuid,
         slug -> Varchar,
+        name -> Varchar,
+        description -> Text,
         hardware_spec_id -> Uuid,
         input -> Array<Int2>,
         expected_output -> Array<Int2>,
