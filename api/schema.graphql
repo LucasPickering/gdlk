@@ -158,22 +158,32 @@ type HardwareSpecNode implements Node {
   UUID for this node.
   """
   id: ID! @juniper(infallible: true, ownership: "owned")
+
   """
-  Human-readable name for this spec. Unique across all hardware specs.
+  URL-friendly slug for this spec. Unique across all hardware specs.
   """
   slug: String! @juniper(infallible: true)
+
+  """
+  User-friendly name for this spec. Unique across all hardware specs.
+  """
+  name: String! @juniper(infallible: true)
+
   """
   Number of registers that this hardware provides to a program.
   """
   numRegisters: Int! @juniper(infallible: true, ownership: "owned")
+
   """
   Number of stacks that this hardware provides to a program.
   """
   numStacks: Int! @juniper(infallible: true, ownership: "owned")
+
   """
   The maximum length for each stack while the program is running.
   """
   maxStackLength: Int! @juniper(infallible: true, ownership: "owned")
+
   """
   A single program spec that runs on this hardware.
   """
@@ -184,6 +194,7 @@ type HardwareSpecNode implements Node {
     """
     slug: String!
   ): ProgramSpecNode @juniper(ownership: "owned")
+
   """
   All the program specs that can run on this hardware spec.
   """
@@ -245,16 +256,31 @@ type ProgramSpecNode implements Node {
   UUID for this node.
   """
   id: ID! @juniper(infallible: true, ownership: "owned")
+
   """
-  Human-readable name for this program spec. Unique across the program specs
+  URL-friendly name for this program spec. Unique across the program specs
   for a particular hardware spec. Two program specs can have the same slug iff
   they run on different hardware.
   """
   slug: String! @juniper(infallible: true)
+
+  """
+  User-friendly name for this program spec. Unique across the program specs
+  for a particular hardware spec.
+  """
+  name: String! @juniper(infallible: true)
+
+  """
+  Description of the program spec. Could generally describe it, describe the
+  input and expected output, etc.
+  """
+  description: String! @juniper(infallible: true)
+
   """
   The input to the program.
   """
   input: [Int!]! @juniper(infallible: true, ownership: "owned")
+
   """
   The output that the program is expected to give.
   """

@@ -53,6 +53,13 @@ impl HardwareSpecNodeFields for HardwareSpecNode {
         &self.hardware_spec.slug
     }
 
+    fn field_name(
+        &self,
+        _executor: &juniper::Executor<'_, Context>,
+    ) -> &String {
+        &self.hardware_spec.name
+    }
+
     fn field_num_registers(
         &self,
         _executor: &juniper::Executor<'_, Context>,
