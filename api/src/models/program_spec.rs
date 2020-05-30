@@ -6,8 +6,7 @@ use diesel::{
     dsl, expression::bound::Bound, prelude::*, query_builder::InsertStatement,
     sql_types, Identifiable, Queryable,
 };
-use gdlk::{ast::LangValue, validator::ValidationErrors, Valid};
-use std::convert::TryFrom;
+use gdlk::validator::Validate;
 use uuid::Uuid;
 
 type WithHardwareSpec = dsl::Eq<
@@ -32,10 +31,10 @@ pub struct ProgramSpec {
     pub hardware_spec_id: Uuid,
     /// The input values, where the element at position 0 is the first one that
     /// will be popped off.
-    pub input: Vec<LangValue>,
+    pub input: Vec<i32>,
     /// The correct value to be left in the output when the program exits. The
     /// first element will be the first one pushed, and so on.
-    pub expected_output: Vec<LangValue>,
+    pub expected_output: Vec<i32>,
 }
 
 impl ProgramSpec {
@@ -52,29 +51,24 @@ impl ProgramSpec {
     }
 }
 
-impl TryFrom<ProgramSpec> for Valid<gdlk::ProgramSpec> {
-    type Error = ValidationErrors;
-
-    fn try_from(other: ProgramSpec) -> Result<Self, Self::Error> {
-        Valid::validate(gdlk::ProgramSpec::new(
-            other.input,
-            other.expected_output,
-        ))
-    }
-}
-
 /// A derivative of [ProgramSpec](gdlk::ProgramSpec), meant for DB inserts.
 /// This can be constructed manually and inserted into the DB. These fields
 /// all correspond to [ProgramSpec](ProgramSpec), so look there for
 /// field-level documentation.
-#[derive(Clone, Debug, PartialEq, Insertable)]
+#[derive(Clone, Debug, PartialEq, Insertable, Validate)]
 #[table_name = "program_specs"]
 pub struct NewProgramSpec<'a> {
+    pub hardware_spec_id: Uuid,
+    #[validate(length(min = 1))]
     pub name: &'a str,
     pub description: &'a str,
-    pub hardware_spec_id: Uuid,
-    pub input: Vec<LangValue>,
-    pub expected_output: Vec<LangValue>,
+
+    // IMPORTANT: If you update these validation values, make sure you update
+    // ProgramSpec in the core crate as well!
+    #[validate(length(max = 256))]
+    pub input: Vec<i32>,
+    #[validate(length(max = 256))]
+    pub expected_output: Vec<i32>,
 }
 
 impl NewProgramSpec<'_> {
@@ -99,4 +93,19 @@ impl Factory for NewProgramSpec<'_> {
             .get_result(conn)
             .unwrap()
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Identifiable, AsChangeset, Validate)]
+#[table_name = "program_specs"]
+pub struct ModifiedProgramSpec<'a> {
+    pub id: Uuid,
+
+    // TODO de-dupe this validation logic
+    #[validate(length(min = 1))]
+    pub name: Option<&'a str>,
+    pub description: Option<&'a str>,
+    #[validate(length(max = 256))]
+    pub input: Option<Vec<i32>>,
+    #[validate(length(max = 256))]
+    pub expected_output: Option<Vec<i32>>,
 }

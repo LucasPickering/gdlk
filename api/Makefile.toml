@@ -25,6 +25,11 @@ extend = "diesel"
 dependencies = ["wait-for-db"]
 args = ["db", "setup"]
 
+[tasks.db-reset]
+extend = "diesel"
+dependencies = ["wait-for-db"]
+args = ["db", "reset"]
+
 [tasks.migrations]
 extend = "diesel"
 dependencies = ["db-setup"]

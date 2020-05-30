@@ -6,6 +6,7 @@ use diesel::{
     dsl, expression::bound::Bound, prelude::*, query_builder::InsertStatement,
     sql_types, Identifiable, Queryable,
 };
+use gdlk::validator::Validate;
 use uuid::Uuid;
 
 /// Expression to filter user_programs by owner's ID and program spec ID
@@ -42,11 +43,12 @@ impl UserProgram {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Insertable)]
+#[derive(Clone, Debug, PartialEq, Insertable, Validate)]
 #[table_name = "user_programs"]
 pub struct NewUserProgram<'a> {
     pub user_id: Uuid,
     pub program_spec_id: Uuid,
+    #[validate(length(min = 1))]
     pub file_name: &'a str,
     pub source_code: &'a str,
 }
@@ -75,10 +77,13 @@ impl Factory for NewUserProgram<'_> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Identifiable, AsChangeset)]
+#[derive(Clone, Debug, PartialEq, Identifiable, AsChangeset, Validate)]
 #[table_name = "user_programs"]
 pub struct ModifiedUserProgram<'a> {
     pub id: Uuid,
+
+    // TODO de-dupe this validation logic
+    #[validate(length(min = 1))]
     pub file_name: Option<&'a str>,
     pub source_code: Option<&'a str>,
 }

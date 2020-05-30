@@ -665,6 +665,618 @@ fn test_program_spec_user_program() {
 }
 
 #[test]
+fn test_create_hardware_spec() {
+    let runner = QueryRunner::new().unwrap();
+    let conn: &PgConnection = &runner.context.get_db_conn().unwrap();
+
+    // We'll test collisions against this
+    new_hardware_spec("HW 1").create(conn);
+    let query = r#"
+        mutation CreateHardwareSpecMutation(
+            $name: String!,
+            $numRegisters: Int!,
+            $numStacks: Int!,
+            $maxStackLength: Int!,
+        ) {
+            createHardwareSpec(input: {
+                name: $name,
+                numRegisters: $numRegisters,
+                numStacks: $numStacks,
+                maxStackLength: $maxStackLength,
+            }) {
+                hardwareSpecEdge {
+                    node {
+                        name
+                        slug
+                        numRegisters
+                        numStacks
+                        maxStackLength
+                    }
+                }
+            }
+        }
+    "#;
+
+    // Success - new hardware spec
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "name" => InputValue::scalar("HW 2"),
+                "numRegisters" => InputValue::scalar(3),
+                "numStacks" => InputValue::scalar(2),
+                "maxStackLength" => InputValue::scalar(16),
+            }
+        ),
+        (
+            json!({
+                "createHardwareSpec": {
+                    "hardwareSpecEdge": {
+                        "node": {
+                            "name": "HW 2",
+                            "slug": "hw-2",
+                            "numRegisters": 3,
+                            "numStacks": 2,
+                            "maxStackLength": 16,
+                        }
+                    }
+                }
+            }),
+            vec![]
+        )
+    );
+
+    // Error - duplicate name
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "name" => InputValue::scalar("HW 1"),
+                "numRegisters" => InputValue::scalar(3),
+                "numStacks" => InputValue::scalar(2),
+                "maxStackLength" => InputValue::scalar(16),
+            }
+        ),
+        ((
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 8, "column": 13}],
+                "message": "This resource already exists",
+                "path": ["createHardwareSpec"],
+            })]
+        ))
+    );
+
+    // Error - invalid values
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "name" => InputValue::scalar(""),
+                "numRegisters" => InputValue::scalar(0),
+                "numStacks" => InputValue::scalar(-1),
+                "maxStackLength" => InputValue::scalar(-1),
+            }
+        ),
+        ((
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 8, "column": 13}],
+                "message": "Input validation error(s)",
+                "path": ["createHardwareSpec"],
+                "extensions": {
+                    "name": [{"min": "1", "value": "\"\""}],
+                    "num_registers": [{"min": "1.0", "max": "16.0", "value": "0"}],
+                    "num_stacks": [{"min": "0.0", "max": "16.0", "value": "-1"}],
+                    "max_stack_length": [{"min": "0.0", "max": "256.0", "value": "-1"}],
+                }
+            })]
+        ))
+    );
+}
+
+#[test]
+fn test_update_hardware_spec() {
+    let runner = QueryRunner::new().unwrap();
+    let conn: &PgConnection = &runner.context.get_db_conn().unwrap();
+
+    // We'll test collisions against this
+    new_hardware_spec("HW 1").create(conn);
+    let hw_spec = new_hardware_spec("HW 2").create(conn);
+    let query = r#"
+        mutation UpdateHardwareSpecMutation(
+            $id: ID!,
+            $name: String,
+            $numRegisters: Int,
+            $numStacks: Int,
+            $maxStackLength: Int,
+        ) {
+            updateHardwareSpec(input: {
+                id: $id,
+                name: $name,
+                numRegisters: $numRegisters,
+                numStacks: $numStacks,
+                maxStackLength: $maxStackLength,
+            }) {
+                hardwareSpecEdge {
+                    node {
+                        name
+                        slug
+                        numRegisters
+                        numStacks
+                        maxStackLength
+                    }
+                }
+            }
+        }
+    "#;
+
+    // Success - partial modification, make sure specified fields keep their old
+    // value
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "id" => InputValue::scalar(hw_spec.id.to_string()),
+                "numRegisters" => InputValue::scalar(3),
+            }
+        ),
+        (
+            json!({
+                "updateHardwareSpec": {
+                    "hardwareSpecEdge": {
+                        "node": {
+                            // these values are all the same as before
+                            "slug": "hw-2",
+                            "name": "HW 2",
+                            "numRegisters": 3,
+                            "numStacks": 0,
+                            "maxStackLength": 0,
+                        }
+                    }
+                }
+            }),
+            vec![]
+        )
+    );
+
+    // Success - modify all fields
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "id" => InputValue::scalar(hw_spec.id.to_string()),
+                "name" => InputValue::scalar("HW 22"),
+                "numRegisters" => InputValue::scalar(10),
+                "numStacks" => InputValue::scalar(2),
+                "maxStackLength" => InputValue::scalar(16),
+            }
+        ),
+        (
+            json!({
+                "updateHardwareSpec": {
+                    "hardwareSpecEdge": {
+                        "node": {
+                            "slug": "hw-2", // slug can't be changed
+                            "name": "HW 22",
+                            "numRegisters": 10,
+                            "numStacks": 2,
+                            "maxStackLength": 16,
+                        }
+                    }
+                }
+            }),
+            vec![]
+        )
+    );
+
+    // Success-ish - invalid ID means just return null
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "id" => InputValue::scalar("bad"),
+                "name" => InputValue::scalar("HW 3"),
+            }
+        ),
+        ((
+            json!({
+                "updateHardwareSpec": {
+                    "hardwareSpecEdge": serde_json::Value::Null
+                }
+            }),
+            vec![]
+        ))
+    );
+
+    // Error - modifying no fields
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "id" => InputValue::scalar(hw_spec.id.to_string()),
+            }
+        ),
+        ((
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 9, "column": 13}],
+                "message": "No fields were given to update",
+                "path": ["updateHardwareSpec"],
+            })]
+        ))
+    );
+
+    // Error - duplicate name
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "id" => InputValue::scalar(hw_spec.id.to_string()),
+                "name" => InputValue::scalar("HW 1"),
+            }
+        ),
+        ((
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 9, "column": 13}],
+                "message": "This resource already exists",
+                "path": ["updateHardwareSpec"],
+            })]
+        ))
+    );
+
+    // Error - invalid values
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "id" => InputValue::scalar(hw_spec.id.to_string()),
+                "name" => InputValue::scalar(""),
+                "numRegisters" => InputValue::scalar(-1),
+                "numStacks" => InputValue::scalar(-1),
+                "maxStackLength" => InputValue::scalar(-1),
+            }
+        ),
+        ((
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 9, "column": 13}],
+                "message": "Input validation error(s)",
+                "path": ["updateHardwareSpec"],
+                "extensions": {
+                    "name": [{"min": "1", "value": "\"\""}],
+                    "num_registers": [{"min": "1.0", "max": "16.0", "value": "-1"}],
+                    "num_stacks": [{"min": "0.0", "max": "16.0", "value": "-1"}],
+                    "max_stack_length": [{"min": "0.0", "max": "256.0", "value": "-1"}],
+                }
+            })]
+        ))
+    );
+}
+
+#[test]
+fn test_create_program_spec() {
+    let runner = QueryRunner::new().unwrap();
+    let conn: &PgConnection = &runner.context.get_db_conn().unwrap();
+
+    let hw_spec = new_hardware_spec("HW 1").create(conn);
+    // We'll test collisions against this
+    new_program_spec("program 1", hw_spec.id).create(conn);
+    let query = r#"
+        mutation CreateProgramSpecMutation(
+            $hardwareSpecId: ID!,
+            $name: String!,
+            $description: String!,
+            $input: [Int!]!,
+            $expectedOutput: [Int!]!,
+        ) {
+            createProgramSpec(input: {
+                hardwareSpecId: $hardwareSpecId,
+                name: $name,
+                description: $description,
+                input: $input,
+                expectedOutput: $expectedOutput,
+            }) {
+                programSpecEdge {
+                    node {
+                        name
+                        slug
+                        description
+                        input
+                        expectedOutput
+                    }
+                }
+            }
+        }
+    "#;
+
+    let values_list: InputValue = InputValue::list(
+        [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
+    );
+
+    // Success - new program spec
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "hardwareSpecId" => InputValue::scalar(hw_spec.id.to_string()),
+                "name" => InputValue::scalar("Program 2"),
+                "description" => InputValue::scalar("description!"),
+                "input" => values_list.clone(),
+                "expectedOutput" => values_list.clone(),
+            }
+        ),
+        (
+            json!({
+                "createProgramSpec": {
+                    "programSpecEdge": {
+                        "node": {
+                            "name": "Program 2",
+                            "slug": "program-2",
+                            "description": "description!",
+                            "input": [1, 2, 3],
+                            "expectedOutput": [1, 2, 3],
+                        }
+                    }
+                }
+            }),
+            vec![]
+        )
+    );
+
+    // Error - invalid hardware spec ID
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "hardwareSpecId" => InputValue::scalar("bad"),
+                "name" => InputValue::scalar("Program 3"),
+                "description" => InputValue::scalar("description!"),
+                "input" => values_list.clone(),
+                "expectedOutput" => values_list.clone(),
+            }
+        ),
+        ((
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 9, "column": 13}],
+                "message": "Not found",
+                "path": ["createProgramSpec"],
+            })]
+        ))
+    );
+
+    // Error - duplicate name
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "hardwareSpecId" => InputValue::scalar(hw_spec.id.to_string()),
+                "name" => InputValue::scalar("Program 1"),
+                "description" => InputValue::scalar("description!"),
+                "input" => values_list.clone(),
+                "expectedOutput" => values_list.clone(),
+            }
+        ),
+        ((
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 9, "column": 13}],
+                "message": "This resource already exists",
+                "path": ["createProgramSpec"],
+            })]
+        ))
+    );
+
+    // Error - invalid values
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "hardwareSpecId" => InputValue::scalar(hw_spec.id.to_string()),
+                "name" => InputValue::scalar(""),
+                "description" => InputValue::scalar("description!"),
+                // TODO use invalid values here once the DB validation is working
+                "input" => values_list.clone(),
+                "expectedOutput" => values_list.clone(),
+            }
+        ),
+        ((
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 9, "column": 13}],
+                "message": "Input validation error(s)",
+                "path": ["createProgramSpec"],
+                "extensions": {
+                    "name": [{"min": "1", "value": "\"\""}],
+                }
+            })]
+        ))
+    );
+}
+
+#[test]
+fn test_update_program_spec() {
+    let runner = QueryRunner::new().unwrap();
+    let conn: &PgConnection = &runner.context.get_db_conn().unwrap();
+
+    let hw_spec = new_hardware_spec("HW 1").create(conn);
+    // We'll test collisions against this
+    new_program_spec("Program 1", hw_spec.id).create(conn);
+    // This is the one we'll actually be modifying
+    let program_spec = new_program_spec("Program 2", hw_spec.id).create(conn);
+    let query = r#"
+        mutation UpdateProgramSpecMutation(
+            $id: ID!,
+            $name: String,
+            $description: String,
+            $input: [Int!],
+            $expectedOutput: [Int!],
+        ) {
+            updateProgramSpec(input: {
+                id: $id,
+                name: $name,
+                description: $description,
+                input: $input,
+                expectedOutput: $expectedOutput,
+            }) {
+                programSpecEdge {
+                    node {
+                        name
+                        slug
+                        description
+                        input
+                        expectedOutput
+                    }
+                }
+            }
+        }
+    "#;
+
+    // Success - partial modification, make sure specified fields keep their old
+    // value
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "id" => InputValue::scalar(program_spec.id.to_string()),
+                "description" => InputValue::scalar("description!")
+            }
+        ),
+        (
+            json!({
+                "updateProgramSpec": {
+                    "programSpecEdge": {
+                        "node": {
+                            // these values are all the same as before
+                            "slug": "program-2",
+                            "name": "Program 2",
+                            "description": "description!",
+                            "input": [],
+                            "expectedOutput": [],
+                        }
+                    }
+                }
+            }),
+            vec![]
+        )
+    );
+
+    let values_list: InputValue = InputValue::list(
+        [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
+    );
+
+    // Success - modify all fields
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "id" => InputValue::scalar(program_spec.id.to_string()),
+                "name" => InputValue::scalar("Program 22"),
+                "description" => InputValue::scalar("new description!"),
+                "input" => values_list.clone(),
+                "expectedOutput" => values_list.clone(),
+            }
+        ),
+        (
+            json!({
+                "updateProgramSpec": {
+                    "programSpecEdge": {
+                        "node": {
+                            "name": "Program 22",
+                            "slug": "program-2", // slug doesn't change
+                            "description": "new description!",
+                            "input": [1, 2, 3],
+                            "expectedOutput": [1, 2, 3],
+                        }
+                    }
+                }
+            }),
+            vec![]
+        )
+    );
+
+    // Success-ish - invalid ID means just return null
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "id" => InputValue::scalar("bad"),
+                "name" => InputValue::scalar("Program 3"),
+            }
+        ),
+        ((
+            json!({
+                "updateProgramSpec": {
+                    "programSpecEdge": serde_json::Value::Null
+                }
+            }),
+            vec![]
+        ))
+    );
+
+    // Error - modifying no fields
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "id" => InputValue::scalar(program_spec.id.to_string()),
+            }
+        ),
+        ((
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 9, "column": 13}],
+                "message": "No fields were given to update",
+                "path": ["updateProgramSpec"],
+            })]
+        ))
+    );
+
+    // Error - duplicate name
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "id" => InputValue::scalar(program_spec.id.to_string()),
+                "name" => InputValue::scalar("Program 1"),
+            }
+        ),
+        ((
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 9, "column": 13}],
+                "message": "This resource already exists",
+                "path": ["updateProgramSpec"],
+            })]
+        ))
+    );
+
+    // Error - invalid values
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "id" => InputValue::scalar(program_spec.id.to_string()),
+                "name" => InputValue::scalar(""),
+            }
+        ),
+        ((
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 9, "column": 13}],
+                "message": "Input validation error(s)",
+                "path": ["updateProgramSpec"],
+                "extensions": {
+                    "name": [{"min": "1", "value": "\"\""}],
+                }
+            })]
+        ))
+    );
+}
+
+#[test]
 fn test_create_user_program() {
     let runner = QueryRunner::new().unwrap();
     let conn: &PgConnection = &runner.context.get_db_conn().unwrap();
@@ -740,7 +1352,7 @@ fn test_create_user_program() {
         )
     );
 
-    // Known user+program spec combo, colliding with an existing solution
+    // Error - Known user+program spec combo, collides with an existing solution
     assert_eq!(
         runner.query(
             query,
@@ -760,7 +1372,7 @@ fn test_create_user_program() {
         )
     );
 
-    // Unknown user+program spec combo
+    // Error - Unknown user+program spec combo
     assert_eq!(
         runner.query(
             query,
@@ -776,6 +1388,29 @@ fn test_create_user_program() {
                 "locations": [{"line": 7, "column": 13}],
                 "message": "Not found",
                 "path": ["createUserProgram"],
+            })]
+        )
+    );
+
+    // Error - Invalid file name
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "userId" => InputValue::scalar(user_id.to_string()),
+                "programSpecId" => InputValue::scalar("garbage"),
+                "fileName" => InputValue::scalar(""),
+            }
+        ),
+        (
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 7, "column": 13}],
+                "message": "Input validation error(s)",
+                "path": ["createUserProgram"],
+                "extensions": {
+                    "file_name": [{"min": "1", "value": "\"\""}]
+                }
             })]
         )
     );
@@ -811,7 +1446,7 @@ fn test_update_user_program() {
     let query = r#"
         mutation UpdateUserProgramMutation(
             $id: ID!,
-            $fileName: String!,
+            $fileName: String,
             $sourceCode: String,
         ) {
             updateUserProgram(input: {
@@ -836,7 +1471,7 @@ fn test_update_user_program() {
         }
     "#;
 
-    // Known user program, with a new file name and source code
+    // Success - Known user program, with a new file name and source code
     assert_eq!(
         runner.query(
             query,
@@ -868,7 +1503,7 @@ fn test_update_user_program() {
         )
     );
 
-    // Unknown user program
+    // Success-ish - Unknown user program, returns null
     assert_eq!(
         runner.query(
             query,
@@ -888,7 +1523,25 @@ fn test_update_user_program() {
         )
     );
 
-    // Known user program, rename to collide with another program
+    // Error - No update fields specified
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "id" => InputValue::scalar("bogus".to_string()),
+            }
+        ),
+        (
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 7, "column": 13}],
+                "message": "No fields were given to update",
+                "path": ["updateUserProgram"],
+            })]
+        )
+    );
+
+    // Error - Known user program, rename to collide with another program
     assert_eq!(
         runner.query(
             query,
@@ -904,6 +1557,28 @@ fn test_update_user_program() {
                 "locations": [{"line": 7, "column": 13}],
                 "message": "This resource already exists",
                 "path": ["updateUserProgram"],
+            })]
+        )
+    );
+
+    // Error - Known user program, but the target file name is invalid
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "id" => InputValue::scalar(user_program.id.to_string()),
+                "fileName" => InputValue::scalar(""),
+            }
+        ),
+        (
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 7, "column": 13}],
+                "message": "Input validation error(s)",
+                "path": ["updateUserProgram"],
+                "extensions": {
+                    "file_name": [{"min": "1", "value": "\"\""}]
+                }
             })]
         )
     );

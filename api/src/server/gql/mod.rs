@@ -4,28 +4,26 @@
 //! their own files.
 
 use crate::{
-    error::{DbErrorConverter, ResponseError, ResponseResult},
+    error::{ResponseError, ResponseResult},
     models,
-    schema::{hardware_specs, user_programs, users},
+    schema::hardware_specs,
     server::gql::{
-        hardware_spec::*, program_spec::*, user::*, user_program::*,
+        hardware_spec::*, mutation::*, program_spec::*, user::*,
+        user_program::*,
     },
-    util::{self, Pool, PooledConnection},
+    util::{Pool, PooledConnection},
 };
-use diesel::{
-    ExpressionMethods, OptionalExtension, PgConnection, QueryDsl, RunQueryDsl,
-    Table,
-};
+use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
 use failure::Fallible;
 use gdlk::Valid;
 use juniper_from_schema::graphql_schema_from_file;
 use serde::{Serialize, Serializer};
 use std::{convert::TryInto, sync::Arc};
-use uuid::Uuid;
 use validator::{Validate, ValidationError, ValidationErrors};
 
 mod hardware_spec;
 mod internal;
+mod mutation;
 mod program_spec;
 mod user;
 mod user_program;
@@ -261,107 +259,6 @@ impl PageInfoFields for PageInfo {
         _executor: &juniper::Executor<'_, Context>,
     ) -> bool {
         self.has_next_page
-    }
-}
-
-/// The top-level mutation object.
-pub struct Mutation;
-
-impl MutationFields for Mutation {
-    fn field_create_user_program(
-        &self,
-        executor: &juniper::Executor<'_, Context>,
-        _trail: &QueryTrail<'_, CreateUserProgramPayload, Walked>,
-        input: CreateUserProgramInput,
-    ) -> ResponseResult<CreateUserProgramPayload> {
-        let conn: &PgConnection =
-            &executor.context().get_db_conn()? as &PgConnection;
-        let user_id: Uuid = models::User::tmp_user()
-            .select(users::columns::id)
-            .get_result(conn)?;
-
-        // User a helper type to do the insert
-        let new_user_program = models::NewUserProgram {
-            user_id,
-            program_spec_id: util::gql_id_to_uuid(&input.program_spec_id),
-            file_name: &input.file_name,
-            // If no source is provided, default to an empty string
-            source_code: input.source_code.as_deref().unwrap_or(""),
-        };
-
-        // Insert the new row. If a row already exists for this user + program
-        // spec + file name, just return that row.
-        let result: Result<models::UserProgram, _> = new_user_program
-            .insert()
-            .returning(user_programs::table::all_columns())
-            .get_result(conn);
-
-        let user_program: models::UserProgram = DbErrorConverter {
-            // Given program spec ID was invalid. Note: this can also indicate
-            // an invalid user ID which would be a server-side bug, but fuck it
-            fk_violation_to_not_found: true,
-            // UserProgram already exists with this program spec/file name
-            unique_violation_to_exists: true,
-        }
-        .convert(result)?;
-
-        Ok(CreateUserProgramPayload { user_program })
-    }
-
-    fn field_update_user_program(
-        &self,
-        executor: &juniper::Executor<'_, Context>,
-        _trail: &QueryTrail<'_, UpdateUserProgramPayload, Walked>,
-        input: UpdateUserProgramInput,
-    ) -> ResponseResult<UpdateUserProgramPayload> {
-        let conn: &PgConnection =
-            &executor.context().get_db_conn()? as &PgConnection;
-
-        // User a helper type to do the insert
-        let modified_user_program = models::ModifiedUserProgram {
-            id: util::gql_id_to_uuid(&input.id),
-            file_name: input.file_name.as_deref(),
-            source_code: input.source_code.as_deref(),
-        };
-
-        // Update the row, returning the new value. If the row doesn't exist,
-        // this will return None.
-        let result: Result<Option<models::UserProgram>, _> =
-            diesel::update(user_programs::table.find(modified_user_program.id))
-                .set(modified_user_program)
-                .returning(user_programs::table::all_columns())
-                .get_result(conn)
-                .optional();
-
-        let updated_row: Option<models::UserProgram> = DbErrorConverter {
-            // UserProgram already exists with this program spec/file name
-            unique_violation_to_exists: true,
-            ..Default::default()
-        }
-        .convert(result)?;
-
-        Ok(UpdateUserProgramPayload {
-            user_program: updated_row,
-        })
-    }
-
-    fn field_delete_user_program(
-        &self,
-        executor: &juniper::Executor<'_, Context>,
-        _trail: &QueryTrail<'_, DeleteUserProgramPayload, Walked>,
-        input: DeleteUserProgramInput,
-    ) -> ResponseResult<DeleteUserProgramPayload> {
-        use self::user_programs::dsl::*;
-
-        // Delete and get the ID back
-        let row_id = util::gql_id_to_uuid(&input.user_program_id);
-        let deleted_id: Option<Uuid> =
-            diesel::delete(user_programs.filter(id.eq(row_id)))
-                .returning(id)
-                .get_result(&executor.context().get_db_conn()?)
-                .optional()?;
-
-        Ok(DeleteUserProgramPayload { deleted_id })
     }
 }
 

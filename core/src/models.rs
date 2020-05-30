@@ -15,6 +15,9 @@ use wasm_bindgen::{prelude::*, JsCast};
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, Validate)]
 pub struct HardwareSpec {
+    // IMPORTANT: If you change any of the range values here, update
+    // NewHardwareSpec in the api crate as well
+
     // TODO make these readonly and camel case in wasm
     /// Number of registers available
     #[validate(range(min = 1, max = 16))]
@@ -118,6 +121,8 @@ impl Default for HardwareSpec {
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Validate)]
 pub struct ProgramSpec {
+    // IMPORTANT: If you update these validation values, make sure you update
+    // NewProgramSpec in the api crate as well!
     /// The input values, where the element at position 0 is the first one that
     /// will be popped off.
     #[validate(length(max = 256))]

@@ -5,8 +5,9 @@ use crate::{
     server::gql::{
         internal::{GenericEdge, NodeType},
         program_spec::{ProgramSpecConnection, ProgramSpecNode},
-        ConnectionPageParams, Context, Cursor, HardwareSpecConnectionFields,
-        HardwareSpecEdgeFields, HardwareSpecNodeFields, PageInfo,
+        ConnectionPageParams, Context, CreateHardwareSpecPayloadFields, Cursor,
+        HardwareSpecConnectionFields, HardwareSpecEdgeFields,
+        HardwareSpecNodeFields, PageInfo, UpdateHardwareSpecPayloadFields,
     },
     util,
 };
@@ -201,5 +202,35 @@ impl HardwareSpecConnectionFields for HardwareSpecConnection {
         _trail: &QueryTrail<'_, HardwareSpecEdge, Walked>,
     ) -> ResponseResult<Vec<HardwareSpecEdge>> {
         self.get_edges(executor.context())
+    }
+}
+
+pub struct CreateHardwareSpecPayload {
+    pub hardware_spec: models::HardwareSpec,
+}
+
+impl CreateHardwareSpecPayloadFields for CreateHardwareSpecPayload {
+    fn field_hardware_spec_edge(
+        &self,
+        _executor: &juniper::Executor<'_, Context>,
+        _trail: &QueryTrail<'_, HardwareSpecEdge, Walked>,
+    ) -> HardwareSpecEdge {
+        GenericEdge::from_db_row(self.hardware_spec.clone(), 0)
+    }
+}
+
+pub struct UpdateHardwareSpecPayload {
+    pub hardware_spec: Option<models::HardwareSpec>,
+}
+
+impl UpdateHardwareSpecPayloadFields for UpdateHardwareSpecPayload {
+    fn field_hardware_spec_edge(
+        &self,
+        _executor: &juniper::Executor<'_, Context>,
+        _trail: &QueryTrail<'_, HardwareSpecEdge, Walked>,
+    ) -> Option<HardwareSpecEdge> {
+        self.hardware_spec
+            .as_ref()
+            .map(|row| GenericEdge::from_db_row(row.clone(), 0))
     }
 }

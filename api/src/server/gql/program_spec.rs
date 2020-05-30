@@ -6,9 +6,9 @@ use crate::{
         hardware_spec::HardwareSpecNode,
         internal::{GenericEdge, NodeType},
         user_program::{UserProgramConnection, UserProgramNode},
-        ConnectionPageParams, Context, Cursor, PageInfo,
-        ProgramSpecConnectionFields, ProgramSpecEdgeFields,
-        ProgramSpecNodeFields,
+        ConnectionPageParams, Context, CreateProgramSpecPayloadFields, Cursor,
+        PageInfo, ProgramSpecConnectionFields, ProgramSpecEdgeFields,
+        ProgramSpecNodeFields, UpdateProgramSpecPayloadFields,
     },
     util,
 };
@@ -245,5 +245,34 @@ impl ProgramSpecConnectionFields for ProgramSpecConnection {
         _trail: &QueryTrail<'_, ProgramSpecEdge, Walked>,
     ) -> ResponseResult<Vec<ProgramSpecEdge>> {
         self.get_edges(executor.context())
+    }
+}
+pub struct CreateProgramSpecPayload {
+    pub program_spec: models::ProgramSpec,
+}
+
+impl CreateProgramSpecPayloadFields for CreateProgramSpecPayload {
+    fn field_program_spec_edge(
+        &self,
+        _executor: &juniper::Executor<'_, Context>,
+        _trail: &QueryTrail<'_, ProgramSpecEdge, Walked>,
+    ) -> ProgramSpecEdge {
+        GenericEdge::from_db_row(self.program_spec.clone(), 0)
+    }
+}
+
+pub struct UpdateProgramSpecPayload {
+    pub program_spec: Option<models::ProgramSpec>,
+}
+
+impl UpdateProgramSpecPayloadFields for UpdateProgramSpecPayload {
+    fn field_program_spec_edge(
+        &self,
+        _executor: &juniper::Executor<'_, Context>,
+        _trail: &QueryTrail<'_, ProgramSpecEdge, Walked>,
+    ) -> Option<ProgramSpecEdge> {
+        self.program_spec
+            .as_ref()
+            .map(|row| GenericEdge::from_db_row(row.clone(), 0))
     }
 }
