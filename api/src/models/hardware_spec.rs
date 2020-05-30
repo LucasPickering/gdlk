@@ -14,8 +14,10 @@ use uuid::Uuid;
 pub struct HardwareSpec {
     /// DB row ID
     pub id: Uuid,
-    /// Unique user-friendly identifier that can be used in URLs
+    /// Unique identifier that can be used in URLs. Derived from the name.
     pub slug: String,
+    /// User-friendly name for this hardware.
+    pub name: String,
 
     // These three need to be i32s because postgres has no unsigned type.
     // The insertion code and DB should both enforce that they are >= 0.
@@ -49,7 +51,7 @@ impl TryFrom<HardwareSpec> for Valid<gdlk::HardwareSpec> {
 #[derive(Debug, PartialEq, Insertable)]
 #[table_name = "hardware_specs"]
 pub struct NewHardwareSpec<'a> {
-    pub slug: &'a str,
+    pub name: &'a str,
     pub num_registers: i32,
     pub num_stacks: i32,
     pub max_stack_length: i32,

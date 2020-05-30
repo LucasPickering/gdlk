@@ -21,9 +21,13 @@ type WithHardwareSpec = dsl::Eq<
 #[table_name = "program_specs"]
 pub struct ProgramSpec {
     pub id: Uuid,
-    /// Space-less identifier, unique to all program specs for a particular
-    /// hardware spec (i.e. unique with `hardware_spec_id`)
+    /// URL-friendly identifier, unique to all program specs for a particular
+    /// hardware spec (i.e. unique with `hardware_spec_id`). Derived from name.
     pub slug: String,
+    /// User-readable name for this program spec.
+    pub name: String,
+    /// User-readable description of the problem.
+    pub description: String,
     /// ID of the hardware that this program runs on
     pub hardware_spec_id: Uuid,
     /// The input values, where the element at position 0 is the first one that
@@ -66,7 +70,8 @@ impl TryFrom<ProgramSpec> for Valid<gdlk::ProgramSpec> {
 #[derive(Clone, Debug, PartialEq, Insertable)]
 #[table_name = "program_specs"]
 pub struct NewProgramSpec<'a> {
-    pub slug: &'a str,
+    pub name: &'a str,
+    pub description: &'a str,
     pub hardware_spec_id: Uuid,
     pub input: Vec<LangValue>,
     pub expected_output: Vec<LangValue>,
