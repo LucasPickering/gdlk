@@ -55,6 +55,20 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
         &self.program_spec.slug
     }
 
+    fn field_name(
+        &self,
+        _executor: &juniper::Executor<'_, Context>,
+    ) -> &String {
+        &self.program_spec.name
+    }
+
+    fn field_description(
+        &self,
+        _executor: &juniper::Executor<'_, Context>,
+    ) -> &String {
+        &self.program_spec.description
+    }
+
     fn field_input(
         &self,
         _executor: &juniper::Executor<'_, Context>,
