@@ -37,7 +37,7 @@ impl User {
     }
 }
 
-#[derive(Debug, PartialEq, Insertable)]
+#[derive(Debug, Default, PartialEq, Insertable)]
 #[table_name = "users"]
 pub struct NewUser<'a> {
     pub username: &'a str,

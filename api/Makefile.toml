@@ -56,7 +56,8 @@ args = ["watch", "-x", "run -- server"]
 extend = "diesel"
 env = { DATABASE_URL = "${DATABASE_URL}_test" }
 dependencies = ["wait-for-db"]
-args = ["db", "reset"]
+# --locked-schema prevents changing schema.rs, which would trigger an API reload
+args = ["db", "reset", "--locked-schema"]
 
 [tasks.test]
 dependencies = ["test-db-reset"]

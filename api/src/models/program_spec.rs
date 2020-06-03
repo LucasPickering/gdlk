@@ -55,7 +55,7 @@ impl ProgramSpec {
 /// This can be constructed manually and inserted into the DB. These fields
 /// all correspond to [ProgramSpec](ProgramSpec), so look there for
 /// field-level documentation.
-#[derive(Clone, Debug, PartialEq, Insertable, Validate)]
+#[derive(Clone, Debug, Default, PartialEq, Insertable, Validate)]
 #[table_name = "program_specs"]
 pub struct NewProgramSpec<'a> {
     pub hardware_spec_id: Uuid,
