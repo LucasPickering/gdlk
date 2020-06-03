@@ -60,6 +60,18 @@ impl NewHardwareSpec<'_> {
 }
 
 // This trait is only needed for tests
+impl Default for NewHardwareSpec<'_> {
+    fn default() -> Self {
+        Self {
+            name: "", // this is invalid, you'll have to override
+            num_registers: 1,
+            num_stacks: 0,
+            max_stack_length: 0,
+        }
+    }
+}
+
+// This trait is only needed for tests
 impl Factory for NewHardwareSpec<'_> {
     type ReturnType = HardwareSpec;
 
