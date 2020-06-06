@@ -106,6 +106,20 @@ fn test_parse_errors() {
 }
 
 #[test]
+fn test_parse_empty_file() {
+    assert_compile_errors!(
+        HardwareSpec::default(),
+        "",
+        &["Syntax error at 1:1: Expected program"]
+    );
+    assert_compile_errors!(
+        HardwareSpec::default(),
+        "    \n\n\t",
+        &["Syntax error at 1:1: Expected program"]
+    );
+}
+
+#[test]
 fn test_invalid_user_reg_ref() {
     assert_compile_errors!(
         HardwareSpec {

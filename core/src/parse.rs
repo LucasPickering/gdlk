@@ -17,8 +17,11 @@ use nom::{
     bytes::complete::{is_not, tag, tag_no_case, take_while1},
     character::complete::{char, digit1, line_ending, space0, space1},
     combinator::{all_consuming, cut, map, map_res, opt, peek, recognize},
-    error::{context, ErrorKind, ParseError, VerboseError, VerboseErrorKind},
-    multi::many0,
+    error::{
+        context, make_error, ErrorKind, ParseError, VerboseError,
+        VerboseErrorKind,
+    },
+    multi::{many0, many1},
     sequence::{delimited, preceded, terminated, tuple},
     IResult, Offset, Slice,
 };
@@ -213,15 +216,33 @@ impl<'a> Parse<'a> for Statement<Span> {
 
 impl<'a> Parse<'a> for Program<Span> {
     fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
-        map(
-            all_consuming(many0(line)),
-            // filter out None lines
-            |lines| Program {
-                body: lines
-                    .into_iter()
-                    .filter_map(std::convert::identity)
-                    .collect(),
-            },
+        context(
+            "program",
+            map_res(
+                all_consuming(many1(line)),
+                // filter out None lines
+                |lines| {
+                    let body: Vec<_> = lines
+                        .into_iter()
+                        .filter_map(std::convert::identity)
+                        .collect();
+
+                    // If the program is empty, that's no bueno
+                    if body.is_empty() {
+                        Err(
+                            make_error::<RawSpan<'a>, VerboseError<RawSpan<'a>>>(
+                                input,
+                                // The error we pick here doesn't matter much
+                                // since the message will be determined by
+                                // the context
+                                ErrorKind::Many1,
+                            ),
+                        )
+                    } else {
+                        Ok(Program { body })
+                    }
+                },
+            ),
         )(input)
     }
 }
@@ -442,10 +463,46 @@ mod tests {
 
     #[test]
     fn test_whitespace() {
-        assert_eq!(parse("").unwrap().body, vec![]);
-        assert_eq!(parse("\n\n\n").unwrap().body, vec![]);
-        assert_eq!(parse("  ").unwrap().body, vec![]);
-        assert_eq!(parse("  \n  ").unwrap().body, vec![]);
+        assert_eq!(
+            parse("LBL:\n\n\n").unwrap().body,
+            vec![Node(
+                Statement::Label(Node(
+                    LabelDecl("LBL".into()),
+                    span(1, 1, 1, 5)
+                )),
+                span(1, 1, 1, 5)
+            )]
+        );
+        assert_eq!(
+            parse("\n\nLBL:\n\n").unwrap().body,
+            vec![Node(
+                Statement::Label(Node(
+                    LabelDecl("LBL".into()),
+                    span(3, 1, 3, 5)
+                )),
+                span(3, 1, 3, 5)
+            )]
+        );
+        assert_eq!(
+            parse("  LBL:").unwrap().body,
+            vec![Node(
+                Statement::Label(Node(
+                    LabelDecl("LBL".into()),
+                    span(1, 3, 1, 7)
+                )),
+                span(1, 3, 1, 7)
+            )]
+        );
+        assert_eq!(
+            parse("  \n  LBL:").unwrap().body,
+            vec![Node(
+                Statement::Label(Node(
+                    LabelDecl("LBL".into()),
+                    span(2, 3, 2, 7)
+                )),
+                span(2, 3, 2, 7)
+            )]
+        );
     }
 
     #[test]
