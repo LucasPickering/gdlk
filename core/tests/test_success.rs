@@ -385,11 +385,6 @@ fn test_cycle_count_jump() {
 }
 
 #[test]
-fn test_parse_empty_file() {
-    assert_success!(HardwareSpec::default(), ProgramSpec::default(), "");
-}
-
-#[test]
 fn test_execute_after_termination() {
     // Excuting after a normal termination returns false
     let mut machine = assert_success!(
