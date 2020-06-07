@@ -9,10 +9,9 @@ use crate::{
         UpdateUserProgramPayloadFields, UserNode, UserProgramConnectionFields,
         UserProgramEdgeFields, UserProgramNodeFields,
     },
-    util,
+    util::{self, Valid},
 };
 use diesel::{dsl, PgConnection, QueryDsl, QueryResult, RunQueryDsl, Table};
-use gdlk::Valid;
 use juniper::ID;
 use juniper_from_schema::{QueryTrail, Walked};
 use std::convert::TryInto;

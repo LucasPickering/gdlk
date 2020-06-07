@@ -1,6 +1,6 @@
 #![deny(clippy::all, unused_must_use, unused_imports)]
 // https://prestonrichey.com/blog/react-rust-wasm/
-use gdlk::{ast::wasm::SourceElementArray, Valid};
+use gdlk::ast::wasm::SourceElementArray;
 pub use gdlk::{
     ast::{compiled::Program, wasm::SourceElement, LangValue},
     Compiler, HardwareSpec, Machine, ProgramSpec, Span,
@@ -46,23 +46,18 @@ impl CompileSuccess {
     }
 }
 
+/// Compile a program under the given specifications. This takes in references
+/// so we don't have to move the values out of JS memory.
 #[wasm_bindgen]
 pub fn compile(
     hardware_spec: &HardwareSpec,
     program_spec: &ProgramSpec,
     source: &str,
 ) -> Result<CompileSuccess, JsValue> {
-    // It _shouldn't_ be possible for this validation to fail since the specs
-    // always comes from the DB, but if it does, we'll just blow up the page
-    // We take in references so that the JS values don't get moved.
-    let valid_hardware_spec = Valid::validate(*hardware_spec).unwrap();
-    let valid_program_spec: Valid<&ProgramSpec> =
-        Valid::validate(program_spec).unwrap();
-
-    match Compiler::compile(source.to_string(), valid_hardware_spec) {
+    match Compiler::compile(source.to_string(), *hardware_spec) {
         Ok(compiler) => {
             let program = compiler.program().clone();
-            let machine = compiler.allocate(valid_program_spec);
+            let machine = compiler.allocate(program_spec);
             Ok(CompileSuccess { program, machine })
         }
         Err(err) => {

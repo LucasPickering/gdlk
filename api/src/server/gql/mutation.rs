@@ -17,9 +17,9 @@ use diesel::{
     ExpressionMethods, OptionalExtension, PgConnection, QueryDsl, RunQueryDsl,
     Table,
 };
-use gdlk::validator::Validate;
 use juniper_from_schema::{QueryTrail, Walked};
 use uuid::Uuid;
+use validator::Validate;
 
 /// The top-level mutation object.
 pub struct Mutation;

@@ -4,12 +4,42 @@
 pub use self::tests::*;
 use diesel::{r2d2::ConnectionManager, PgConnection};
 use failure::Fallible;
+use std::ops::Deref;
 use uuid::Uuid;
+use validator::{Validate, ValidationErrors};
 
 /// Type aliases for DB connections
 pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 pub type PooledConnection =
     r2d2::PooledConnection<ConnectionManager<PgConnection>>;
+
+/// A small wrapper struct to indicate that the wrapped value has been
+/// validated. Built on top of [validator]. This struct can only be constructed
+/// via [Valid::validate].
+#[derive(Copy, Clone, Debug)]
+pub struct Valid<T: Validate> {
+    inner: T,
+}
+
+impl<T: Validate> Valid<T> {
+    /// Validate the given value. If validation succeeds, wrap it in a
+    /// [Valid] to indicate it's valid.
+    pub fn validate(value: T) -> Result<Self, ValidationErrors> {
+        // We can't do a blanket TryFrom<T: Validate> implementation because of
+        // this bug https://github.com/rust-lang/rust/issues/50133
+        // Will have to wait for better specialization
+        value.validate()?;
+        Ok(Self { inner: value })
+    }
+}
+
+impl<T: Validate> Deref for Valid<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.inner
+    }
+}
 
 pub fn init_db_conn_pool() -> Fallible<Pool> {
     let database_url = std::env::var("DATABASE_URL")?;

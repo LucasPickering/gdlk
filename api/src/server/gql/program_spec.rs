@@ -10,13 +10,12 @@ use crate::{
         PageInfo, ProgramSpecConnectionFields, ProgramSpecEdgeFields,
         ProgramSpecNodeFields, UpdateProgramSpecPayloadFields,
     },
-    util,
+    util::{self, Valid},
 };
 use diesel::{
     dsl, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
     QueryResult, RunQueryDsl, Table,
 };
-use gdlk::Valid;
 use juniper::ID;
 use juniper_from_schema::{QueryTrail, Walked};
 use std::convert::TryInto;

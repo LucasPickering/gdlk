@@ -2,8 +2,8 @@ use crate::{models::Factory, schema::hardware_specs};
 use diesel::{
     prelude::*, query_builder::InsertStatement, Identifiable, Queryable,
 };
-use gdlk::validator::Validate;
 use uuid::Uuid;
+use validator::Validate;
 
 /// A derivative of [HardwareSpec](gdlk::HardwareSpec), containing all fields.
 /// that are present on the DB table. This should only ever be constructed from

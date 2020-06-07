@@ -1,7 +1,7 @@
 //! Integration tests for GDLK that expect compile errors. The programs in
 //! these tests should all fail during compilation.
 
-use gdlk::{ast::LangValue, Compiler, HardwareSpec, Valid};
+use gdlk::{ast::LangValue, Compiler, HardwareSpec};
 
 /// Compiles the program for the given hardware, expecting compile error(s).
 /// Panics if the program compiles successfully, or if the wrong set of
@@ -10,7 +10,7 @@ macro_rules! assert_compile_errors {
     ($hw_spec:expr, $src:expr, $expected_errors:expr $(,)?) => {
         // Compile from hardware+src
         let actual_errors: Vec<String> =
-            Compiler::compile($src.into(), Valid::validate($hw_spec).unwrap())
+            Compiler::compile($src.into(), $hw_spec)
                 .unwrap_err()
                 .errors()
                 .iter()
@@ -25,11 +25,9 @@ macro_rules! assert_compile_errors {
 /// Macro to compile a program and expect a particular compiler error.
 macro_rules! assert_parse_error {
     ($src:expr, $expected_error:expr $(,)?) => {
-        let actual_errors = Compiler::compile(
-            $src.into(),
-            Valid::validate(HardwareSpec::default()).unwrap(),
-        )
-        .unwrap_err();
+        let actual_errors =
+            Compiler::compile($src.into(), HardwareSpec::default())
+                .unwrap_err();
         assert_eq!(actual_errors.to_string(), $expected_error);
     };
 }
