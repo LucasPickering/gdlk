@@ -5,4 +5,4 @@ analysis/
 build/
 target/
 **/__generated__/
-.env
+api/openid_config.json
