@@ -3,7 +3,7 @@ import { RelayProp, createFragmentContainer } from 'react-relay';
 import graphql from 'babel-plugin-relay/macro';
 import { HardwareSpecListItem_hardwareSpec } from './__generated__/HardwareSpecListItem_hardwareSpec.graphql';
 import { List, ListItem, ListItemText, makeStyles } from '@material-ui/core';
-import { Link as RouterLink } from 'react-router-dom';
+import UnstyledLink from 'components/common/UnstyledLink';
 
 const useLocalStyles = makeStyles(({ spacing }) => ({
   nestedListItem: {
@@ -22,7 +22,7 @@ const HardwareSpecListItem: React.FC<{
       <ListItem
         key={hardwareSpec.id}
         button
-        component={RouterLink}
+        component={UnstyledLink}
         to={`/hardware/${hardwareSpec.slug}`}
       >
         <ListItemText primary={hardwareSpec.slug} />
@@ -33,7 +33,7 @@ const HardwareSpecListItem: React.FC<{
             key={programSpec.id}
             className={localClasses.nestedListItem}
             button
-            component={RouterLink}
+            component={UnstyledLink}
             to={`/hardware/${hardwareSpec.slug}/puzzles/${programSpec.slug}`}
           >
             <ListItemText
