@@ -52,6 +52,7 @@ async fn init_config(openid_config: OpenidConfig, client_map: &mut ClientMap) {
             config.client_id,
             config.client_secret,
             config.issuer_url,
+            &config.name,
             &openid_config.host_url,
         )
         .await;
@@ -66,10 +67,10 @@ async fn make_client(
     client_id: String,
     client_secret: String,
     issuer_url: String,
+    name: &str,
     host_url: &str,
 ) -> Client {
-    // TODO: read hostname from a config file
-    let redirect = Some(format!("{}/api/oidc/callback", host_url));
+    let redirect = Some(format!("{}/api/oidc/{}/callback", host_url, name));
     let issuer = match Url::parse(&issuer_url) {
         Ok(res) => res,
         Err(e) => panic!(e),
@@ -82,15 +83,19 @@ async fn make_client(
         Err(e) => panic!(e),
     }
 }
+
 /// The frontend will redirect to this before being sent off to the
 /// actual openid provider
 // TODO: add route param to say which provider to use
-#[get("/api/oidc/redirect")]
+#[get("/api/oidc/{provider_name}/redirect")]
 pub async fn route_authorize(
     client_map: web::Data<ClientMap>,
+    params: web::Path<(String,)>,
 ) -> impl Responder {
-    // TODO: hard coding google for now
-    let oidc_client = client_map.map.get("Google").unwrap();
+    // TODO: handle bad name
+    let provider_name = params.0.to_string();
+    let oidc_client = client_map.map.get(&provider_name).unwrap();
+
     let auth_url = oidc_client.auth_url(&Options {
         scope: Some("email".into()),
         ..Default::default()
@@ -139,16 +144,18 @@ async fn request_token(
 }
 
 /// Provider redirects back to this route after the login
-#[get("/api/oidc/callback")]
+#[get("/api/oidc/{provider_name}/callback")]
 pub async fn route_login(
     client_map: web::Data<ClientMap>,
+    params: web::Path<(String,)>,
     query: web::Query<LoginQuery>,
     sessions: web::Data<RwLock<Sessions>>,
     pool: web::Data<Pool>,
     identity: Identity,
 ) -> Result<HttpResponse, actix_web::Error> {
-    // TODO: hard coding google for now
-    let oidc_client = client_map.map.get("Google").unwrap();
+    // TODO: handle bad name
+    let provider_name = params.0.to_string();
+    let oidc_client = client_map.map.get(&provider_name).unwrap();
     let conn = &pool.get().map_err(ResponseError::from)? as &PgConnection;
 
     match request_token(oidc_client, query).await {
