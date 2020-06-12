@@ -15,7 +15,7 @@ import React, { useState } from 'react';
 import HeaderLink from './HeaderLink';
 import DrawerLink from './DrawerLink';
 import useScreenSize from 'hooks/useScreenSize';
-import { Link as RouterLink } from 'react-router-dom';
+import UnstyledLink from 'components/common/UnstyledLink';
 
 const LINKS = [
   {
@@ -100,7 +100,7 @@ const Navigation: React.FC<{
             startIcon={<IconArrowBack />}
             color="primary"
             variant="outlined"
-            component={RouterLink}
+            component={UnstyledLink}
             // This prop gets forwarded to Link
             to={backLink.to}
           >
