@@ -5,7 +5,7 @@ use crate::{
     util::Pool,
 };
 use actix_identity::Identity;
-use actix_web::{get, http, web, HttpResponse, Responder};
+use actix_web::{get, http, web, HttpResponse};
 use diesel::{prelude::RunQueryDsl, PgConnection};
 use failure::Fallible;
 use openid::{Client, DiscoveredClient, Options, Token, Userinfo};
@@ -18,21 +18,40 @@ pub struct Sessions {
     pub map: HashMap<String, (User, Token, Userinfo)>,
 }
 
+/// Map of [ProviderConfig].name to configured [Client]
 pub struct ClientMap {
     pub map: HashMap<String, Client>,
 }
 
-#[derive(Deserialize)]
-struct OpenidConfig {
-    host_url: String,
-    providers: Vec<ProviderConfig>,
+impl ClientMap {
+    pub fn get_client(
+        &self,
+        provider_name: &str,
+    ) -> Result<&Client, HttpResponse> {
+        self.map
+            .get(provider_name)
+            .ok_or_else(|| HttpResponse::NotFound().finish())
+    }
 }
 
+/// The representation of the openid config json
+#[derive(Deserialize)]
+struct OpenidConfig {
+    /// Url of the frontend
+    host_url: String,
+    /// List of each provider to configure
+    providers: Vec<ProviderConfig>,
+}
+/// Representation of an individual openId provider
 #[derive(Deserialize)]
 struct ProviderConfig {
+    /// Name used in the openid routes
     name: String,
+    /// Client ID, given by the provider
     client_id: String,
+    /// Client Secret, given by the provider
     client_secret: String,
+    /// Url used by the openid discover step to get all necessary fields
     issuer_url: String,
 }
 
@@ -86,24 +105,23 @@ async fn make_client(
 
 /// The frontend will redirect to this before being sent off to the
 /// actual openid provider
-// TODO: add route param to say which provider to use
 #[get("/api/oidc/{provider_name}/redirect")]
 pub async fn route_authorize(
     client_map: web::Data<ClientMap>,
     params: web::Path<(String,)>,
-) -> impl Responder {
+) -> Result<HttpResponse, actix_web::Error> {
     // TODO: handle bad name
     let provider_name = params.0.to_string();
-    let oidc_client = client_map.map.get(&provider_name).unwrap();
+    let oidc_client = client_map.get_client(&provider_name)?;
 
     let auth_url = oidc_client.auth_url(&Options {
         scope: Some("email".into()),
         ..Default::default()
     });
 
-    HttpResponse::Found()
+    Ok(HttpResponse::Found()
         .header(http::header::LOCATION, auth_url.to_string())
-        .finish()
+        .finish())
 }
 
 #[derive(Deserialize, Debug)]
@@ -153,9 +171,9 @@ pub async fn route_login(
     pool: web::Data<Pool>,
     identity: Identity,
 ) -> Result<HttpResponse, actix_web::Error> {
-    // TODO: handle bad name
     let provider_name = params.0.to_string();
-    let oidc_client = client_map.map.get(&provider_name).unwrap();
+    let oidc_client = client_map.get_client(&provider_name)?;
+
     let conn = &pool.get().map_err(ResponseError::from)? as &PgConnection;
 
     match request_token(oidc_client, query).await {

@@ -17,6 +17,9 @@ use std::{
     io,
     sync::{Arc, RwLock},
 };
+
+const OPENID_CONFIG_PATH: &str = "openid_config.json";
+
 #[get("/api/graphiql")]
 async fn route_graphiql() -> HttpResponse {
     let html = graphiql_source("/api/graphql");
@@ -51,16 +54,10 @@ pub async fn run_server(pool: Pool, host: String) -> io::Result<()> {
     // Init GraphQL schema
     let gql_schema = Arc::new(create_gql_schema());
 
-    // let google_client_id = env::var("OPENID_CLIENT_ID").unwrap();
-    // let google_client_secret = env::var("OPENID_CLIENT_SECRET").unwrap();
-    // let google_url = "https://accounts.google.com";
-    // let client =
-    //     make_client(google_client_id, google_client_secret,
-    // google_url).await; let client = web::Data::new(client);
     let mut client_map = ClientMap {
         map: HashMap::new(),
     };
-    read_config("openid_config.json", &mut client_map)
+    read_config(OPENID_CONFIG_PATH, &mut client_map)
         .await
         .unwrap();
     let client_map = web::Data::new(client_map);
