@@ -4,7 +4,9 @@ mod auth;
 mod gql;
 pub use crate::server::gql::{create_gql_schema, Context, GqlSchema};
 use crate::{
-    server::auth::{make_client, route_authorize, route_login, Sessions},
+    server::auth::{
+        read_config, route_authorize, route_login, ClientMap, Sessions,
+    },
     util::Pool,
 };
 use actix_identity::{CookieIdentityPolicy, IdentityService};
@@ -12,9 +14,12 @@ use actix_web::{get, middleware, post, web, App, HttpResponse, HttpServer};
 use juniper::http::{graphiql::graphiql_source, GraphQLRequest};
 use std::{
     collections::HashMap,
-    env, io,
+    io,
     sync::{Arc, RwLock},
 };
+
+const OPENID_CONFIG_PATH: &str = "openid_config.json";
+
 #[get("/api/graphiql")]
 async fn route_graphiql() -> HttpResponse {
     let html = graphiql_source("/api/graphql");
@@ -49,12 +54,13 @@ pub async fn run_server(pool: Pool, host: String) -> io::Result<()> {
     // Init GraphQL schema
     let gql_schema = Arc::new(create_gql_schema());
 
-    let google_client_id = env::var("OPENID_CLIENT_ID").unwrap();
-    let google_client_secret = env::var("OPENID_CLIENT_SECRET").unwrap();
-    let google_url = "https://accounts.google.com";
-    let client =
-        make_client(google_client_id, google_client_secret, google_url).await;
-    let client = web::Data::new(client);
+    let mut client_map = ClientMap {
+        map: HashMap::new(),
+    };
+    read_config(OPENID_CONFIG_PATH, &mut client_map)
+        .await
+        .unwrap();
+    let client_map = web::Data::new(client_map);
     let sessions = web::Data::new(RwLock::new(Sessions {
         map: HashMap::new(),
     }));
@@ -65,7 +71,7 @@ pub async fn run_server(pool: Pool, host: String) -> io::Result<()> {
             // Need to clone these because init occurs once per thread
             .data(pool.clone())
             .data(gql_schema.clone())
-            .app_data(client.clone())
+            .app_data(client_map.clone())
             .app_data(sessions.clone())
             // enable logger
             .wrap(middleware::Logger::default())

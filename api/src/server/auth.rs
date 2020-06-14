@@ -5,27 +5,92 @@ use crate::{
     util::Pool,
 };
 use actix_identity::Identity;
-use actix_web::{get, http, web, HttpResponse, Responder};
+use actix_web::{get, http, web, HttpResponse};
 use diesel::{prelude::RunQueryDsl, PgConnection};
+use failure::Fallible;
 use openid::{Client, DiscoveredClient, Options, Token, Userinfo};
 use reqwest::Url;
 use serde::Deserialize;
-use std::{collections::HashMap, sync::RwLock};
+use std::{collections::HashMap, fs, sync::RwLock};
+
 // TODO: make this a db table so its persistent through restarts
 pub struct Sessions {
     pub map: HashMap<String, (User, Token, Userinfo)>,
 }
+
+/// Map of [ProviderConfig].name to configured [Client]
+pub struct ClientMap {
+    pub map: HashMap<String, Client>,
+}
+
+impl ClientMap {
+    pub fn get_client(
+        &self,
+        provider_name: &str,
+    ) -> Result<&Client, HttpResponse> {
+        self.map
+            .get(provider_name)
+            .ok_or_else(|| HttpResponse::NotFound().finish())
+    }
+}
+
+/// The representation of the openid config json
+#[derive(Deserialize)]
+struct OpenidConfig {
+    /// Url of the frontend
+    host_url: String,
+    /// List of each provider to configure
+    providers: Vec<ProviderConfig>,
+}
+/// Representation of an individual openId provider
+#[derive(Deserialize)]
+struct ProviderConfig {
+    /// Name used in the openid routes
+    name: String,
+    /// Client ID, given by the provider
+    client_id: String,
+    /// Client Secret, given by the provider
+    client_secret: String,
+    /// Url used by the openid discover step to get all necessary fields
+    issuer_url: String,
+}
+
+pub async fn read_config(
+    path: &str,
+    client_map: &mut ClientMap,
+) -> Fallible<()> {
+    let config_str = fs::read_to_string(path)?;
+    let openid_config: OpenidConfig = serde_json::from_str(&config_str)?;
+    init_config(openid_config, client_map).await;
+    Ok(())
+}
+
+async fn init_config(openid_config: OpenidConfig, client_map: &mut ClientMap) {
+    for config in openid_config.providers {
+        let client = make_client(
+            config.client_id,
+            config.client_secret,
+            config.issuer_url,
+            &config.name,
+            &openid_config.host_url,
+        )
+        .await;
+
+        client_map.map.insert(config.name, client);
+    }
+}
+
 /// Setup a client for a given provider
 /// based on the id, secret, and provider url
-pub async fn make_client(
+async fn make_client(
     client_id: String,
     client_secret: String,
-    issuer_url: &str,
+    issuer_url: String,
+    name: &str,
+    host_url: &str,
 ) -> Client {
-    // TODO: read hostname from a config file
-    let redirect = Some("localhost:3000/api/oidc/callback".to_string());
-
-    let issuer = match Url::parse(issuer_url) {
+    let redirect = Some(format!("{}/api/oidc/{}/callback", host_url, name));
+    let issuer = match Url::parse(&issuer_url) {
         Ok(res) => res,
         Err(e) => panic!(e),
     };
@@ -40,19 +105,23 @@ pub async fn make_client(
 
 /// The frontend will redirect to this before being sent off to the
 /// actual openid provider
-// TODO: add route param to say which provider to use
-#[get("/api/oidc/redirect")]
+#[get("/api/oidc/{provider_name}/redirect")]
 pub async fn route_authorize(
-    oidc_client: web::Data<DiscoveredClient>,
-) -> impl Responder {
+    client_map: web::Data<ClientMap>,
+    params: web::Path<(String,)>,
+) -> Result<HttpResponse, actix_web::Error> {
+    // TODO: handle bad name
+    let provider_name = params.0.to_string();
+    let oidc_client = client_map.get_client(&provider_name)?;
+
     let auth_url = oidc_client.auth_url(&Options {
         scope: Some("email".into()),
         ..Default::default()
     });
 
-    HttpResponse::Found()
+    Ok(HttpResponse::Found()
         .header(http::header::LOCATION, auth_url.to_string())
-        .finish()
+        .finish())
 }
 
 #[derive(Deserialize, Debug)]
@@ -63,7 +132,7 @@ pub struct LoginQuery {
 /// Exchanges the access token from the initial login in the openid provider
 /// for a normal token
 async fn request_token(
-    oidc_client: web::Data<DiscoveredClient>,
+    oidc_client: &Client,
     query: web::Query<LoginQuery>,
 ) -> Result<Option<(Token, Userinfo)>, actix_web::Error> {
     let mut token: Token = oidc_client
@@ -93,14 +162,18 @@ async fn request_token(
 }
 
 /// Provider redirects back to this route after the login
-#[get("/api/oidc/callback")]
+#[get("/api/oidc/{provider_name}/callback")]
 pub async fn route_login(
-    oidc_client: web::Data<DiscoveredClient>,
+    client_map: web::Data<ClientMap>,
+    params: web::Path<(String,)>,
     query: web::Query<LoginQuery>,
     sessions: web::Data<RwLock<Sessions>>,
     pool: web::Data<Pool>,
     identity: Identity,
 ) -> Result<HttpResponse, actix_web::Error> {
+    let provider_name = params.0.to_string();
+    let oidc_client = client_map.get_client(&provider_name)?;
+
     let conn = &pool.get().map_err(ResponseError::from)? as &PgConnection;
 
     match request_token(oidc_client, query).await {

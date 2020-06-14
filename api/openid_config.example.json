@@ -1,0 +1,11 @@
+{
+  "host_url": "localhost:3000",
+  "providers": [
+    {
+      "name": "Google",
+      "client_id": "<ID>",
+      "client_secret": "<SECRET>",
+      "issuer_url": "https://accounts.google.com"
+    }
+  ]
+}

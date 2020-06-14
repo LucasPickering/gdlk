@@ -10,7 +10,7 @@ const LoginPage: React.FC = () => {
         <Button
           color="primary"
           component={UnstyledLink}
-          to="/api/oidc/redirect"
+          to="/api/oidc/google/redirect"
         >
           Login with Google
         </Button>
