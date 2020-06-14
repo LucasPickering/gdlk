@@ -66,6 +66,15 @@ const DocsPage: React.FC = () => {
           goal of a GDLK program is to read values from the input and transform
           them in order to generate the proper output.
         </Typography>
+
+        <Typography>
+          The hardware components of a machine are the{' '}
+          <Link to="#input-and-output">input & output</Link>,{' '}
+          <Link to="#registers">registers</Link>, and{' '}
+          <Link to="#stacks">stacks</Link>. A program consists of a series of{' '}
+          <Link to="#instructions">instructions</Link>, can be used to apply a
+          variety of data operations.
+        </Typography>
       </DocsSection>
 
       <DocsSection level={2} title="Language Reference">
@@ -90,8 +99,32 @@ const DocsPage: React.FC = () => {
 
         <RegisterDocs />
 
-        <DocsSection level={3} title="Stacks">
-          <Typography>TODO</Typography>
+        <DocsSection id="stacks" level={3} title="Stacks">
+          <Typography>
+            Stacks are a high capacity form of value storage. They trade the
+            easy accessibility and operability of registers for much higher
+            capacity. Operations cannot be performed directly on any values in a
+            stack. The only instructions that operate on stacks are{' '}
+            <Link to="#instructions--push">PUSH</Link> and{' '}
+            <Link to="#instructions--pop">POP</Link>. <code>PUSH</code> puts a
+            new value on top of a stack, and <code>POP</code> removes the top
+            value into a register. Only the top value of a stack is accessible;
+            all others cannot be read until the values above them are popped
+            off.
+          </Typography>
+
+          <Typography>
+            All stacks are referenced by the naming pattern <code>Sx</code>,
+            where <code>x</code> starts at <code>0</code>. For example, if a
+            machine has 2 stacks, they will be <code>S0</code> and{' '}
+            <code>S1</code>.
+          </Typography>
+
+          <Typography>
+            Each stack also has a corresponding{' '}
+            <Link to="#registers--rsx">RSx</Link> register, which can be used to
+            access the current length of the corresponding stack.
+          </Typography>
 
           <DocsSection level={4} title="Capacity">
             <Typography>
@@ -102,7 +135,7 @@ const DocsPage: React.FC = () => {
           </DocsSection>
         </DocsSection>
 
-        <DocsSection level={3} title="Input & Output">
+        <DocsSection id="input-and-output" level={3} title="Input & Output">
           <Typography>
             Programs interact with outside values via input and output. The
             program specification defines what values a program takes as input.

@@ -59,7 +59,7 @@ const REGISTERS: Register[] = [
  */
 const RegisterDocs: React.FC = () => {
   return (
-    <DocsSection level={3} title="Registers">
+    <DocsSection id="registers" level={3} title="Registers">
       <Typography>
         Registers are the basic memory unit of a GDLK machine. Some registers
         are read-only and hold special values, while others are general purpose

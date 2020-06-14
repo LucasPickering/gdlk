@@ -181,7 +181,7 @@ const INSTRUCTIONS: InstructionReference[] = [
  */
 const InstructionDocs: React.FC = () => {
   return (
-    <DocsSection level={3} title="Instructions">
+    <DocsSection id="instructions" level={3} title="Instructions">
       <table>
         <thead>
           <tr>
