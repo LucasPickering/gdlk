@@ -6,8 +6,8 @@ use diesel::{
     dsl, expression::bound::Bound, prelude::*, query_builder::InsertStatement,
     sql_types, Identifiable, Queryable,
 };
-use gdlk::validator::Validate;
 use uuid::Uuid;
+use validator::Validate;
 
 /// Expression to filter user_programs by owner's ID and program spec ID
 type WithUserAndProgramSpec = dsl::And<

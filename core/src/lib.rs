@@ -5,16 +5,15 @@
 //! and expected outputs.
 //!
 //! ```
-//! use gdlk::{HardwareSpec, ProgramSpec, Valid, Compiler};
+//! use gdlk::{HardwareSpec, ProgramSpec, Compiler};
 //!
 //! // Create the specs
-//! let hardware_spec = Valid::validate(HardwareSpec {
+//! let hardware_spec = HardwareSpec {
 //!     num_registers: 1,
 //!     num_stacks: 0,
 //!     max_stack_length: 0,
-//! }).unwrap();
-//! let raw_program_spec = ProgramSpec::new(vec![1], vec![2]);
-//! let program_spec = Valid::validate(&raw_program_spec).unwrap();
+//! };
+//! let program_spec = ProgramSpec::new(vec![1], vec![2]);
 //!
 //! // Write your program
 //! let source: String = "
@@ -30,18 +29,13 @@
 //! ).unwrap();
 //!
 //! // Execute
-//! let mut machine = compiled.allocate(program_spec);
+//! let mut machine = compiled.allocate(&program_spec);
 //! machine.execute_all().unwrap();
 //! assert!(machine.successful());
 //! ```
 
 #![deny(clippy::all, unused_must_use, unused_imports)]
 #![feature(or_patterns)]
-
-// Re-export dependencies that consumers may need
-pub use validator;
-#[macro_use]
-extern crate validator_derive;
 
 pub mod ast;
 mod consts;
@@ -56,7 +50,7 @@ mod validate;
 pub use consts::MAX_CYCLE_COUNT;
 pub use machine::*;
 pub use models::*;
-pub use util::{Span, Valid};
+pub use util::Span;
 
 use ast::compiled::Program;
 use error::{CompileError, WithSource};
@@ -70,7 +64,7 @@ use std::fmt::Debug;
 pub struct Compiler<T: Debug> {
     // These are deliberately private, to prevent direct construction
     source: String,
-    hardware_spec: Valid<HardwareSpec>,
+    hardware_spec: HardwareSpec,
     ast: T,
 }
 
@@ -82,7 +76,7 @@ impl Compiler<()> {
     /// library-level documentation for more info.
     pub fn compile(
         source: String,
-        hardware_spec: Valid<HardwareSpec>,
+        hardware_spec: HardwareSpec,
     ) -> Result<Compiler<Program<Span>>, WithSource<CompileError>> {
         Ok(Self {
             source,
@@ -108,7 +102,7 @@ impl Compiler<Program<Span>> {
     /// Allocate a new [Machine] to execute a compiled program. The returned
     /// machine can then be executed. `program_spec` defines the parameters
     /// under which the program will execute.
-    pub fn allocate(self, program_spec: Valid<&ProgramSpec>) -> Machine {
+    pub fn allocate(self, program_spec: &ProgramSpec) -> Machine {
         Machine::new(self.hardware_spec, program_spec, self.ast, self.source)
     }
 }

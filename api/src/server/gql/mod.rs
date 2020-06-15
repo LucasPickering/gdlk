@@ -11,11 +11,10 @@ use crate::{
         hardware_spec::*, mutation::*, program_spec::*, user::*,
         user_program::*,
     },
-    util::{Pool, PooledConnection},
+    util::{Pool, PooledConnection, Valid},
 };
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
 use failure::Fallible;
-use gdlk::Valid;
 use juniper_from_schema::graphql_schema_from_file;
 use serde::{Serialize, Serializer};
 use std::{convert::TryInto, sync::Arc};

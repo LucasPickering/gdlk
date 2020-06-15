@@ -6,27 +6,20 @@
 use crate::ast::wasm::StringArray;
 use crate::ast::{LangValue, RegisterRef, StackRef};
 use serde::{Deserialize, Serialize};
-use validator::Validate;
 #[cfg(feature = "wasm")]
 use wasm_bindgen::{prelude::*, JsCast};
 
 /// The "hardware" that a program can execute on. This defines computing
 /// constraints. This is needed both at compile time and runtime.
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, Validate)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct HardwareSpec {
-    // IMPORTANT: If you change any of the range values here, update
-    // NewHardwareSpec in the api crate as well
-
     // TODO make these readonly and camel case in wasm
     /// Number of registers available
-    #[validate(range(min = 1, max = 16))]
     pub num_registers: usize,
     /// Maximum number of stacks permitted
-    #[validate(range(min = 0, max = 16))]
     pub num_stacks: usize,
     /// Maximum size of each stack
-    #[validate(range(min = 0, max = 256))]
     pub max_stack_length: usize,
 }
 
@@ -119,17 +112,13 @@ impl Default for HardwareSpec {
 /// program runs on, and defines the expected output, which is used to determine
 /// if the program is correct. Only needed at runtime.
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Validate)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ProgramSpec {
-    // IMPORTANT: If you update these validation values, make sure you update
-    // NewProgramSpec in the api crate as well!
     /// The input values, where the element at position 0 is the first one that
     /// will be popped off.
-    #[validate(length(max = 256))]
     input: Vec<LangValue>,
     /// The correct value to be left in the output when the program exits. The
     /// first element will be the first one pushed, and so on.
-    #[validate(length(max = 256))]
     expected_output: Vec<LangValue>,
 }
 

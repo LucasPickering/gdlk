@@ -10,7 +10,7 @@ use crate::{
     debug,
     error::{RuntimeError, SourceErrorWrapper, WithSource},
     models::{HardwareSpec, ProgramSpec},
-    util::{Span, Valid},
+    util::Span,
 };
 use std::{
     cmp::Ordering, collections::HashMap, convert::TryInto, iter, num::Wrapping,
@@ -31,7 +31,7 @@ pub struct Machine {
     // Static data - this is copied from the input and shouldn't be included in
     // serialization. We store these ourselves instead of keeping references
     // to the originals because it just makes life a lot easier.
-    hardware_spec: Valid<HardwareSpec>,
+    hardware_spec: HardwareSpec,
     source: String,
     program: Program<Span>,
     expected_output: Vec<LangValue>,
@@ -65,8 +65,8 @@ pub struct Machine {
 impl Machine {
     /// Creates a new machine, ready to be executed.
     pub fn new(
-        hardware_spec: Valid<HardwareSpec>,
-        program_spec: Valid<&ProgramSpec>,
+        hardware_spec: HardwareSpec,
+        program_spec: &ProgramSpec,
         program: Program<Span>,
         source: String,
     ) -> Self {

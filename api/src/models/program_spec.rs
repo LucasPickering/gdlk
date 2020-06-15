@@ -6,8 +6,8 @@ use diesel::{
     dsl, expression::bound::Bound, prelude::*, query_builder::InsertStatement,
     sql_types, Identifiable, Queryable,
 };
-use gdlk::validator::Validate;
 use uuid::Uuid;
+use validator::Validate;
 
 type WithHardwareSpec = dsl::Eq<
     program_specs::columns::hardware_spec_id,

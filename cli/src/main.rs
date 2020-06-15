@@ -1,7 +1,7 @@
 #![deny(clippy::all, unused_must_use, unused_imports)]
 
 use failure::Fallible;
-use gdlk::{Compiler, HardwareSpec, ProgramSpec, Valid};
+use gdlk::{Compiler, HardwareSpec, ProgramSpec};
 use serde::de::DeserializeOwned;
 use std::{fs, path::PathBuf, process};
 use structopt::StructOpt;
@@ -67,8 +67,7 @@ fn run(opt: Opt) -> Fallible<()> {
             hardware_spec_path,
             source_path,
         } => {
-            let hw_spec: Valid<HardwareSpec> =
-                Valid::validate(load_spec(&hardware_spec_path)?)?;
+            let hw_spec: HardwareSpec = load_spec(&hardware_spec_path)?;
             // Read the source code from the file
             let source = fs::read_to_string(source_path)?;
             // Compile
@@ -82,18 +81,15 @@ fn run(opt: Opt) -> Fallible<()> {
             source_path,
         } => {
             // Read and parse the hw spec and program spec from JSON files
-            let hw_spec: Valid<HardwareSpec> =
-                Valid::validate(load_spec(&hardware_spec_path)?)?;
-            let raw_program_spec: ProgramSpec = load_spec(&program_spec_path)?;
-            let program_spec: Valid<&ProgramSpec> =
-                Valid::validate(&raw_program_spec)?;
+            let hw_spec: HardwareSpec = load_spec(&hardware_spec_path)?;
+            let program_spec: ProgramSpec = load_spec(&program_spec_path)?;
 
             // Read the source code from the file
             let source = fs::read_to_string(source_path)?;
 
             // Compile and execute
             let mut machine =
-                Compiler::compile(source, hw_spec)?.allocate(program_spec);
+                Compiler::compile(source, hw_spec)?.allocate(&program_spec);
             let success = machine.execute_all().map_err(Clone::clone)?;
 
             println!(

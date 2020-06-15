@@ -77,7 +77,6 @@ mod tests {
     use crate::{
         ast::{Jump, Operator, RegisterRef},
         models::HardwareSpec,
-        util::Valid,
     };
 
     #[test]
@@ -135,7 +134,7 @@ mod tests {
         ];
         let compiler = Compiler {
             source: "".into(),
-            hardware_spec: Valid::validate(HardwareSpec::default()).unwrap(),
+            hardware_spec: HardwareSpec::default(),
             ast: SourceProgram { body },
         };
         assert_eq!(

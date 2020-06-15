@@ -2,22 +2,18 @@
 //! these tests should compile successfully, and execute with a successful
 //! outcome.
 
-use gdlk::{ast::LangValue, Compiler, HardwareSpec, ProgramSpec, Valid};
+use gdlk::{ast::LangValue, Compiler, HardwareSpec, ProgramSpec};
 
 /// Compiles the program for the given hardware, and executes it against the
 /// program spec. Panics if the compile fails or the execution isn't
 /// successful.
 macro_rules! assert_success {
     ($hardware_spec:expr, $program_spec:expr, $src:expr $(,)?) => {{
-        let program_spec_val = $program_spec;
-        let valid_program_spec = Valid::validate(&program_spec_val).unwrap();
+        let program_spec_val = &$program_spec;
         // Compile from hardware+src
-        let mut machine = Compiler::compile(
-            $src.into(),
-            Valid::validate($hardware_spec).unwrap(),
-        )
-        .unwrap()
-        .allocate(valid_program_spec);
+        let mut machine = Compiler::compile($src.into(), $hardware_spec)
+            .unwrap()
+            .allocate(program_spec_val);
 
         // Execute to completion
         let success = machine.execute_all().unwrap();
@@ -25,7 +21,7 @@ macro_rules! assert_success {
         // Make sure program terminated successfully
         // Check each bit of state individually to make debugging easier
         assert_eq!(machine.input(), &[] as &[LangValue]);
-        assert_eq!(machine.output(), valid_program_spec.expected_output());
+        assert_eq!(machine.output(), program_spec_val.expected_output());
         // Final sanity check, in case we change the criteria for success
         assert!(success);
         machine

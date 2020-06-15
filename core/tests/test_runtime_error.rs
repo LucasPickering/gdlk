@@ -1,7 +1,7 @@
 //! Integration tests for GDLK that expect compile errors. The programs in
 //! these tests should all fail during execution.
 
-use gdlk::{Compiler, HardwareSpec, ProgramSpec, Valid};
+use gdlk::{Compiler, HardwareSpec, ProgramSpec};
 
 /// Compiles the program for the given hardware, executes it under the given
 /// program spec, and expects a runtime error. Panics if the program executes
@@ -9,10 +9,9 @@ use gdlk::{Compiler, HardwareSpec, ProgramSpec, Valid};
 macro_rules! assert_runtime_error {
     ($hw_spec:expr,$program_spec:expr, $src:expr, $expected_error:expr $(,)?) => {{
         // Compile from hardware+src
-        let mut machine =
-            Compiler::compile($src.into(), Valid::validate($hw_spec).unwrap())
-                .unwrap()
-                .allocate(Valid::validate(&($program_spec)).unwrap());
+        let mut machine = Compiler::compile($src.into(), $hw_spec)
+            .unwrap()
+            .allocate(&($program_spec));
 
         // Execute to completion
         let actual_error = machine.execute_all().unwrap_err();
