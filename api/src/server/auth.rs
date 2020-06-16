@@ -1,4 +1,5 @@
 use crate::{
+    config::{OpenIdConfig, ProviderConfig},
     error::ResponseError,
     models::{NewUser, User},
     schema::users,
@@ -7,18 +8,17 @@ use crate::{
 use actix_identity::Identity;
 use actix_web::{get, http, web, HttpResponse};
 use diesel::{prelude::RunQueryDsl, PgConnection};
-use failure::Fallible;
 use openid::{Client, DiscoveredClient, Options, Token, Userinfo};
 use reqwest::Url;
 use serde::Deserialize;
-use std::{collections::HashMap, fs, sync::RwLock};
+use std::{collections::HashMap, sync::RwLock};
 
 // TODO: make this a db table so its persistent through restarts
 pub struct Sessions {
     pub map: HashMap<String, (User, Token, Userinfo)>,
 }
 
-/// Map of [ProviderConfig].name to configured [Client]
+/// Map of provider name to configured [Client]
 pub struct ClientMap {
     pub map: HashMap<String, Client>,
 }
@@ -34,73 +34,36 @@ impl ClientMap {
     }
 }
 
-/// The representation of the openid config json
-#[derive(Deserialize)]
-struct OpenidConfig {
-    /// Url of the frontend
-    host_url: String,
-    /// List of each provider to configure
-    providers: Vec<ProviderConfig>,
-}
-/// Representation of an individual openId provider
-#[derive(Deserialize)]
-struct ProviderConfig {
-    /// Name used in the openid routes
-    name: String,
-    /// Client ID, given by the provider
-    client_id: String,
-    /// Client Secret, given by the provider
-    client_secret: String,
-    /// Url used by the openid discover step to get all necessary fields
-    issuer_url: String,
-}
-
-pub async fn read_config(
-    path: &str,
-    client_map: &mut ClientMap,
-) -> Fallible<()> {
-    let config_str = fs::read_to_string(path)?;
-    let openid_config: OpenidConfig = serde_json::from_str(&config_str)?;
-    init_config(openid_config, client_map).await;
-    Ok(())
-}
-
-async fn init_config(openid_config: OpenidConfig, client_map: &mut ClientMap) {
-    for config in openid_config.providers {
-        let client = make_client(
-            config.client_id,
-            config.client_secret,
-            config.issuer_url,
-            &config.name,
-            &openid_config.host_url,
+/// Build a map of OpenID clients, one for each provider.
+pub async fn build_client_map(open_id_config: &OpenIdConfig) -> ClientMap {
+    async fn make_client(
+        host_url: &str,
+        name: &str,
+        provider_config: &ProviderConfig,
+    ) -> Client {
+        let redirect = Some(format!("{}/api/oidc/{}/callback", host_url, name));
+        let issuer = Url::parse(&provider_config.issuer_url).unwrap();
+        DiscoveredClient::discover(
+            provider_config.client_id.clone(),
+            provider_config.client_secret.clone(),
+            redirect,
+            issuer,
         )
-        .await;
-
-        client_map.map.insert(config.name, client);
-    }
-}
-
-/// Setup a client for a given provider
-/// based on the id, secret, and provider url
-async fn make_client(
-    client_id: String,
-    client_secret: String,
-    issuer_url: String,
-    name: &str,
-    host_url: &str,
-) -> Client {
-    let redirect = Some(format!("{}/api/oidc/{}/callback", host_url, name));
-    let issuer = match Url::parse(&issuer_url) {
-        Ok(res) => res,
-        Err(e) => panic!(e),
-    };
-
-    match DiscoveredClient::discover(client_id, client_secret, redirect, issuer)
         .await
-    {
-        Ok(res) => res,
-        Err(e) => panic!(e),
+        .unwrap()
     }
+
+    let host_url: &str = &open_id_config.host_url;
+
+    // Build a client for each provider
+    // TODO do these in parallel
+    let mut map = HashMap::new();
+    for (name, provider_config) in &open_id_config.providers {
+        let client = make_client(host_url, name, provider_config).await;
+        map.insert(name.into(), client);
+    }
+
+    ClientMap { map }
 }
 
 /// The frontend will redirect to this before being sent off to the

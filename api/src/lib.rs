@@ -6,6 +6,7 @@ extern crate diesel;
 #[macro_use]
 extern crate validator_derive;
 
+pub mod config;
 mod error;
 pub mod models;
 pub mod schema;

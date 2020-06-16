@@ -2,11 +2,11 @@
 //! lives here.
 mod auth;
 mod gql;
+
 pub use crate::server::gql::{create_gql_schema, Context, GqlSchema};
 use crate::{
-    server::auth::{
-        read_config, route_authorize, route_login, ClientMap, Sessions,
-    },
+    config::GdlkConfig,
+    server::auth::{route_authorize, route_login, Sessions},
     util::Pool,
 };
 use actix_identity::{CookieIdentityPolicy, IdentityService};
@@ -17,8 +17,6 @@ use std::{
     io,
     sync::{Arc, RwLock},
 };
-
-const OPENID_CONFIG_PATH: &str = "openid_config.json";
 
 #[get("/api/graphiql")]
 async fn route_graphiql() -> HttpResponse {
@@ -50,17 +48,11 @@ async fn route_graphql(
 }
 
 #[actix_rt::main]
-pub async fn run_server(pool: Pool, host: String) -> io::Result<()> {
+pub async fn run_server(config: GdlkConfig, pool: Pool) -> io::Result<()> {
     // Init GraphQL schema
     let gql_schema = Arc::new(create_gql_schema());
-
-    let mut client_map = ClientMap {
-        map: HashMap::new(),
-    };
-    read_config(OPENID_CONFIG_PATH, &mut client_map)
-        .await
-        .unwrap();
-    let client_map = web::Data::new(client_map);
+    let client_map =
+        web::Data::new(auth::build_client_map(&config.open_id).await);
     let sessions = web::Data::new(RwLock::new(Sessions {
         map: HashMap::new(),
     }));
@@ -86,7 +78,7 @@ pub async fn run_server(pool: Pool, host: String) -> io::Result<()> {
             .service(route_login)
             .service(route_authorize)
     })
-    .bind(host)?
+    .bind(&config.server_host)?
     .run()
     .await
 }

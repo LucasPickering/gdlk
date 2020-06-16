@@ -1,17 +1,16 @@
 use failure::Fallible;
-use gdlk_api::util;
-use std::env;
-
-// Commenting this out so we don't have to maintain it - we may want to come
-// back to it at some point
-// mod vfs;
+use gdlk_api::{config::GdlkConfig, util};
+use log::{debug, info};
 
 fn run() -> Fallible<()> {
     env_logger::init();
-    let server_host =
-        env::var("SERVER_HOST").unwrap_or_else(|_| "localhost:8000".into());
+
+    let config = GdlkConfig::load()?;
+    info!("Loaded config");
+    debug!("{:#?}", &config);
+
     let pool = util::init_db_conn_pool()?;
-    Ok(gdlk_api::server::run_server(pool, server_host)?)
+    Ok(gdlk_api::server::run_server(config, pool)?)
 }
 
 fn main() {
