@@ -32,6 +32,15 @@ table! {
 }
 
 table! {
+    user_providers (id) {
+        id -> Uuid,
+        sub -> Varchar,
+        provider_name -> Text,
+        user_id -> Nullable<Uuid>,
+    }
+}
+
+table! {
     users (id) {
         id -> Uuid,
         username -> Varchar,
@@ -41,10 +50,12 @@ table! {
 joinable!(program_specs -> hardware_specs (hardware_spec_id));
 joinable!(user_programs -> program_specs (program_spec_id));
 joinable!(user_programs -> users (user_id));
+joinable!(user_providers -> users (user_id));
 
 allow_tables_to_appear_in_same_query!(
     hardware_specs,
     program_specs,
     user_programs,
+    user_providers,
     users,
 );

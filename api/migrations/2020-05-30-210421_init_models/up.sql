@@ -39,3 +39,11 @@ CREATE TABLE user_programs (
     source_code TEXT NOT NULL,
     UNIQUE(user_id, program_spec_id, file_name)
 );
+
+CREATE TABLE user_providers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    sub VARCHAR(255) NOT NULL,
+    provider_name Text NOT NULL,
+    user_id UUID references users(id), -- can be null if the user has not set their username yet
+    UNIQUE(sub, provider_name)
+)

@@ -11,7 +11,6 @@ pub type WithUsername<'a> =
 
 #[derive(Clone, Debug, PartialEq, Identifiable, Queryable)]
 #[table_name = "users"]
-// TODO: need to store openid provider id
 pub struct User {
     pub id: Uuid,
     pub username: String,

@@ -1,14 +1,15 @@
 use crate::{
     config::{OpenIdConfig, ProviderConfig},
     error::ResponseError,
-    models::{NewUser, User},
-    schema::users,
+    models::{NewUserProvider, User, UserProvider},
+    schema::user_providers,
     util::Pool,
 };
 use actix_identity::Identity;
 use actix_web::{get, http, web, HttpResponse};
-use diesel::{prelude::RunQueryDsl, PgConnection};
+use diesel::{prelude::RunQueryDsl, OptionalExtension, PgConnection};
 use openid::{Client, DiscoveredClient, Options, Token, Userinfo};
+use failure::Fallible;
 use reqwest::Url;
 use serde::Deserialize;
 use std::{collections::HashMap, sync::RwLock};
@@ -124,6 +125,37 @@ async fn request_token(
     Ok(Some((token, userinfo)))
 }
 
+pub fn init_user(
+    user_provider: &UserProvider,
+    token: Token,
+) -> Result<HttpResponse, actix_web::Error> {
+}
+
+pub fn login_user(
+    user_provider: &UserProvider,
+    token: Token,
+    userinfo: Userinfo,
+    identity: Identity,
+    sessions: web::Data<RwLock<Sessions>>,
+) -> Result<HttpResponse, actix_web::Error> {
+    // TODO: do a join on user_providers table and users table
+    // to get the user associated with this user_provider
+    let id = user_provider.id.to_string();
+    // Adds a cookie which can be used to auth requests
+    identity.remember(id.clone());
+    sessions
+        .write()
+        .unwrap()
+        .map
+        .insert(id, (user, token, userinfo));
+
+    // TODO: add redirect path to state param so we don't always
+    // redirect to the homepage
+    Ok(HttpResponse::Found()
+        .header(http::header::LOCATION, "/")
+        .finish())
+}
+
 /// Provider redirects back to this route after the login
 #[get("/api/oidc/{provider_name}/callback")]
 pub async fn route_login(
@@ -141,32 +173,55 @@ pub async fn route_login(
 
     match request_token(oidc_client, query).await {
         Ok(Some((token, userinfo))) => {
-            let email: String = userinfo.email.clone().unwrap();
-            // Make the user
-            // TODO: handle setting username
-            // TODO: handle second login, right now it will error
-            let user: User = NewUser {
-                username: &email.chars().take(20).collect::<String>(),
-            }
-            .insert()
-            .returning(users::all_columns)
-            .get_result(conn)
-            .unwrap();
-            let id = user.id.to_string();
+            // let email: String = userinfo.email.clone().unwrap();
+            let sub = userinfo.sub.clone().unwrap();
 
-            // Make the user's session
-            // Adds a cookie which can be used to auth requests
-            identity.remember(id.clone());
-            sessions
-                .write()
-                .unwrap()
-                .map
-                .insert(id, (user, token, userinfo));
+            let existing_user_provider =
+                UserProvider::filter_by_sub_and_provider(&sub, &provider_name)
+                    .get_result::<UserProvider>(conn)
+                    .optional()
+                    .map_err(ResponseError::from)?;
+            match existing_user_provider {
+                Some(user_provider) => match user_provider.user_id {
+                    Some(user_id) => {
+                        login_user(&user_provider, token, userinfo, identity)
+                    }
+                    None => {
+                        // no user account associated with this user_provider
+                        // yet so make one
+                        init_user(&user_provider, token)
+                    }
+                },
+                None => {
+                    // user_provider not found so make the row then init the
+                    // user
+                    let user_provider: UserProvider = NewUserProvider {
+                        sub: &sub,
+                        provider_name: &provider_name,
+                    }
+                    .insert()
+                    .returning(user_providers::all_columns)
+                    .get_result(conn)
+                    .unwrap();
+                    init_user(&user_provider, token)
+                }
+            }
+            // let id = user.id.to_string();
+
+            // // Make the user's session
+            // // Adds a cookie which can be used to auth requests
+            // identity.remember(id.clone());
+            // sessions
+            //     .write()
+            //     .unwrap()
+            //     .map
+            //     .insert(id, (user, token, userinfo));
+
             // TODO: add redirect path to state param so we don't always
             // redirect to the homepage
-            Ok(HttpResponse::Found()
-                .header(http::header::LOCATION, "/")
-                .finish())
+            // Ok(HttpResponse::Found()
+            //     .header(http::header::LOCATION, "/")
+            //     .finish())
         }
         _ => {
             // Invalid call to the callback

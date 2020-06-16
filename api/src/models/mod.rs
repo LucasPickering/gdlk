@@ -13,12 +13,14 @@ mod hardware_spec;
 mod program_spec;
 mod user;
 mod user_program;
+mod user_provider;
 
 use diesel::PgConnection;
 pub use hardware_spec::*;
 pub use program_spec::*;
 pub use user::*;
 pub use user_program::*;
+pub use user_provider::*;
 
 /// A trait that makes it easy to generate a row for a particular type. This
 /// should only be used for tests.
