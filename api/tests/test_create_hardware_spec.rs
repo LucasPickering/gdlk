@@ -1,3 +1,5 @@
+#![deny(clippy::all, unused_must_use, unused_imports)]
+
 use diesel::PgConnection;
 use gdlk_api::models::{Factory, NewHardwareSpec};
 use juniper::InputValue;
@@ -98,14 +100,14 @@ fn test_create_hardware_spec_duplicate() {
                 "maxStackLength" => InputValue::scalar(16),
             }
         ),
-        ((
+        (
             serde_json::Value::Null,
             vec![json!({
                 "locations": [{"line": 8, "column": 9}],
                 "message": "This resource already exists",
                 "path": ["createHardwareSpec"],
             })]
-        ))
+        )
     );
 }
 
@@ -124,7 +126,7 @@ fn test_create_hardware_spec_invalid_values() {
                 "maxStackLength" => InputValue::scalar(-1),
             }
         ),
-        ((
+        (
             serde_json::Value::Null,
             vec![json!({
                 "locations": [{"line": 8, "column": 9}],
@@ -137,6 +139,6 @@ fn test_create_hardware_spec_invalid_values() {
                     "max_stack_length": [{"min": "0.0", "max": "256.0", "value": "-1"}],
                 }
             })]
-        ))
+        )
     );
 }

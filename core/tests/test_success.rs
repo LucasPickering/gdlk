@@ -173,7 +173,7 @@ fn test_jumps() {
     let program_spec = ProgramSpec::new(vec![], vec![1]);
     assert_success!(
         HardwareSpec::default(),
-        program_spec.clone(),
+        program_spec,
         "
         JMP GOOD
         BAD:
@@ -184,7 +184,7 @@ fn test_jumps() {
     );
     assert_success!(
         HardwareSpec::default(),
-        program_spec.clone(),
+        program_spec,
         "
         JEZ 0 GOOD
         BAD:
@@ -196,7 +196,7 @@ fn test_jumps() {
     );
     assert_success!(
         HardwareSpec::default(),
-        program_spec.clone(),
+        program_spec,
         "
         JNZ 1 GOOD
         BAD:
@@ -208,7 +208,7 @@ fn test_jumps() {
     );
     assert_success!(
         HardwareSpec::default(),
-        program_spec.clone(),
+        program_spec,
         "
         JLZ -10 GOOD
         BAD:

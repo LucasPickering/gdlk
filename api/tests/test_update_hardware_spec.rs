@@ -1,3 +1,5 @@
+#![deny(clippy::all, unused_must_use, unused_imports)]
+
 use diesel::PgConnection;
 use gdlk_api::models::{Factory, NewHardwareSpec};
 use juniper::InputValue;
@@ -128,14 +130,14 @@ fn test_update_hardware_spec_invalid_id() {
                 "name" => InputValue::scalar("HW 3"),
             }
         ),
-        ((
+        (
             json!({
                 "updateHardwareSpec": {
                     "hardwareSpecEdge": serde_json::Value::Null
                 }
             }),
             vec![]
-        ))
+        )
     );
 }
 
@@ -157,14 +159,14 @@ fn test_update_hardware_spec_empty_modification() {
                 "id" => InputValue::scalar(hw_spec.id.to_string()),
             }
         ),
-        ((
+        (
             serde_json::Value::Null,
             vec![json!({
                 "locations": [{"line": 9, "column": 9}],
                 "message": "No fields were given to update",
                 "path": ["updateHardwareSpec"],
             })]
-        ))
+        )
     );
 }
 
@@ -194,14 +196,14 @@ fn test_update_hardware_spec_duplicate() {
                 "name" => InputValue::scalar("HW 1"),
             }
         ),
-        ((
+        (
             serde_json::Value::Null,
             vec![json!({
                 "locations": [{"line": 9, "column": 9}],
                 "message": "This resource already exists",
                 "path": ["updateHardwareSpec"],
             })]
-        ))
+        )
     );
 }
 
@@ -227,7 +229,7 @@ fn test_update_hardware_spec_invalid_values() {
                 "maxStackLength" => InputValue::scalar(-1),
             }
         ),
-        ((
+        (
             serde_json::Value::Null,
             vec![json!({
                 "locations": [{"line": 9, "column": 9}],
@@ -240,6 +242,6 @@ fn test_update_hardware_spec_invalid_values() {
                     "max_stack_length": [{"min": "0.0", "max": "256.0", "value": "-1"}],
                 }
             })]
-        ))
+        )
     );
 }

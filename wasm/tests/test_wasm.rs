@@ -1,5 +1,7 @@
 //! Integration tests for the GDLK Wasm API
 
+#![deny(clippy::all, unused_must_use, unused_imports)]
+
 use gdlk_wasm::{
     compile, HardwareSpec, LangValue, ProgramSpec, SourceElement, Span,
 };
@@ -162,6 +164,7 @@ fn test_compile_errors() {
     );
 }
 
+#[allow(clippy::cognitive_complexity)]
 #[wasm_bindgen_test]
 fn test_execute() {
     let result = compile(
