@@ -1,3 +1,5 @@
+#![deny(clippy::all, unused_must_use, unused_imports)]
+
 use diesel::PgConnection;
 use gdlk_api::models::{Factory, NewHardwareSpec, NewProgramSpec};
 use juniper::InputValue;
@@ -20,7 +22,7 @@ fn test_field_hardware_spec() {
     .id;
     NewProgramSpec {
         name: "prog1",
-        hardware_spec_id: hardware_spec_id,
+        hardware_spec_id,
         ..Default::default()
     }
     .create(conn);
@@ -195,19 +197,19 @@ fn test_field_hardware_spec_program_spec() {
     .id;
     NewProgramSpec {
         name: "prog1",
-        hardware_spec_id: hardware_spec_id,
+        hardware_spec_id,
         ..Default::default()
     }
     .create(conn);
     NewProgramSpec {
         name: "prog2",
-        hardware_spec_id: hardware_spec_id,
+        hardware_spec_id,
         ..Default::default()
     }
     .create(conn);
     NewProgramSpec {
         name: "prog3",
-        hardware_spec_id: hardware_spec_id,
+        hardware_spec_id,
         ..Default::default()
     }
     .create(conn);

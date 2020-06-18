@@ -1,3 +1,5 @@
+#![deny(clippy::all, unused_must_use, unused_imports)]
+
 use diesel::PgConnection;
 use gdlk_api::models::{
     Factory, NewHardwareSpec, NewProgramSpec, NewUser, NewUserProgram,
@@ -42,11 +44,7 @@ fn test_create_user_program_success() {
     let runner = QueryRunner::new().unwrap();
     let conn: &PgConnection = &runner.db_conn();
 
-    NewUser {
-        username: "user1",
-        ..Default::default()
-    }
-    .create(conn);
+    NewUser { username: "user1" }.create(conn);
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -97,12 +95,7 @@ fn test_create_user_program_duplicate() {
     let runner = QueryRunner::new().unwrap();
     let conn: &PgConnection = &runner.db_conn();
 
-    let user_id = NewUser {
-        username: "user1",
-        ..Default::default()
-    }
-    .create(conn)
-    .id;
+    let user_id = NewUser { username: "user1" }.create(conn).id;
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -150,11 +143,7 @@ fn test_create_user_program_invalid_program_spec() {
     let runner = QueryRunner::new().unwrap();
     let conn: &PgConnection = &runner.db_conn();
 
-    NewUser {
-        username: "user1",
-        ..Default::default()
-    }
-    .create(conn);
+    NewUser { username: "user1" }.create(conn);
     NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -193,11 +182,7 @@ fn test_create_user_program_invalid_values() {
     let runner = QueryRunner::new().unwrap();
     let conn: &PgConnection = &runner.db_conn();
 
-    NewUser {
-        username: "user1",
-        ..Default::default()
-    }
-    .create(conn);
+    NewUser { username: "user1" }.create(conn);
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {

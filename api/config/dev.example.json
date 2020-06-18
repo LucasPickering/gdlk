@@ -1,0 +1,11 @@
+{
+  "secret_key": "",
+  "open_id": {
+    "providers": {
+      "google": {
+        "client_id": "",
+        "client_secret": ""
+      }
+    }
+  }
+}

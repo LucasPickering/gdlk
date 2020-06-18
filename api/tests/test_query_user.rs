@@ -1,3 +1,5 @@
+#![deny(clippy::all, unused_must_use, unused_imports)]
+
 use diesel::PgConnection;
 use gdlk_api::models::{Factory, NewUser};
 use juniper::InputValue;
@@ -12,12 +14,7 @@ fn test_field_user() {
     let runner = QueryRunner::new().unwrap();
     let conn: &PgConnection = &runner.db_conn();
 
-    let user_id = NewUser {
-        username: "user1",
-        ..Default::default()
-    }
-    .create(conn)
-    .id;
+    let user_id = NewUser { username: "user1" }.create(conn).id;
     let query = r#"
         query UserQuery($username: String!) {
             user(username: $username) {

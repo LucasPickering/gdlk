@@ -1,3 +1,5 @@
+#![deny(clippy::all, unused_must_use, unused_imports)]
+
 use diesel::PgConnection;
 use gdlk_api::models::{Factory, NewHardwareSpec, NewProgramSpec};
 use juniper::InputValue;
@@ -58,7 +60,7 @@ fn test_create_program_spec_success() {
                 "name" => InputValue::scalar("Program 2"),
                 "description" => InputValue::scalar("description!"),
                 "input" => values_list.clone(),
-                "expectedOutput" => values_list.clone(),
+                "expectedOutput" => values_list,
             }
         ),
         (
@@ -96,17 +98,17 @@ fn test_create_program_spec_invalid_hw_spec() {
                 "name" => InputValue::scalar("Program 3"),
                 "description" => InputValue::scalar("description!"),
                 "input" => values_list.clone(),
-                "expectedOutput" => values_list.clone(),
+                "expectedOutput" => values_list,
             }
         ),
-        ((
+        (
             serde_json::Value::Null,
             vec![json!({
                 "locations": [{"line": 9, "column": 9}],
                 "message": "Not found",
                 "path": ["createProgramSpec"],
             })]
-        ))
+        )
     );
 }
 
@@ -141,17 +143,17 @@ fn test_create_program_spec_duplicate() {
                 "name" => InputValue::scalar("Program 1"),
                 "description" => InputValue::scalar("description!"),
                 "input" => values_list.clone(),
-                "expectedOutput" => values_list.clone(),
+                "expectedOutput" => values_list,
             }
         ),
-        ((
+        (
             serde_json::Value::Null,
             vec![json!({
                 "locations": [{"line": 9, "column": 9}],
                 "message": "This resource already exists",
                 "path": ["createProgramSpec"],
             })]
-        ))
+        )
     );
 }
 
@@ -178,10 +180,10 @@ fn test_create_program_spec_invalid_values() {
                 "description" => InputValue::scalar("description!"),
                 // TODO use invalid values here once the DB validation is working
                 "input" => values_list.clone(),
-                "expectedOutput" => values_list.clone(),
+                "expectedOutput" => values_list,
             }
         ),
-        ((
+        (
             serde_json::Value::Null,
             vec![json!({
                 "locations": [{"line": 9, "column": 9}],
@@ -191,6 +193,6 @@ fn test_create_program_spec_invalid_values() {
                     "name": [{"min": "1", "value": "\"\""}],
                 }
             })]
-        ))
+        )
     );
 }

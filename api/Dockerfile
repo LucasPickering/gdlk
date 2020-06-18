@@ -18,8 +18,8 @@ RUN curl -sSL https://github.com/jwilder/dockerize/releases/download/${DOCKERIZE
 
 WORKDIR /app
 COPY rust-toolchain ./
-RUN cargo install cargo-make && \
-    cargo install diesel_cli --no-default-features --features=postgres && \
-    cargo install cargo-watch
+RUN cargo install cargo-make --version 0.31.0 && \
+    cargo install diesel_cli --version 1.4.1 --no-default-features --features=postgres && \
+    cargo install cargo-watch --version 7.4.1
 
 WORKDIR /app/api

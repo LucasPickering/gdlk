@@ -1,3 +1,5 @@
+#![deny(clippy::all, unused_must_use, unused_imports)]
+
 use diesel::PgConnection;
 use gdlk_api::models::{Factory, NewHardwareSpec, NewProgramSpec};
 use juniper::InputValue;
@@ -110,7 +112,7 @@ fn test_update_program_spec_full_modification() {
                 "name" => InputValue::scalar("Program 22"),
                 "description" => InputValue::scalar("new description!"),
                 "input" => values_list.clone(),
-                "expectedOutput" => values_list.clone(),
+                "expectedOutput" => values_list,
             }
         ),
         (
@@ -145,14 +147,14 @@ fn test_update_program_spec_invalid_id() {
                 "name" => InputValue::scalar("Program 3"),
             }
         ),
-        ((
+        (
             json!({
                 "updateProgramSpec": {
                     "programSpecEdge": serde_json::Value::Null
                 }
             }),
             vec![]
-        ))
+        )
     );
 }
 
@@ -188,14 +190,14 @@ fn test_update_program_spec_empty_modification() {
                 "id" => InputValue::scalar(program_spec.id.to_string()),
             }
         ),
-        ((
+        (
             serde_json::Value::Null,
             vec![json!({
                 "locations": [{"line": 9, "column": 9}],
                 "message": "No fields were given to update",
                 "path": ["updateProgramSpec"],
             })]
-        ))
+        )
     );
 }
 
@@ -232,14 +234,14 @@ fn test_update_program_spec_duplicate() {
                 "name" => InputValue::scalar("Program 1"),
             }
         ),
-        ((
+        (
             serde_json::Value::Null,
             vec![json!({
                 "locations": [{"line": 9, "column": 9}],
                 "message": "This resource already exists",
                 "path": ["updateProgramSpec"],
             })]
-        ))
+        )
     );
 }
 
@@ -268,7 +270,7 @@ fn test_update_program_spec_invalid_values() {
                 "name" => InputValue::scalar(""),
             }
         ),
-        ((
+        (
             serde_json::Value::Null,
             vec![json!({
                 "locations": [{"line": 9, "column": 9}],
@@ -278,6 +280,6 @@ fn test_update_program_spec_invalid_values() {
                     "name": [{"min": "1", "value": "\"\""}],
                 }
             })]
-        ))
+        )
     );
 }

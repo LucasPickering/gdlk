@@ -30,10 +30,7 @@ services:
       - db
     environment:
       RUST_BACKTRACE: 1
-      SERVER_HOST: 0.0.0.0:8000
-      RUST_LOG: info
-      OPENID_CLIENT_ID:
-      OPENID_CLIENT_SECRET:
+      RUST_LOG: ${RUST_LOG:-info}
     ports:
       - "8000:8000"
 

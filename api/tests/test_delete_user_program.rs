@@ -1,3 +1,5 @@
+#![deny(clippy::all, unused_must_use, unused_imports)]
+
 use diesel::{OptionalExtension, PgConnection, QueryDsl, RunQueryDsl};
 use gdlk_api::{
     models::{
@@ -26,12 +28,7 @@ fn test_delete_user_program() {
     let conn: &PgConnection = &runner.db_conn();
 
     let user_program_id = NewUserProgram {
-        user_id: NewUser {
-            username: "user1",
-            ..Default::default()
-        }
-        .create(conn)
-        .id,
+        user_id: NewUser { username: "user1" }.create(conn).id,
         program_spec_id: NewProgramSpec {
             name: "prog1",
             hardware_spec_id: NewHardwareSpec {
