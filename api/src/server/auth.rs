@@ -1,13 +1,16 @@
 use crate::{
     config::{OpenIdConfig, ProviderConfig},
     error::ResponseError,
-    models::{NewUser, User},
-    schema::users,
+    models::{NewUser, NewUserProvider, User, UserProvider},
+    schema::{user_providers, users},
     util::Pool,
 };
 use actix_identity::Identity;
 use actix_web::{get, http, web, HttpResponse};
-use diesel::{prelude::RunQueryDsl, PgConnection};
+use diesel::{
+    prelude::RunQueryDsl, ExpressionMethods, OptionalExtension, PgConnection,
+    QueryDsl,
+};
 use openid::{Client, DiscoveredClient, Options, Token, Userinfo};
 use reqwest::Url;
 use serde::Deserialize;
@@ -124,6 +127,81 @@ async fn request_token(
     Ok(Some((token, userinfo)))
 }
 
+/// Makes a new user given a username and updates the provider [UserProvider]
+fn make_user(
+    user_provider: &UserProvider,
+    username: &str,
+    conn: &PgConnection,
+) -> User {
+    let user: User = NewUser { username }
+        .insert()
+        .returning(users::all_columns)
+        .get_result(conn)
+        .unwrap();
+    // update provider with the user id
+    let update_res = diesel::update(
+        user_providers::table
+            .filter(user_providers::dsl::id.eq(user_provider.id)),
+    )
+    .set(user_providers::columns::user_id.eq(user.id))
+    .execute(conn);
+    // TODO: handle update error
+    if update_res.is_err() {
+        panic!("ASSSS");
+    }
+    user
+}
+
+///Called when a [User] does not yet exist for the [UserProvider]
+///Will redirect to a page to set their username to make the [User]
+fn init_user(
+    user_provider: &UserProvider,
+    userinfo: Userinfo,
+    token: Token,
+    identity: Identity,
+    sessions: web::Data<RwLock<Sessions>>,
+    conn: &PgConnection,
+) -> Result<HttpResponse, actix_web::Error> {
+    // TODO: for now this will set username automatically but
+    // we will need to redirect them to set it before making the
+    // user
+    let username = userinfo
+        .email
+        .clone()
+        .unwrap()
+        .chars()
+        .take(20)
+        .collect::<String>();
+    let user = make_user(&user_provider, &username, conn);
+    login_user(&user_provider, user, token, userinfo, identity, sessions)
+}
+
+///Logins in the [User] and sets the cookie based on the [UserProvider] id
+fn login_user(
+    user_provider: &UserProvider,
+    user: User,
+    token: Token,
+    userinfo: Userinfo,
+    identity: Identity,
+    sessions: web::Data<RwLock<Sessions>>,
+) -> Result<HttpResponse, actix_web::Error> {
+    let id = user_provider.id.to_string();
+
+    // Adds a cookie which can be used to auth requests
+    identity.remember(id.clone());
+    sessions
+        .write()
+        .unwrap()
+        .map
+        .insert(id, (user, token, userinfo));
+
+    // TODO: add redirect path to state param so we don't always
+    // redirect to the homepage
+    Ok(HttpResponse::Found()
+        .header(http::header::LOCATION, "/")
+        .finish())
+}
+
 /// Provider redirects back to this route after the login
 #[get("/api/oidc/{provider_name}/callback")]
 pub async fn route_login(
@@ -141,32 +219,65 @@ pub async fn route_login(
 
     match request_token(oidc_client, query).await {
         Ok(Some((token, userinfo))) => {
-            let email: String = userinfo.email.clone().unwrap();
-            // Make the user
-            // TODO: handle setting username
-            // TODO: handle second login, right now it will error
-            let user: User = NewUser {
-                username: &email.chars().take(20).collect::<String>(),
-            }
-            .insert()
-            .returning(users::all_columns)
-            .get_result(conn)
-            .unwrap();
-            let id = user.id.to_string();
+            let sub = userinfo.sub.clone().unwrap();
 
-            // Make the user's session
-            // Adds a cookie which can be used to auth requests
-            identity.remember(id.clone());
-            sessions
-                .write()
-                .unwrap()
-                .map
-                .insert(id, (user, token, userinfo));
-            // TODO: add redirect path to state param so we don't always
-            // redirect to the homepage
-            Ok(HttpResponse::Found()
-                .header(http::header::LOCATION, "/")
-                .finish())
+            let existing_user_provider =
+                UserProvider::filter_by_sub_and_provider(&sub, &provider_name)
+                    .get_result::<UserProvider>(conn)
+                    .optional()
+                    .map_err(ResponseError::from)?;
+            match existing_user_provider {
+                Some(user_provider) => match user_provider.user_id {
+                    Some(user_id) => {
+                        // User already exists so normal login
+                        let user: User = users::table
+                            .filter(users::dsl::id.eq(user_id))
+                            .get_result(conn)
+                            .map_err(ResponseError::from)?;
+                        login_user(
+                            &user_provider,
+                            user,
+                            token,
+                            userinfo,
+                            identity,
+                            sessions,
+                        )
+                    }
+                    None => {
+                        // no user account associated with this user_provider
+                        // yet so make one (they have logged in but did not set
+                        // username)
+                        init_user(
+                            &user_provider,
+                            userinfo,
+                            token,
+                            identity,
+                            sessions,
+                            conn,
+                        )
+                    }
+                },
+                None => {
+                    // user_provider not found (first login) so make the row
+                    // then init the user
+                    let user_provider: UserProvider = NewUserProvider {
+                        sub: &sub,
+                        provider_name: &provider_name,
+                    }
+                    .insert()
+                    .returning(user_providers::all_columns)
+                    .get_result(conn)
+                    .unwrap();
+                    init_user(
+                        &user_provider,
+                        userinfo,
+                        token,
+                        identity,
+                        sessions,
+                        conn,
+                    )
+                }
+            }
         }
         _ => {
             // Invalid call to the callback
