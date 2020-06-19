@@ -21,6 +21,7 @@ import { HardwareSpec, ProgramSpec } from 'gdlk_wasm';
 import useDebouncedValue from 'hooks/useDebouncedValue';
 import { assertIsDefined } from 'util/guards';
 import NotFoundPage from 'components/NotFoundPage';
+import { Prompt } from 'react-router-dom';
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => {
   const border = `2px solid ${palette.divider}`;
@@ -217,6 +218,10 @@ const ProgramIde: React.FC<{
         />
         <StackInfo className={localClasses.stackInfo} />
         <CodeEditor className={localClasses.editor} />
+        <Prompt
+          when={sourceCode !== userProgram.sourceCode}
+          message="You have unsaved changes. Are you sure you want to leave?"
+        />
       </div>
     </IdeContext.Provider>
   );
