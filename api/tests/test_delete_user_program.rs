@@ -1,4 +1,4 @@
-#![deny(clippy::all, unused_must_use, unused_imports)]
+#![deny(clippy::all)]
 
 use diesel::{OptionalExtension, PgConnection, QueryDsl, RunQueryDsl};
 use gdlk_api::{
