@@ -2,6 +2,7 @@ use crate::{
     models::{Factory, ProgramSpec, User},
     schema::user_programs,
 };
+use chrono::{offset::Utc, DateTime};
 use diesel::{
     dsl, expression::bound::Bound, prelude::*, query_builder::InsertStatement,
     sql_types, Identifiable, Queryable,
@@ -28,6 +29,8 @@ pub struct UserProgram {
     pub program_spec_id: Uuid,
     pub file_name: String,
     pub source_code: String,
+    pub created: DateTime<Utc>,
+    pub last_modified: DateTime<Utc>,
 }
 
 impl UserProgram {

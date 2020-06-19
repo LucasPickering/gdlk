@@ -42,7 +42,7 @@ END
 $$;
 
 -- A function to update the `last_modified` col. To be used as a BEFORE UPDATE trigger
-CREATE FUNCTION public.sync_lastmod() RETURNS trigger
+CREATE FUNCTION public.update_last_modified() RETURNS trigger
   LANGUAGE plpgsql
   AS $$
 BEGIN
