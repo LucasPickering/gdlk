@@ -219,7 +219,6 @@ pub async fn route_login(
 
     match request_token(oidc_client, query).await {
         Ok(Some((token, userinfo))) => {
-            // let email: String = userinfo.email.clone().unwrap();
             let sub = userinfo.sub.clone().unwrap();
 
             let existing_user_provider =
