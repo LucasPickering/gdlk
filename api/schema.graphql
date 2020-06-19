@@ -12,6 +12,8 @@ mutated.
 """
 scalar Cursor
 
+scalar DateTimeUtc
+
 schema {
   query: Query
   mutation: Mutation
@@ -372,6 +374,16 @@ type UserProgramNode implements Node {
   The program source code.
   """
   sourceCode: String! @juniper(infallible: true)
+
+  """
+  The date/time when this object was created.
+  """
+  created: DateTimeUtc! @juniper(infallible: true)
+
+  """
+  The date/time when this object was last modified.
+  """
+  lastModified: DateTimeUtc! @juniper(infallible: true)
 
   """
   The user who owns this program code.

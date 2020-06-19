@@ -37,9 +37,16 @@ CREATE TABLE user_programs (
     program_spec_id UUID NOT NULL REFERENCES program_specs(id),
     file_name TEXT NOT NULL CHECK (char_length(file_name) > 0),
     source_code TEXT NOT NULL,
-    last_modified TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    last_modified TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     UNIQUE(user_id, program_spec_id, file_name)
 );
+CREATE TRIGGER
+  update_last_modified
+BEFORE UPDATE ON
+  user_programs
+FOR EACH ROW EXECUTE PROCEDURE
+  update_last_modified();
 
 CREATE TABLE user_providers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

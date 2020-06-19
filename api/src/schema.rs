@@ -28,7 +28,8 @@ table! {
         program_spec_id -> Uuid,
         file_name -> Text,
         source_code -> Text,
-        last_modified -> Nullable<Timestamptz>,
+        created -> Timestamptz,
+        last_modified -> Timestamptz,
     }
 }
 

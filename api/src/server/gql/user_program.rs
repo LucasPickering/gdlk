@@ -11,6 +11,7 @@ use crate::{
     },
     util::{self, Valid},
 };
+use chrono::{offset::Utc, DateTime};
 use diesel::{dsl, PgConnection, QueryDsl, QueryResult, RunQueryDsl, Table};
 use juniper::ID;
 use juniper_from_schema::{QueryTrail, Walked};
@@ -55,6 +56,20 @@ impl UserProgramNodeFields for UserProgramNode {
         _executor: &juniper::Executor<'_, Context>,
     ) -> &String {
         &self.user_program.source_code
+    }
+
+    fn field_created(
+        &self,
+        _executor: &juniper::Executor<'_, Context>,
+    ) -> &DateTime<Utc> {
+        &self.user_program.created
+    }
+
+    fn field_last_modified(
+        &self,
+        _executor: &juniper::Executor<'_, Context>,
+    ) -> &DateTime<Utc> {
+        &self.user_program.last_modified
     }
 
     fn field_user(
