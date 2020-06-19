@@ -1,11 +1,14 @@
 [package]
 name = "gdlk"
 version = "0.1.0"
+license = "MIT"
+repository = "https://github.com/LucasPickering/gdlk"
 authors = [
     "John Reilly Murray <johnreillymurray@gmail.com>",
     "Lucas Pickering <lucas@lucaspickering.me>",
 ]
 edition = "2018"
+description = "Implementation of the GDLK language."
 
 [features]
 wasm = ["wasm-bindgen"]
