@@ -1,4 +1,4 @@
-#![deny(clippy::all, unused_must_use, unused_imports)]
+#![deny(clippy::all)]
 
 use diesel::PgConnection;
 use gdlk_api::models::{Factory, NewHardwareSpec, NewProgramSpec};

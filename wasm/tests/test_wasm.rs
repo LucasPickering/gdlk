@@ -1,6 +1,6 @@
 //! Integration tests for the GDLK Wasm API
 
-#![deny(clippy::all, unused_must_use, unused_imports)]
+#![deny(clippy::all)]
 
 use gdlk_wasm::{
     compile, HardwareSpec, LangValue, ProgramSpec, SourceElement, Span,

@@ -34,7 +34,7 @@
 //! assert!(machine.successful());
 //! ```
 
-#![deny(clippy::all, unused_must_use, unused_imports)]
+#![deny(clippy::all)]
 #![feature(or_patterns)]
 
 pub mod ast;

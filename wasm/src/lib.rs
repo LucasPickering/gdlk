@@ -1,4 +1,4 @@
-#![deny(clippy::all, unused_must_use, unused_imports)]
+#![deny(clippy::all)]
 // https://prestonrichey.com/blog/react-rust-wasm/
 use gdlk::ast::wasm::SourceElementArray;
 pub use gdlk::{
