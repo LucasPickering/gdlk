@@ -1,4 +1,4 @@
-use crate::schema::user_providers;
+use crate::{models::User, schema::user_providers};
 use diesel::{
     dsl,
     expression::{bound::Bound, operators},
@@ -15,7 +15,8 @@ pub type WithSub<'a> =
 pub type WithProvider<'a> =
     dsl::Eq<user_providers::columns::provider_name, Bound<Text, &'a str>>;
 
-#[derive(Clone, Debug, PartialEq, Identifiable, Queryable)]
+#[derive(Clone, Debug, PartialEq, Identifiable, Associations, Queryable)]
+#[belongs_to(User, foreign_key = "user_id")]
 #[table_name = "user_providers"]
 pub struct UserProvider {
     pub id: Uuid,
