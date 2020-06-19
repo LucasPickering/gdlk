@@ -31,11 +31,22 @@ RETURNS TEXT AS $$
   SELECT "value" FROM "trimmed";
 $$ LANGUAGE SQL STRICT IMMUTABLE;
 
+-- A function to automatically set the `slug` col from the `name` col
 CREATE FUNCTION public.set_slug_from_name() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
+  LANGUAGE plpgsql
+  AS $$
 BEGIN
   NEW.slug := slugify(NEW.name);
+  RETURN NEW;
+END
+$$;
+
+-- A function to update the `last_modified` col. To be used as a BEFORE UPDATE trigger
+CREATE FUNCTION public.sync_lastmod() RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+BEGIN
+  NEW.last_modified := NOW();
   RETURN NEW;
 END
 $$;

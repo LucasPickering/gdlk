@@ -37,6 +37,7 @@ CREATE TABLE user_programs (
     program_spec_id UUID NOT NULL REFERENCES program_specs(id),
     file_name TEXT NOT NULL CHECK (char_length(file_name) > 0),
     source_code TEXT NOT NULL,
+    last_modified TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(user_id, program_spec_id, file_name)
 );
 
