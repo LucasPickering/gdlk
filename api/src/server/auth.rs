@@ -232,10 +232,8 @@ pub async fn route_login(
                         // User already exists so normal login
                         let user: User = users::table
                             .filter(users::dsl::id.eq(user_id))
-                            .first(conn)
-                            .optional()
-                            .map_err(ResponseError::from)?
-                            .unwrap();
+                            .get_result(conn)
+                            .map_err(ResponseError::from)?;
                         login_user(
                             &user_provider,
                             user,
