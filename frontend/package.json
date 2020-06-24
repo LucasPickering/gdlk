@@ -96,8 +96,7 @@
       "input-object-values-have-descriptions",
       "relay-connection-types-spec",
       "relay-connection-arguments-spec",
-      "types-are-capitalized",
-      "types-have-descriptions"
+      "types-are-capitalized"
     ]
   }
 }

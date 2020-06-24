@@ -22,6 +22,8 @@ import useDebouncedValue from 'hooks/useDebouncedValue';
 import { assertIsDefined } from 'util/guards';
 import NotFoundPage from 'components/NotFoundPage';
 import { Prompt } from 'react-router-dom';
+import { StorageHandler } from 'util/storage';
+import useStaticValue from 'hooks/useStaticValue';
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => {
   const border = `2px solid ${palette.divider}`;
@@ -115,7 +117,6 @@ const ProgramIde: React.FC<{
   // value has to be manually transformed into compiledState after changes.
   const compileResult = useRef<CompileResult | undefined>();
 
-  const [sourceCode, setSourceCode] = useState<string>(userProgram.sourceCode);
   // This is the safe version of the wasm values, which CAN be shared
   const [compiledState, setCompiledState] = useState<
     CompiledState | undefined
@@ -186,15 +187,38 @@ const ProgramIde: React.FC<{
     }
   }, [compileResult, updateCompiledState]);
 
+  // This will be used to read and write source from/to browser local storage
+  const sourceStorageHandler = useStaticValue<StorageHandler<string>>(
+    () =>
+      new StorageHandler(
+        [hardwareSpec.id, programSpec.id, userProgram.id, 'source'].join(':')
+      )
+  );
+  const [sourceCode, setSourceCode] = useState<string>(() => {
+    // Check local storage for saved source
+    const storedSource = sourceStorageHandler.get();
+    if (
+      storedSource &&
+      // Only use the local copy if it's newer than the remote one
+      storedSource.lastModified > new Date(userProgram.lastModified)
+    ) {
+      return storedSource.value;
+    }
+    return userProgram.sourceCode;
+  });
+
+  // When the source changes, save it to local storage and recompile
+  // Use a debounce to prevent constant recompilation
+  const debouncedSourceCode = useDebouncedValue(sourceCode, 250);
+  useEffect(() => {
+    sourceStorageHandler.set(debouncedSourceCode);
+    compile(debouncedSourceCode);
+  }, [sourceStorageHandler, debouncedSourceCode, compile]);
+
   // When either spec or the source changes, invalidate the compiled program
   useEffect(() => {
     updateCompiledState(undefined);
   }, [wasmHardwareSpec, wasmProgramSpec, sourceCode, updateCompiledState]);
-
-  // When the source changes, recompile the code
-  // Use a debounce to prevent constant recompilation
-  const debouncedSourceCode = useDebouncedValue(sourceCode, 250);
-  useEffect(() => compile(debouncedSourceCode), [debouncedSourceCode, compile]);
 
   const contextValue: IdeContextType = {
     wasmHardwareSpec,
@@ -250,6 +274,7 @@ export default createFragmentContainer(ProgramIdeWrapper, {
         programSlug: { type: "String!" }
         fileName: { type: "String!" }
       ) {
+      id
       numRegisters
       numStacks
       maxStackLength
@@ -258,8 +283,10 @@ export default createFragmentContainer(ProgramIdeWrapper, {
         input
         expectedOutput
         userProgram(fileName: $fileName) {
-          ...IdeControls_userProgram
+          id
           sourceCode
+          lastModified
+          ...IdeControls_userProgram
         }
       }
     }
