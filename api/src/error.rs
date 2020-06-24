@@ -37,6 +37,10 @@ pub enum ResponseError {
     #[fail(display = "No fields were given to update")]
     NoUpdate,
 
+    /// User submitted invalid/incorrect credentials for auth
+    #[fail(display = "Invalid credentials")]
+    InvalidCredentials,
+
     /// Wrapper for validator's error type
     #[fail(display = "Validator error: {}", 0)]
     ValidationErrors(#[cause] validator::ValidationErrors),
@@ -109,6 +113,8 @@ impl IntoFieldError for ResponseError {
 impl actix_web::ResponseError for ResponseError {
     fn error_response(&self) -> HttpResponse {
         match self {
+            // 401
+            Self::InvalidCredentials => HttpResponse::Unauthorized().into(),
             // 409
             Self::AlreadyExists => HttpResponse::Conflict().into(),
             // Everything else becomes a 500
