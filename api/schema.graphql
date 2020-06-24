@@ -12,6 +12,10 @@ mutated.
 """
 scalar Cursor
 
+# We can't put a description here because of juniper limitations so we have to
+# disable the types-have-descriptions lint rule. After
+# https://github.com/cjoudrey/graphql-schema-linter/issues/18 we can add a
+# disable just to this type
 scalar DateTimeUtc
 
 schema {
