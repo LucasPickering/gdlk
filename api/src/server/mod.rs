@@ -6,17 +6,13 @@ mod gql;
 pub use crate::server::gql::{create_gql_schema, Context, GqlSchema};
 use crate::{
     config::GdlkConfig,
-    server::auth::{route_authorize, route_login, Sessions},
+    server::auth::{route_authorize, route_login},
     util::Pool,
 };
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{get, middleware, post, web, App, HttpResponse, HttpServer};
 use juniper::http::{graphiql::graphiql_source, GraphQLRequest};
-use std::{
-    collections::HashMap,
-    io,
-    sync::{Arc, RwLock},
-};
+use std::{io, sync::Arc};
 
 #[get("/api/graphiql")]
 async fn route_graphiql() -> HttpResponse {
@@ -53,9 +49,6 @@ pub async fn run_server(config: GdlkConfig, pool: Pool) -> io::Result<()> {
     let gql_schema = Arc::new(create_gql_schema());
     let client_map =
         web::Data::new(auth::build_client_map(&config.open_id).await);
-    let sessions = web::Data::new(RwLock::new(Sessions {
-        map: HashMap::new(),
-    }));
 
     // Start the HTTP server
     HttpServer::new(move || {
@@ -64,7 +57,6 @@ pub async fn run_server(config: GdlkConfig, pool: Pool) -> io::Result<()> {
             .data(pool.clone())
             .data(gql_schema.clone())
             .app_data(client_map.clone())
-            .app_data(sessions.clone())
             // enable logger
             .wrap(middleware::Logger::default())
             .wrap(IdentityService::new(
