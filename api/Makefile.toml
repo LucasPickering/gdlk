@@ -50,6 +50,33 @@ dependencies = ["db-setup"]
 command = "cargo"
 args = ["watch", "-x", "run -- server"]
 
+[tasks.secrets]
+script = [
+'''
+
+src=config/dev.example.json
+dest=config/dev.json
+
+# Create the file if it doesn't exist
+if [ ! -f $dest ]; then
+    cp $src $dest
+    echo "Copied $src -> $dest"
+fi
+
+# Set secret key if possible
+if [ $(command -v jq) ]; then
+    secret_key=$(head -c 64 < /dev/urandom | base64 -w 0)
+    new_value=$(jq ".secret_key = \"$secret_key\"" $dest)
+    echo $new_value > $dest
+    echo "$dest: Set new secret key"
+else
+    echo "jq not installed, cannot set secret key, skipping"
+fi
+
+echo "You will need to set all OpenID client IDs and secrets manually."
+'''
+]
+
 # ===== Test tasks =====
 
 [tasks.test-db-reset]
