@@ -54,6 +54,8 @@ Unfortunately, until [this GitHub bug](https://github.community/t5/GitHub-Action
 Then, in the repo root, run:
 
 ```sh
+cd api && cargo make secrets # Only needed on first execution
+cd ..
 docker login docker.pkg.github.com
 # Enter your username and the new token as your password
 docker-compose up
