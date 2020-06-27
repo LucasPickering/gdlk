@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useCallback,
-  useRef,
-} from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { RelayProp, createFragmentContainer } from 'react-relay';
 import graphql from 'babel-plugin-relay/macro';
 import { ProgramIde_hardwareSpec } from './__generated__/ProgramIde_hardwareSpec.graphql';
@@ -21,9 +15,9 @@ import { HardwareSpec, ProgramSpec } from 'gdlk_wasm';
 import useDebouncedValue from 'hooks/useDebouncedValue';
 import { assertIsDefined } from 'util/guards';
 import NotFoundPage from 'components/NotFoundPage';
-import { Prompt } from 'react-router-dom';
 import { StorageHandler } from 'util/storage';
 import useStaticValue from 'hooks/useStaticValue';
+import PromptOnExit from 'components/common/PromptOnExit';
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => {
   const border = `2px solid ${palette.divider}`;
@@ -90,25 +84,23 @@ const ProgramIde: React.FC<{
   assertIsDefined(userProgram);
 
   // These values come from wasm. They're read only, so they're safe to share
-  // with the whole component tree. They are pointed and there updates won't
-  // trigger re-renders, but these values shouldn't be changing while this
-  // component tree is mounted.
-  const wasmHardwareSpec = useMemo(
+  // with the whole component tree. They are pointers and therefore updates
+  // won't trigger re-renders, but these values shouldn't be changing while
+  // this component tree is mounted anyway.
+  const wasmHardwareSpec = useStaticValue(
     () =>
       new HardwareSpec(
         hardwareSpec.numRegisters,
         hardwareSpec.numStacks,
         hardwareSpec.maxStackLength
-      ),
-    [hardwareSpec]
+      )
   );
-  const wasmProgramSpec = useMemo(
+  const wasmProgramSpec = useStaticValue(
     () =>
       new ProgramSpec(
         Int16Array.from(programSpec.input),
         Int16Array.from(programSpec.expectedOutput)
-      ),
-    [programSpec]
+      )
   );
 
   // This wasm value is NOT safe to share outside this component. It's stored
@@ -242,7 +234,9 @@ const ProgramIde: React.FC<{
         />
         <StackInfo className={localClasses.stackInfo} />
         <CodeEditor className={localClasses.editor} />
-        <Prompt
+
+        {/* Prompt on exit for unsaved changes */}
+        <PromptOnExit
           when={sourceCode !== userProgram.sourceCode}
           message="You have unsaved changes. Are you sure you want to leave?"
         />
