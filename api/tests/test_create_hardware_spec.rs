@@ -38,7 +38,7 @@ static QUERY: &str = r#"
 /// Test the standard success state of createHardwareSpec
 #[test]
 fn test_create_hardware_spec_success() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
     // We'll test collisions against this
@@ -80,7 +80,7 @@ fn test_create_hardware_spec_success() {
 /// [ERROR] Test createHardwareSpec when you try to use a pre-existing name
 #[test]
 fn test_create_hardware_spec_duplicate() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
     // We'll test collisions against this
@@ -114,7 +114,7 @@ fn test_create_hardware_spec_duplicate() {
 /// [ERROR] Test createHardwareSpec when you pass invalid data
 #[test]
 fn test_create_hardware_spec_invalid_values() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
 
     assert_eq!(
         runner.query(

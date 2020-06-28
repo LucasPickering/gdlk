@@ -2,7 +2,6 @@
 //! DOES NOT container any of its own tests.
 
 use diesel::{associations::HasTable, PgConnection, RunQueryDsl};
-use failure::Fallible;
 use gdlk_api::{
     models,
     server::{create_gql_schema, Context, GqlSchema},
@@ -37,19 +36,26 @@ pub struct QueryRunner {
 }
 
 impl QueryRunner {
-    pub fn new() -> Fallible<Self> {
-        let pool = util::init_db_conn_pool()?;
-
-        Ok(Self {
+    pub fn new() -> Self {
+        let context = Context {
+            pool: Arc::new(util::init_db_conn_pool().unwrap()),
+            user: None,
+        };
+        Self {
             schema: create_gql_schema(),
-            context: Context {
-                pool: Arc::new(pool),
-            },
-        })
+            context,
+        }
     }
 
+    /// Get a DB connection from the pool.
     pub fn db_conn(&self) -> PooledConnection {
         self.context.get_db_conn().unwrap()
+    }
+
+    /// Modify the query context to set the current user.
+    #[allow(dead_code)]
+    pub fn set_user(&mut self, user: models::User) {
+        self.context.user = Some(user);
     }
 
     pub fn query<'a>(

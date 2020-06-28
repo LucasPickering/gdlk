@@ -28,13 +28,6 @@ impl User {
     ) -> dsl::Filter<users::table, WithUsername<'_>> {
         users::table.filter(Self::with_username(username))
     }
-
-    /// TEMPORARY function that filters for a hard-coded user in the DB. This is
-    /// to be used for operations that require a user, before we implement
-    /// auth.
-    pub fn tmp_user() -> dsl::Filter<users::table, WithUsername<'static>> {
-        Self::filter_by_username("user1")
-    }
 }
 
 #[derive(Debug, Default, PartialEq, Insertable)]

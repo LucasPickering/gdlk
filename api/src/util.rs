@@ -58,7 +58,13 @@ pub fn uuid_to_gql_id(uuid: Uuid) -> juniper::ID {
 /// the API because we want to handle malformed UUIDs the same way we handle
 /// UUIDs that aren't in the database.
 pub fn gql_id_to_uuid(id: &juniper::ID) -> Uuid {
-    Uuid::parse_str(&id.to_string()).unwrap_or_default()
+    parse_uuid(&id.to_string())
+}
+
+/// Parses the given string into a UUID. If the string cannot be parsed
+/// properly, this just returns the default UUID (all zeroes).
+pub fn parse_uuid(id: &str) -> Uuid {
+    Uuid::parse_str(id).unwrap_or_default()
 }
 
 /// Converts a map to a GraphQL object. Takes in an iterator of (K, V) so that

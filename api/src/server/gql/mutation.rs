@@ -1,7 +1,7 @@
 use crate::{
     error::{DbErrorConverter, ResponseResult},
     models,
-    schema::{hardware_specs, program_specs, user_programs, users},
+    schema::{hardware_specs, program_specs, user_programs},
     server::gql::{
         Context, CreateHardwareSpecInput, CreateHardwareSpecPayload,
         CreateProgramSpecInput, CreateProgramSpecPayload,
@@ -187,15 +187,13 @@ impl MutationFields for Mutation {
         _trail: &QueryTrail<'_, CreateUserProgramPayload, Walked>,
         input: CreateUserProgramInput,
     ) -> ResponseResult<CreateUserProgramPayload> {
-        let conn: &PgConnection =
-            &executor.context().get_db_conn()? as &PgConnection;
-        let user_id: Uuid = models::User::tmp_user()
-            .select(users::columns::id)
-            .get_result(conn)?;
+        let context = executor.context();
+        let conn: &PgConnection = &context.get_db_conn()? as &PgConnection;
+        let user = context.user()?;
 
         // User a helper type to do the insert
         let new_user_program = models::NewUserProgram {
-            user_id,
+            user_id: user.id,
             program_spec_id: util::gql_id_to_uuid(&input.program_spec_id),
             file_name: &input.file_name,
             // If no source is provided, default to an empty string
@@ -228,8 +226,11 @@ impl MutationFields for Mutation {
         _trail: &QueryTrail<'_, UpdateUserProgramPayload, Walked>,
         input: UpdateUserProgramInput,
     ) -> ResponseResult<UpdateUserProgramPayload> {
-        let conn: &PgConnection =
-            &executor.context().get_db_conn()? as &PgConnection;
+        let context = executor.context();
+        let conn: &PgConnection = &context.get_db_conn()? as &PgConnection;
+        // User needs to be logged in to make changes. This also has to be
+        // their user_program.
+        let user = context.user()?;
 
         // User a helper type to do the insert
         let modified_user_program = models::ModifiedUserProgram {
@@ -239,14 +240,19 @@ impl MutationFields for Mutation {
         };
         modified_user_program.validate()?;
 
-        // Update the row, returning the new value. If the row doesn't exist,
-        // this will return None.
-        let result: Result<Option<models::UserProgram>, _> =
-            diesel::update(user_programs::table.find(modified_user_program.id))
-                .set(modified_user_program)
-                .returning(user_programs::table::all_columns())
-                .get_result(conn)
-                .optional();
+        // Update the row, returning the new value. If the row doesn't
+        // exist, this will return None.
+        let result: Result<Option<models::UserProgram>, _> = diesel::update(
+            user_programs::table
+                .find(modified_user_program.id)
+                // Extra filter to make sure the requesting user is the owner of
+                // the row.
+                .filter(user_programs::columns::user_id.eq(user.id)),
+        )
+        .set(modified_user_program)
+        .returning(user_programs::table::all_columns())
+        .get_result(conn)
+        .optional();
 
         let updated_row: Option<models::UserProgram> = DbErrorConverter {
             // UserProgram already exists with this program spec/file name
@@ -268,15 +274,24 @@ impl MutationFields for Mutation {
         _trail: &QueryTrail<'_, DeleteUserProgramPayload, Walked>,
         input: DeleteUserProgramInput,
     ) -> ResponseResult<DeleteUserProgramPayload> {
-        use self::user_programs::dsl::*;
+        let context = executor.context();
+        let conn: &PgConnection = &context.get_db_conn()? as &PgConnection;
+        // User needs to be logged in to make changes. This also has to be
+        // their user_program.
+        let user = context.user()?;
 
         // Delete and get the ID back
         let row_id = util::gql_id_to_uuid(&input.user_program_id);
-        let deleted_id: Option<Uuid> =
-            diesel::delete(user_programs.filter(id.eq(row_id)))
-                .returning(id)
-                .get_result(&executor.context().get_db_conn()?)
-                .optional()?;
+        let deleted_id: Option<Uuid> = diesel::delete(
+            user_programs::table
+                .find(row_id)
+                // Extra filter to make sure the requesting user is the owner of
+                // the row.
+                .filter(user_programs::columns::user_id.eq(user.id)),
+        )
+        .returning(user_programs::columns::id)
+        .get_result(conn)
+        .optional()?;
 
         Ok(DeleteUserProgramPayload { deleted_id })
     }

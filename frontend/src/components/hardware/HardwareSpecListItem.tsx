@@ -38,11 +38,6 @@ const HardwareSpecListItem: React.FC<{
           >
             <ListItemText
               primary={`${hardwareSpec.slug}/${programSpec.slug}`}
-              secondary={
-                programSpec.userPrograms.totalCount > 0
-                  ? `${programSpec.userPrograms.totalCount} solutions`
-                  : undefined
-              }
             />
           </ListItem>
         ))}
@@ -63,9 +58,6 @@ export default createFragmentContainer(HardwareSpecListItem, {
           node {
             id
             slug
-            userPrograms {
-              totalCount
-            }
           }
         }
       }

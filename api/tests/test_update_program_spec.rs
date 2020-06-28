@@ -40,7 +40,7 @@ static QUERY: &str = r#"
 /// Partial modification, make sure unmodified fields keep their old value
 #[test]
 fn test_update_program_spec_partial_modification() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
     let hw_spec = NewHardwareSpec {
         name: "HW 1",
@@ -86,7 +86,7 @@ fn test_update_program_spec_partial_modification() {
 /// Modify all fields
 #[test]
 fn test_update_program_spec_full_modification() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
     let hw_spec = NewHardwareSpec {
         name: "HW 1",
@@ -137,7 +137,7 @@ fn test_update_program_spec_full_modification() {
 /// Pass an invalid ID, get null back
 #[test]
 fn test_update_program_spec_invalid_id() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
 
     assert_eq!(
         runner.query(
@@ -160,7 +160,7 @@ fn test_update_program_spec_invalid_id() {
 
 #[test]
 fn test_update_program_spec_empty_modification() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
     let hw_spec = NewHardwareSpec {
@@ -203,7 +203,7 @@ fn test_update_program_spec_empty_modification() {
 
 #[test]
 fn test_update_program_spec_duplicate() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
     let hw_spec = NewHardwareSpec {
@@ -247,7 +247,7 @@ fn test_update_program_spec_duplicate() {
 
 #[test]
 fn test_update_program_spec_invalid_values() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
     let hw_spec = NewHardwareSpec {

@@ -11,7 +11,7 @@ mod utils;
 
 #[test]
 fn test_field_user() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
     let user_id = NewUser { username: "user1" }.create(conn).id;

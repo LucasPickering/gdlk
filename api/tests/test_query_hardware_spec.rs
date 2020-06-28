@@ -11,7 +11,7 @@ mod utils;
 
 #[test]
 fn test_field_hardware_spec() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
     let hardware_spec_id = NewHardwareSpec {
@@ -73,7 +73,7 @@ fn test_field_hardware_spec() {
 
 #[test]
 fn test_field_hardware_specs() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
     NewHardwareSpec {
@@ -186,7 +186,7 @@ fn test_field_hardware_specs() {
 
 #[test]
 fn test_field_hardware_spec_program_spec() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
     let hardware_spec_id = NewHardwareSpec {

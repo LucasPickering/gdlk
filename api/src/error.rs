@@ -37,6 +37,10 @@ pub enum ResponseError {
     #[fail(display = "No fields were given to update")]
     NoUpdate,
 
+    /// Action cannot be performed because the user is not authenticated.
+    #[fail(display = "Not logged in")]
+    Unauthenticated,
+
     /// User submitted invalid/incorrect credentials for auth
     #[fail(display = "Invalid credentials")]
     InvalidCredentials,

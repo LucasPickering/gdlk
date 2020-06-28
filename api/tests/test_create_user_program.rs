@@ -41,10 +41,10 @@ static QUERY: &str = r#"
 /// Test creating a user program successfully
 #[test]
 fn test_create_user_program_success() {
-    let runner = QueryRunner::new().unwrap();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
-    NewUser { username: "user1" }.create(conn);
+    let user = NewUser { username: "user1" }.create(conn);
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -57,6 +57,7 @@ fn test_create_user_program_success() {
     }
     .create(conn)
     .id;
+    runner.set_user(user); // Log in
 
     assert_eq!(
         runner.query(
@@ -89,13 +90,97 @@ fn test_create_user_program_success() {
     );
 }
 
+/// Test that two users can create the a user_program with the same name
+#[test]
+fn test_create_user_program_repeat_name() {
+    let mut runner = QueryRunner::new();
+    let conn: &PgConnection = &runner.db_conn();
+
+    let program_spec_id = NewProgramSpec {
+        name: "prog1",
+        hardware_spec_id: NewHardwareSpec {
+            name: "hw1",
+            ..Default::default()
+        }
+        .create(conn)
+        .id,
+        ..Default::default()
+    }
+    .create(conn)
+    .id;
+
+    // Create a user_program for user1
+    let user1 = NewUser { username: "user1" }.create(conn);
+    runner.set_user(user1);
+    assert_eq!(
+        runner.query(
+            QUERY,
+            hashmap! {
+                "programSpecId" => InputValue::scalar(program_spec_id.to_string()),
+                "fileName" => InputValue::scalar("new.gdlk"),
+            }
+        ),
+        (
+            json!({
+                "createUserProgram": {
+                    "userProgramEdge": {
+                        "node": {
+                            "fileName": "new.gdlk",
+                            "sourceCode": "",
+                            "user": {
+                                "username": "user1"
+                            },
+                            "programSpec": {
+                                "slug": "prog1"
+                            },
+                        }
+                    }
+                }
+            }),
+            vec![]
+        )
+    );
+
+    // Create a user_program with the same name for user2
+    let user2 = NewUser { username: "user2" }.create(conn);
+    runner.set_user(user2);
+    assert_eq!(
+        runner.query(
+            QUERY,
+            hashmap! {
+                "programSpecId" => InputValue::scalar(program_spec_id.to_string()),
+                "fileName" => InputValue::scalar("new.gdlk"),
+            }
+        ),
+        (
+            json!({
+                "createUserProgram": {
+                    "userProgramEdge": {
+                        "node": {
+                            "fileName": "new.gdlk",
+                            "sourceCode": "",
+                            "user": {
+                                "username": "user2"
+                            },
+                            "programSpec": {
+                                "slug": "prog1"
+                            },
+                        }
+                    }
+                }
+            }),
+            vec![]
+        )
+    );
+}
+
 /// [ERROR] File name is already taken
 #[test]
 fn test_create_user_program_duplicate() {
-    let runner = QueryRunner::new().unwrap();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
-    let user_id = NewUser { username: "user1" }.create(conn).id;
+    let user = NewUser { username: "user1" }.create(conn);
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -111,12 +196,14 @@ fn test_create_user_program_duplicate() {
 
     // We'll test collisions against this
     NewUserProgram {
-        user_id,
+        user_id: user.id,
         program_spec_id,
         file_name: "existing.gdlk",
         source_code: "READ RX0",
     }
     .create(conn);
+
+    runner.set_user(user); // Log in
 
     assert_eq!(
         runner.query(
@@ -140,10 +227,10 @@ fn test_create_user_program_duplicate() {
 /// [ERROR] References an invalid program spec
 #[test]
 fn test_create_user_program_invalid_program_spec() {
-    let runner = QueryRunner::new().unwrap();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
-    NewUser { username: "user1" }.create(conn);
+    let user = NewUser { username: "user1" }.create(conn);
     NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -155,6 +242,7 @@ fn test_create_user_program_invalid_program_spec() {
         ..Default::default()
     }
     .create(conn);
+    runner.set_user(user); // Log in
 
     // Error - Unknown user+program spec combo
     assert_eq!(
@@ -179,10 +267,10 @@ fn test_create_user_program_invalid_program_spec() {
 /// [ERROR] Values given are invalid
 #[test]
 fn test_create_user_program_invalid_values() {
-    let runner = QueryRunner::new().unwrap();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
-    NewUser { username: "user1" }.create(conn);
+    let user = NewUser { username: "user1" }.create(conn);
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -195,6 +283,7 @@ fn test_create_user_program_invalid_values() {
     }
     .create(conn)
     .id;
+    runner.set_user(user); // Log in
 
     assert_eq!(
         runner.query(
