@@ -40,7 +40,7 @@ static QUERY: &str = r#"
 /// Create a program spec successfully
 #[test]
 fn test_create_program_spec_success() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
     let hw_spec = NewHardwareSpec {
         name: "HW 1",
@@ -85,7 +85,7 @@ fn test_create_program_spec_success() {
 /// [ERROR] References an invalid hardware spec
 #[test]
 fn test_create_program_spec_invalid_hw_spec() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let values_list: InputValue = InputValue::list(
         [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
     );
@@ -115,7 +115,7 @@ fn test_create_program_spec_invalid_hw_spec() {
 /// [ERROR] Program spec name is already taken
 #[test]
 fn test_create_program_spec_duplicate() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
     let hw_spec = NewHardwareSpec {
@@ -160,7 +160,7 @@ fn test_create_program_spec_duplicate() {
 /// [ERROR] Values given are invalid
 #[test]
 fn test_create_program_spec_invalid_values() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
     let hw_spec = NewHardwareSpec {
         name: "HW 1",

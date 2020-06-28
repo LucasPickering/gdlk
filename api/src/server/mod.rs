@@ -6,14 +6,18 @@ mod gql;
 pub use crate::server::gql::{create_gql_schema, Context, GqlSchema};
 use crate::{
     config::GdlkConfig,
+    error::ResponseError,
+    models::User,
+    schema::{user_providers, users},
     server::auth::{route_authorize, route_login},
-    util::Pool,
+    util::{self, Pool},
 };
-use actix_identity::{CookieIdentityPolicy, IdentityService};
+use actix_identity::{CookieIdentityPolicy, Identity, IdentityService};
 use actix_web::{
     cookie::SameSite, get, middleware, post, web, App, HttpResponse, HttpServer,
 };
 use chrono::Duration;
+use diesel::{OptionalExtension, PgConnection, QueryDsl, RunQueryDsl};
 use juniper::http::{graphiql::graphiql_source, GraphQLRequest};
 use std::{io, sync::Arc};
 
@@ -28,14 +32,32 @@ async fn route_graphiql() -> HttpResponse {
 #[post("/api/graphql")]
 async fn route_graphql(
     pool: web::Data<Pool>,
-    st: web::Data<Arc<GqlSchema>>,
+    identity: Identity,
+    gql_schema: web::Data<Arc<GqlSchema>>,
     data: web::Json<GraphQLRequest>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    let user = web::block(move || {
+    let conn = &pool.get().map_err(ResponseError::from)? as &PgConnection;
+    // Auth cookie holds a user provider ID. Use it to look up the user.
+    let user: Option<User> = match identity.identity() {
+        None => None,
+        Some(user_provider_id) => {
+            let user_provider_uuid = util::parse_uuid(&user_provider_id);
+            user_providers::table
+                .find(user_provider_uuid)
+                .inner_join(users::table)
+                .select(users::all_columns)
+                .get_result(conn)
+                .optional()
+                .map_err(ResponseError::from)?
+        }
+    };
+
+    let response = web::block(move || {
         let res = data.execute(
-            &st,
+            &gql_schema,
             &Context {
                 pool: pool.into_inner(),
+                user,
             },
         );
         Ok::<_, serde_json::error::Error>(serde_json::to_string(&res)?)
@@ -43,7 +65,7 @@ async fn route_graphql(
     .await?;
     Ok(HttpResponse::Ok()
         .content_type("application/json")
-        .body(user))
+        .body(response))
 }
 
 #[actix_rt::main]

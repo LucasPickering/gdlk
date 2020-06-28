@@ -40,7 +40,7 @@ static QUERY: &str = r#"
 /// Modify just a subset of fields, make sure the others keep their values
 #[test]
 fn test_update_hardware_spec_partial_modification() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
     let hw_spec = NewHardwareSpec {
         name: "HW 2",
@@ -79,7 +79,7 @@ fn test_update_hardware_spec_partial_modification() {
 /// Modify all fields
 #[test]
 fn test_update_hardware_spec_full_modification() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
     let hw_spec = NewHardwareSpec {
         name: "HW 2",
@@ -120,7 +120,7 @@ fn test_update_hardware_spec_full_modification() {
 /// Pass an invalid ID, get null back
 #[test]
 fn test_update_hardware_spec_invalid_id() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
 
     assert_eq!(
         runner.query(
@@ -144,7 +144,7 @@ fn test_update_hardware_spec_invalid_id() {
 /// [ERROR] Test that passing no modifications is an error
 #[test]
 fn test_update_hardware_spec_empty_modification() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
     let hw_spec = NewHardwareSpec {
         name: "HW 2",
@@ -173,7 +173,7 @@ fn test_update_hardware_spec_empty_modification() {
 /// [ERROR] Test that using a duplicate name returns an error
 #[test]
 fn test_update_hardware_spec_duplicate() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
     // We'll test collisions against this
@@ -210,7 +210,7 @@ fn test_update_hardware_spec_duplicate() {
 /// [ERROR] Test that passing invalid values gives an error
 #[test]
 fn test_update_hardware_spec_invalid_values() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
     let hw_spec = NewHardwareSpec {
         name: "HW 2",

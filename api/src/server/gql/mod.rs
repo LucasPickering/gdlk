@@ -31,11 +31,18 @@ graphql_schema_from_file!("schema.graphql", error_type: ResponseError);
 
 pub struct Context {
     pub pool: Arc<Pool>,
+    pub user: Option<models::User>,
 }
 
 impl Context {
     pub fn get_db_conn(&self) -> Result<PooledConnection, ResponseError> {
         Ok(self.pool.get()?)
+    }
+
+    /// Get the authentiated user. If they're not authenticated, return an
+    /// error.
+    pub fn user(&self) -> Result<&models::User, ResponseError> {
+        self.user.as_ref().ok_or(ResponseError::Unauthenticated)
     }
 }
 

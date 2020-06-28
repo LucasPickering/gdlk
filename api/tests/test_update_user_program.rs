@@ -42,11 +42,11 @@ static QUERY: &str = r#"
 /// Successful row modification
 #[test]
 fn test_update_user_program_success() {
-    let runner = QueryRunner::new().unwrap();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
     // Initialize data
-    let user_id = NewUser { username: "user1" }.create(conn).id;
+    let user = NewUser { username: "user1" }.create(conn);
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -60,12 +60,13 @@ fn test_update_user_program_success() {
     .create(conn)
     .id;
     let user_program = NewUserProgram {
-        user_id,
+        user_id: user.id,
         program_spec_id,
         file_name: "existing.gdlk",
         source_code: "READ RX0",
     }
     .create(conn);
+    runner.set_user(user); // Log in
 
     assert_eq!(
         runner.query(
@@ -99,16 +100,89 @@ fn test_update_user_program_success() {
     );
 }
 
-/// Pass an invalid ID, get null back
+/// No user logged in, gives an auth error
 #[test]
-fn test_update_user_program_invalid_id() {
-    let runner = QueryRunner::new().unwrap();
+fn test_update_user_program_not_logged_in() {
+    let runner = QueryRunner::new();
+    let conn: &PgConnection = &runner.db_conn();
+
+    // Initialize data
+    let user = NewUser { username: "user1" }.create(conn);
+    let program_spec_id = NewProgramSpec {
+        name: "prog1",
+        hardware_spec_id: NewHardwareSpec {
+            name: "hw1",
+            ..Default::default()
+        }
+        .create(conn)
+        .id,
+        ..Default::default()
+    }
+    .create(conn)
+    .id;
+    let user_program = NewUserProgram {
+        user_id: user.id,
+        program_spec_id,
+        file_name: "existing.gdlk",
+        source_code: "READ RX0",
+    }
+    .create(conn);
 
     assert_eq!(
         runner.query(
             QUERY,
             hashmap! {
-                "id" => InputValue::scalar("bogus".to_string()),
+                "id" => InputValue::scalar(user_program.id.to_string()),
+                "fileName" => InputValue::scalar("new.gdlk"),
+                "sourceCode" => InputValue::scalar("WRITE RX0"),
+            }
+        ),
+        (
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 7, "column": 9}],
+                "message": "Not logged in",
+                "path": ["updateUserProgram"],
+            })]
+        )
+    );
+}
+
+/// Try to modify someone else's program, it should behave like it doesn't exist
+#[test]
+fn test_update_user_program_wrong_owner() {
+    let mut runner = QueryRunner::new();
+    let conn: &PgConnection = &runner.db_conn();
+
+    // Initialize data
+    let owner = NewUser { username: "user1" }.create(conn);
+    let program_spec_id = NewProgramSpec {
+        name: "prog1",
+        hardware_spec_id: NewHardwareSpec {
+            name: "hw1",
+            ..Default::default()
+        }
+        .create(conn)
+        .id,
+        ..Default::default()
+    }
+    .create(conn)
+    .id;
+    let user_program = NewUserProgram {
+        user_id: owner.id,
+        program_spec_id,
+        file_name: "existing.gdlk",
+        source_code: "READ RX0",
+    }
+    .create(conn);
+    let not_owner = NewUser { username: "user2" }.create(conn);
+    runner.set_user(not_owner); // Log in as someone other than the owner
+
+    assert_eq!(
+        runner.query(
+            QUERY,
+            hashmap! {
+                "id" => InputValue::scalar(user_program.id.to_string()),
                 "fileName" => InputValue::scalar("new.gdlk"),
                 "sourceCode" => InputValue::scalar("WRITE RX0"),
             }
@@ -127,11 +201,11 @@ fn test_update_user_program_invalid_id() {
 /// [ERROR] No fields were updated
 #[test]
 fn test_update_user_program_empty_modification() {
-    let runner = QueryRunner::new().unwrap();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
     // Initialize data
-    let user_id = NewUser { username: "user1" }.create(conn).id;
+    let user = NewUser { username: "user1" }.create(conn);
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -145,12 +219,13 @@ fn test_update_user_program_empty_modification() {
     .create(conn)
     .id;
     let user_program = NewUserProgram {
-        user_id,
+        user_id: user.id,
         program_spec_id,
         file_name: "existing.gdlk",
         source_code: "READ RX0",
     }
     .create(conn);
+    runner.set_user(user); // Log in
 
     assert_eq!(
         runner.query(
@@ -173,11 +248,11 @@ fn test_update_user_program_empty_modification() {
 /// [ERROR] Attempted to use an existing name
 #[test]
 fn test_update_user_program_duplicate() {
-    let runner = QueryRunner::new().unwrap();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
     // Initialize data
-    let user_id = NewUser { username: "user1" }.create(conn).id;
+    let user = NewUser { username: "user1" }.create(conn);
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -191,7 +266,7 @@ fn test_update_user_program_duplicate() {
     .create(conn)
     .id;
     let user_program = NewUserProgram {
-        user_id,
+        user_id: user.id,
         program_spec_id,
         file_name: "existing.gdlk",
         source_code: "READ RX0",
@@ -199,12 +274,13 @@ fn test_update_user_program_duplicate() {
     .create(conn);
     // Use this to test collisions
     NewUserProgram {
-        user_id,
+        user_id: user.id,
         program_spec_id,
         file_name: "existing2.gdlk",
         source_code: "READ RX0",
     }
     .create(conn);
+    runner.set_user(user); // Log in
 
     assert_eq!(
         runner.query(
@@ -228,12 +304,12 @@ fn test_update_user_program_duplicate() {
 
 /// [ERROR] Invalid values passed
 #[test]
-fn test_update_user_program() {
-    let runner = QueryRunner::new().unwrap();
+fn test_update_user_program_invalid_values() {
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
     // Initialize data
-    let user_id = NewUser { username: "user1" }.create(conn).id;
+    let user = NewUser { username: "user1" }.create(conn);
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -247,12 +323,13 @@ fn test_update_user_program() {
     .create(conn)
     .id;
     let user_program = NewUserProgram {
-        user_id,
+        user_id: user.id,
         program_spec_id,
         file_name: "existing.gdlk",
         source_code: "READ RX0",
     }
     .create(conn);
+    runner.set_user(user); // Log in
 
     // Error - Known user program, but the target file name is invalid
     assert_eq!(

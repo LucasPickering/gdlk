@@ -13,7 +13,7 @@ mod utils;
 
 #[test]
 fn test_program_spec() {
-    let runner = QueryRunner::new().unwrap();
+    let runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
     let hardware_spec_id = NewHardwareSpec {
@@ -76,10 +76,10 @@ fn test_program_spec() {
 
 #[test]
 fn test_program_spec_user_program() {
-    let runner = QueryRunner::new().unwrap();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
-    let user_id = NewUser { username: "user1" }.create(conn).id;
+    let user = NewUser { username: "user1" }.create(conn);
     let hardware_spec_id = NewHardwareSpec {
         name: "hw1",
         ..Default::default()
@@ -94,7 +94,7 @@ fn test_program_spec_user_program() {
     .create(conn)
     .id;
     let user_program_id = models::NewUserProgram {
-        user_id,
+        user_id: user.id,
         program_spec_id,
         file_name: "sl1.gdlk",
         source_code: "READ RX0",
@@ -102,14 +102,14 @@ fn test_program_spec_user_program() {
     .create(conn)
     .id;
     models::NewUserProgram {
-        user_id,
+        user_id: user.id,
         program_spec_id,
         file_name: "sl2.gdlk",
         source_code: "READ RX0",
     }
     .create(conn);
     models::NewUserProgram {
-        user_id,
+        user_id: user.id,
         program_spec_id,
         file_name: "sl3.gdlk",
         source_code: "READ RX0",
@@ -117,7 +117,7 @@ fn test_program_spec_user_program() {
     .create(conn);
     // Create a new program spec with a new solution for it
     models::NewUserProgram {
-        user_id,
+        user_id: user.id,
         program_spec_id: NewProgramSpec {
             name: "prog2",
             hardware_spec_id,
@@ -129,6 +129,8 @@ fn test_program_spec_user_program() {
         source_code: "READ RX0",
     }
     .create(conn);
+    runner.set_user(user); // Log in
+
     let query = r#"
         query UserProgramQuery(
             $hwSlug: String!,
@@ -210,6 +212,77 @@ fn test_program_spec_user_program() {
                 }
             }),
             vec![]
+        )
+    );
+}
+
+/// Test that querying anything user_program related while not logged in
+/// triggers an error.
+#[test]
+fn test_program_spec_user_program_not_logged_in() {
+    let runner = QueryRunner::new();
+    let conn: &PgConnection = &runner.db_conn();
+
+    let hardware_spec_id = NewHardwareSpec {
+        name: "hw1",
+        ..Default::default()
+    }
+    .create(conn)
+    .id;
+    NewProgramSpec {
+        name: "prog1",
+        hardware_spec_id,
+        ..Default::default()
+    }
+    .create(conn);
+
+    let query = r#"
+        query UserProgramQuery(
+            $hwSlug: String!,
+            $progSlug: String!,
+            $fileName: String!,
+        ) {
+            hardwareSpec(slug: $hwSlug) {
+                programSpec(slug: $progSlug) {
+                    userProgram(fileName: $fileName) {
+                        id
+                    }
+                    userPrograms {
+                        totalCount
+                    }
+                }
+            }
+        }
+    "#;
+
+    // Query a set of user programs
+    assert_eq!(
+        runner.query(
+            query,
+            hashmap! {
+                "hwSlug" => InputValue::scalar("hw1"),
+                "progSlug" => InputValue::scalar("prog1"),
+                "fileName" => InputValue::scalar("sl1.gdlk"),
+            }
+        ),
+        (
+            json!({
+                "hardwareSpec": {
+                    "programSpec": serde_json::Value::Null
+                }
+            }),
+            vec![
+                json!({
+                    "message": "Not logged in",
+                    "locations": [{"line": 9, "column": 21}],
+                    "path": ["hardwareSpec", "programSpec", "userProgram"],
+                }),
+                json!({
+                    "message": "Not logged in",
+                    "locations": [{"line": 12, "column": 21}],
+                    "path": ["hardwareSpec", "programSpec", "userPrograms"],
+                }),
+            ]
         )
     );
 }

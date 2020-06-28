@@ -1,7 +1,7 @@
 use crate::{
     error::ResponseResult,
     models,
-    schema::{program_specs, user_programs, users},
+    schema::{program_specs, user_programs},
     server::gql::{
         hardware_spec::HardwareSpecNode,
         internal::{GenericEdge, NodeType},
@@ -110,13 +110,12 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
         _trail: &QueryTrail<'_, UserProgramNode, Walked>,
         file_name: String,
     ) -> ResponseResult<Option<UserProgramNode>> {
-        let conn = &executor.context().get_db_conn()? as &PgConnection;
-        let user_id: Uuid = models::User::tmp_user()
-            .select(users::columns::id)
-            .get_result(conn)?;
+        let context = executor.context();
+        let conn = &context.get_db_conn()? as &PgConnection;
+        let user = context.user()?;
 
         Ok(models::UserProgram::filter_by_user_and_program_spec(
-            user_id,
+            user.id,
             self.program_spec.id,
         )
         .filter(user_programs::dsl::file_name.eq(&file_name))
@@ -133,12 +132,9 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
         first: Option<i32>,
         after: Option<Cursor>,
     ) -> ResponseResult<UserProgramConnection> {
-        let conn = &executor.context().get_db_conn()? as &PgConnection;
-        let user_id: Uuid = models::User::tmp_user()
-            .select(users::columns::id)
-            .get_result(conn)?;
+        let user = executor.context().user()?;
 
-        UserProgramConnection::new(user_id, self.program_spec.id, first, after)
+        UserProgramConnection::new(user.id, self.program_spec.id, first, after)
     }
 }
 
