@@ -10,7 +10,10 @@ use crate::{
     util::Pool,
 };
 use actix_identity::{CookieIdentityPolicy, IdentityService};
-use actix_web::{get, middleware, post, web, App, HttpResponse, HttpServer};
+use actix_web::{
+    cookie::SameSite, get, middleware, post, web, App, HttpResponse, HttpServer,
+};
+use chrono::Duration;
 use juniper::http::{graphiql::graphiql_source, GraphQLRequest};
 use std::{io, sync::Arc};
 
@@ -49,6 +52,7 @@ pub async fn run_server(config: GdlkConfig, pool: Pool) -> io::Result<()> {
     let gql_schema = Arc::new(create_gql_schema());
     let client_map =
         web::Data::new(auth::build_client_map(&config.open_id).await);
+    let secret_key: Vec<u8> = base64::decode(&config.secret_key).unwrap();
 
     // Start the HTTP server
     HttpServer::new(move || {
@@ -60,9 +64,11 @@ pub async fn run_server(config: GdlkConfig, pool: Pool) -> io::Result<()> {
             // enable logger
             .wrap(middleware::Logger::default())
             .wrap(IdentityService::new(
-                CookieIdentityPolicy::new(&[0; 32])
+                CookieIdentityPolicy::new(&secret_key)
                     .name("auth-openid")
-                    .secure(false), // TODO: be secure
+                    .same_site(SameSite::Lax) // Prevent CSRF
+                    .secure(true) // Only send cookie over HTTPS
+                    .max_age_time(Duration::days(1)),
             ))
             // routes
             .service(route_graphql)

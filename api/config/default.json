@@ -1,7 +1,7 @@
 {
   "server_host": "0.0.0.0:8000",
   "open_id": {
-    "host_url": "http://localhost:3000",
+    "host_url": "https://localhost:3000",
     "providers": {
       "google": {
         "issuer_url": "https://accounts.google.com"

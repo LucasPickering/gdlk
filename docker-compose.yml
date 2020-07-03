@@ -41,6 +41,7 @@ services:
     tty: true # Colorize output
     environment:
       GDLK_API_HOST: http://api:8000
+      HTTPS: "true"
     volumes:
       - ./:/app:rw
       - frontend_core_build:/app/target
