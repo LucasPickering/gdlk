@@ -209,7 +209,9 @@ const ProgramIde: React.FC<{
 
   // When either spec or the source changes, invalidate the compiled program
   useEffect(() => {
-    updateCompiledState(undefined);
+    // Do this as a post-effect so that it doesn't run on first render. That
+    // prevents us wiping out state right after we compile
+    return () => updateCompiledState(undefined);
   }, [wasmHardwareSpec, wasmProgramSpec, sourceCode, updateCompiledState]);
 
   const contextValue: IdeContextType = {
