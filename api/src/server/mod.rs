@@ -3,12 +3,13 @@
 mod auth;
 mod gql;
 
-pub use crate::server::gql::{create_gql_schema, Context, GqlSchema};
+pub use crate::server::gql::{
+    create_gql_schema, Context, GqlSchema, UserContext,
+};
 use crate::{
     config::GdlkConfig,
     error::ResponseError,
-    models::User,
-    schema::{user_providers, users},
+    schema::user_providers,
     server::auth::{route_authorize, route_login},
     util::{self, Pool},
 };
@@ -20,6 +21,7 @@ use chrono::Duration;
 use diesel::{OptionalExtension, PgConnection, QueryDsl, RunQueryDsl};
 use juniper::http::{graphiql::graphiql_source, GraphQLRequest};
 use std::{io, sync::Arc};
+use uuid::Uuid;
 
 #[get("/api/graphiql")]
 async fn route_graphiql() -> HttpResponse {
@@ -36,19 +38,38 @@ async fn route_graphql(
     gql_schema: web::Data<Arc<GqlSchema>>,
     data: web::Json<GraphQLRequest>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    let conn = &pool.get().map_err(ResponseError::from)? as &PgConnection;
-    // Auth cookie holds a user provider ID. Use it to look up the user.
-    let user: Option<User> = match identity.identity() {
+    // Auth cookie holds a user provider ID. Validate it, and look up the
+    // corresponding user ID.
+    let user_context: Option<UserContext> = match identity.identity() {
         None => None,
         Some(user_provider_id) => {
+            let conn =
+                &pool.get().map_err(ResponseError::from)? as &PgConnection;
             let user_provider_uuid = util::parse_uuid(&user_provider_id);
-            user_providers::table
+
+            // This is a double option for a reason - the outer option indicates
+            // if the user_providers row exists in the DB. The inner option
+            // indicates if the user_id column is populated in that row.
+            // The outer should usually be Some if we get this far, it only
+            // wouldn't be if that user_providers row has been deleted but the
+            // cookie hasn't expired yet.
+            // The inner should only be None if the user has logged in, but
+            // not set their username yet, so that a row in the users table
+            // hasn't been created yet.
+            let user_id_opt_opt: Option<Option<Uuid>> = user_providers::table
                 .find(user_provider_uuid)
-                .inner_join(users::table)
-                .select(users::all_columns)
+                .select(user_providers::columns::user_id)
                 .get_result(conn)
                 .optional()
-                .map_err(ResponseError::from)?
+                .map_err(ResponseError::from)?;
+
+            // If the outer option is None, just return None (because this
+            // cookie is no longer valid). If the inner is None, then we can
+            // return a context but without a user attached.
+            user_id_opt_opt.map(|user_id_opt| UserContext {
+                user_provider_id: user_provider_uuid,
+                user_id: user_id_opt,
+            })
         }
     };
 
@@ -57,7 +78,7 @@ async fn route_graphql(
             &gql_schema,
             &Context {
                 pool: pool.into_inner(),
-                user,
+                user_context,
             },
         );
         Ok::<_, serde_json::error::Error>(serde_json::to_string(&res)?)

@@ -1,4 +1,7 @@
-use crate::{models::User, schema::user_providers};
+use crate::{
+    models::{Factory, User},
+    schema::user_providers,
+};
 use diesel::{
     dsl,
     expression::{bound::Bound, operators},
@@ -44,6 +47,7 @@ impl UserProvider {
 pub struct NewUserProvider<'a> {
     pub sub: &'a str,
     pub provider_name: &'a str,
+    pub user_id: Option<Uuid>,
 }
 
 impl NewUserProvider<'_> {
@@ -55,5 +59,17 @@ impl NewUserProvider<'_> {
         <Self as Insertable<user_providers::table>>::Values,
     > {
         self.insert_into(user_providers::table)
+    }
+}
+
+// This trait is only needed for tests
+impl Factory for NewUserProvider<'_> {
+    type ReturnType = UserProvider;
+
+    fn create(self, conn: &PgConnection) -> UserProvider {
+        self.insert()
+            .returning(user_providers::all_columns)
+            .get_result(conn)
+            .unwrap()
     }
 }

@@ -4,7 +4,8 @@
 use diesel::{associations::HasTable, PgConnection, RunQueryDsl};
 use gdlk_api::{
     models,
-    server::{create_gql_schema, Context, GqlSchema},
+    schema::user_providers,
+    server::{create_gql_schema, Context, GqlSchema, UserContext},
     util::{self, PooledConnection},
 };
 use juniper::{ExecutionError, InputValue, Variables};
@@ -39,7 +40,7 @@ impl QueryRunner {
     pub fn new() -> Self {
         let context = Context {
             pool: Arc::new(util::init_db_conn_pool().unwrap()),
-            user: None,
+            user_context: None,
         };
         Self {
             schema: create_gql_schema(),
@@ -52,10 +53,38 @@ impl QueryRunner {
         self.context.get_db_conn().unwrap()
     }
 
-    /// Modify the query context to set the current user.
-    #[allow(dead_code)]
+    /// Modify the query context to set the current user. Creates a placeholder
+    /// UserProvider to be used for authentication. This should be used for
+    /// most tests that require a user.
+    #[allow(dead_code)] // Not all crates use this
     pub fn set_user(&mut self, user: models::User) {
-        self.context.user = Some(user);
+        // Create a bogus user_provider for this user. We're not trying to test
+        // the OpenID logic here, so this is fine.
+        let user_provider_id = models::NewUserProvider {
+            sub: &user.id.to_string(), // guarantees uniqueness
+            provider_name: "fake_provider",
+            user_id: Some(user.id),
+        }
+        .insert()
+        .returning(user_providers::columns::id)
+        .get_result(&self.db_conn())
+        .unwrap(); // Failure here indicates some unexpected DB/network error
+
+        self.context.user_context = Some(UserContext {
+            user_provider_id,
+            user_id: Some(user.id),
+        });
+    }
+
+    /// Modify the query context to set the current user_provider and user. This
+    /// is useful when testing the auth functionality, but if you just need
+    /// an authenticated user, then you probably want to use [Self::set_user].
+    #[allow(dead_code)] // Not all crates use this
+    pub fn set_user_provider(&mut self, user_provider: models::UserProvider) {
+        self.context.user_context = Some(UserContext {
+            user_provider_id: user_provider.id,
+            user_id: user_provider.user_id,
+        })
     }
 
     pub fn query<'a>(
@@ -93,6 +122,7 @@ impl Drop for QueryRunner {
             models::UserProgram,
             models::ProgramSpec,
             models::HardwareSpec,
+            models::UserProvider,
             models::User,
             // Any new table needs to be added here!
         );

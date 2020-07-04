@@ -38,6 +38,11 @@ type Query {
   ): Node @juniper(ownership: "owned")
 
   """
+  Data related to the currently logged-in user.
+  """
+  authStatus: AuthStatus! @juniper(infallible: true, ownership: "owned")
+
+  """
   Get a single user by their username.
   """
   user(
@@ -151,6 +156,27 @@ type UserNode implements Node {
   the user and others.
   """
   username: String! @juniper(infallible: true)
+}
+
+"""
+A wrapper for data related to the current user's authentication.
+"""
+type AuthStatus {
+  """
+  Is this user currently logged in?
+  """
+  authenticated: Boolean! @juniper(infallible: true, ownership: "owned")
+
+  """
+  Is the user logged in AND have they created a username for themself?
+  """
+  userCreated: Boolean! @juniper(infallible: true, ownership: "owned")
+
+  """
+  The full user object for the authenticated user. This will be populated
+  iff `userCreated` is `true`.
+  """
+  user: UserNode @juniper(ownership: "owned")
 }
 
 # ===== HARDWARE SPEC =====
