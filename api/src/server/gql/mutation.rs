@@ -189,11 +189,11 @@ impl MutationFields for Mutation {
     ) -> ResponseResult<CreateUserProgramPayload> {
         let context = executor.context();
         let conn: &PgConnection = &context.get_db_conn()? as &PgConnection;
-        let user = context.user()?;
+        let user_id = context.user_id()?; // User needs to be logged in
 
         // User a helper type to do the insert
         let new_user_program = models::NewUserProgram {
-            user_id: user.id,
+            user_id,
             program_spec_id: util::gql_id_to_uuid(&input.program_spec_id),
             file_name: &input.file_name,
             // If no source is provided, default to an empty string
@@ -230,7 +230,7 @@ impl MutationFields for Mutation {
         let conn: &PgConnection = &context.get_db_conn()? as &PgConnection;
         // User needs to be logged in to make changes. This also has to be
         // their user_program.
-        let user = context.user()?;
+        let user_id = context.user_id()?;
 
         // User a helper type to do the insert
         let modified_user_program = models::ModifiedUserProgram {
@@ -247,7 +247,7 @@ impl MutationFields for Mutation {
                 .find(modified_user_program.id)
                 // Extra filter to make sure the requesting user is the owner of
                 // the row.
-                .filter(user_programs::columns::user_id.eq(user.id)),
+                .filter(user_programs::columns::user_id.eq(user_id)),
         )
         .set(modified_user_program)
         .returning(user_programs::table::all_columns())
@@ -278,7 +278,7 @@ impl MutationFields for Mutation {
         let conn: &PgConnection = &context.get_db_conn()? as &PgConnection;
         // User needs to be logged in to make changes. This also has to be
         // their user_program.
-        let user = context.user()?;
+        let user_id = context.user_id()?;
 
         // Delete and get the ID back
         let row_id = util::gql_id_to_uuid(&input.user_program_id);
@@ -287,7 +287,7 @@ impl MutationFields for Mutation {
                 .find(row_id)
                 // Extra filter to make sure the requesting user is the owner of
                 // the row.
-                .filter(user_programs::columns::user_id.eq(user.id)),
+                .filter(user_programs::columns::user_id.eq(user_id)),
         )
         .returning(user_programs::columns::id)
         .get_result(conn)

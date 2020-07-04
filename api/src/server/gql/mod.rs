@@ -18,6 +18,7 @@ use failure::Fallible;
 use juniper_from_schema::graphql_schema_from_file;
 use serde::{Serialize, Serializer};
 use std::{convert::TryInto, sync::Arc};
+use uuid::Uuid;
 use validator::{Validate, ValidationError, ValidationErrors};
 
 mod hardware_spec;
@@ -29,9 +30,21 @@ mod user_program;
 
 graphql_schema_from_file!("schema.graphql", error_type: ResponseError);
 
+/// A nested part of context, representing the authenticated user.
+pub struct UserContext {
+    /// The ID of the user_provider that the user used to log in.
+    pub user_provider_id: Uuid,
+    /// The ID of the requesting user. None if they are logged in but have not
+    /// set their username yet.
+    pub user_id: Option<Uuid>,
+}
+
+/// The GraphQL context that gets passed to each field handler.
 pub struct Context {
+    /// DB connection pool
     pub pool: Arc<Pool>,
-    pub user: Option<models::User>,
+    /// The authenticated user. None if the requesting user is not logged in.
+    pub user_context: Option<UserContext>,
 }
 
 impl Context {
@@ -39,10 +52,18 @@ impl Context {
         Ok(self.pool.get()?)
     }
 
-    /// Get the authentiated user. If they're not authenticated, return an
-    /// error.
-    pub fn user(&self) -> Result<&models::User, ResponseError> {
-        self.user.as_ref().ok_or(ResponseError::Unauthenticated)
+    /// Get the ID of the authenticated user. If the user isn't authenticated,
+    /// or they ARE authenticated but haven't finished initializing their user
+    /// yet (to the point where a row in the `users` table has been created),
+    /// then return an error.
+    pub fn user_id(&self) -> Result<Uuid, ResponseError> {
+        match self.user_context {
+            Some(UserContext {
+                user_id: Some(user_id),
+                ..
+            }) => Ok(user_id),
+            _ => Err(ResponseError::Unauthenticated),
+        }
     }
 }
 
@@ -79,6 +100,14 @@ impl QueryFields for Query {
             .get_result::<models::User>(&executor.context().get_db_conn()?)
             .optional()?
             .map(UserNode::from))
+    }
+
+    fn field_auth_status(
+        &self,
+        _executor: &juniper::Executor<'_, Context>,
+        _trail: &QueryTrail<'_, AuthStatus, Walked>,
+    ) -> AuthStatus {
+        AuthStatus()
     }
 
     fn field_hardware_spec(

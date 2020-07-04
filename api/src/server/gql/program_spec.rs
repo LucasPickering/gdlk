@@ -112,10 +112,10 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
     ) -> ResponseResult<Option<UserProgramNode>> {
         let context = executor.context();
         let conn = &context.get_db_conn()? as &PgConnection;
-        let user = context.user()?;
+        let user_id = context.user_id()?;
 
         Ok(models::UserProgram::filter_by_user_and_program_spec(
-            user.id,
+            user_id,
             self.program_spec.id,
         )
         .filter(user_programs::dsl::file_name.eq(&file_name))
@@ -132,9 +132,8 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
         first: Option<i32>,
         after: Option<Cursor>,
     ) -> ResponseResult<UserProgramConnection> {
-        let user = executor.context().user()?;
-
-        UserProgramConnection::new(user.id, self.program_spec.id, first, after)
+        let user_id = executor.context().user_id()?;
+        UserProgramConnection::new(user_id, self.program_spec.id, first, after)
     }
 }
 

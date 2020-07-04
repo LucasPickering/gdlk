@@ -198,12 +198,15 @@ pub async fn route_login(
         None => {
             // user_provider not found (first login) so make the row
             // then init the user
-            let user_provider: UserProvider =
-                NewUserProvider { sub, provider_name }
-                    .insert()
-                    .returning(user_providers::all_columns)
-                    .get_result(conn)
-                    .unwrap();
+            let user_provider: UserProvider = NewUserProvider {
+                sub,
+                provider_name,
+                user_id: None,
+            }
+            .insert()
+            .returning(user_providers::all_columns)
+            .get_result(conn)
+            .unwrap();
 
             // Create a new User object, then set the auth cookie
             init_user(&user_provider, userinfo, conn)?;
