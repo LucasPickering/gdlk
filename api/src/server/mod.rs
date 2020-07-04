@@ -10,7 +10,7 @@ use crate::{
     config::GdlkConfig,
     error::ResponseError,
     schema::user_providers,
-    server::auth::{route_authorize, route_login},
+    server::auth::{logout_route, route_authorize, route_login},
     util::{self, Pool},
 };
 use actix_identity::{CookieIdentityPolicy, Identity, IdentityService};
@@ -117,6 +117,7 @@ pub async fn run_server(config: GdlkConfig, pool: Pool) -> io::Result<()> {
             .service(route_graphql)
             .service(route_graphiql)
             .service(route_login)
+            .service(logout_route)
             .service(route_authorize)
     })
     .bind(&config.server_host)?

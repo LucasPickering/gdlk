@@ -6,7 +6,7 @@ use crate::{
     util::Pool,
 };
 use actix_identity::Identity;
-use actix_web::{get, http, web, HttpResponse};
+use actix_web::{get, http, post, web, HttpResponse};
 use diesel::{
     prelude::RunQueryDsl, ExpressionMethods, OptionalExtension, PgConnection,
     QueryDsl,
@@ -213,4 +213,13 @@ pub async fn route_login(
             Ok(log_in_user(&user_provider, &identity))
         }
     }
+}
+
+#[post("/api/logout")]
+pub async fn logout_route(identity: Identity) -> HttpResponse {
+    identity.forget();
+    // redirect to the homepage
+    HttpResponse::Found()
+        .header(http::header::LOCATION, "/")
+        .finish()
 }
