@@ -1,21 +1,24 @@
 use crate::{
-    error::{DbErrorConverter, ResponseResult},
+    error::{DbErrorConverter, ResponseError, ResponseResult},
     models,
-    schema::{hardware_specs, program_specs, user_programs},
+    schema::{
+        hardware_specs, program_specs, user_programs, user_providers, users,
+    },
     server::gql::{
         Context, CreateHardwareSpecInput, CreateHardwareSpecPayload,
         CreateProgramSpecInput, CreateProgramSpecPayload,
         CreateUserProgramInput, CreateUserProgramPayload,
-        DeleteUserProgramInput, DeleteUserProgramPayload, MutationFields,
-        UpdateHardwareSpecInput, UpdateHardwareSpecPayload,
-        UpdateProgramSpecInput, UpdateProgramSpecPayload,
-        UpdateUserProgramInput, UpdateUserProgramPayload,
+        DeleteUserProgramInput, DeleteUserProgramPayload, InitializeUserInput,
+        InitializeUserPayload, MutationFields, UpdateHardwareSpecInput,
+        UpdateHardwareSpecPayload, UpdateProgramSpecInput,
+        UpdateProgramSpecPayload, UpdateUserProgramInput,
+        UpdateUserProgramPayload, UserContext,
     },
     util,
 };
 use diesel::{
-    ExpressionMethods, OptionalExtension, PgConnection, QueryDsl, RunQueryDsl,
-    Table,
+    Connection, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
+    RunQueryDsl, Table,
 };
 use juniper_from_schema::{QueryTrail, Walked};
 use uuid::Uuid;
@@ -25,6 +28,74 @@ use validator::Validate;
 pub struct Mutation;
 
 impl MutationFields for Mutation {
+    fn field_initialize_user(
+        &self,
+        executor: &juniper::Executor<'_, Context>,
+        _trail: &QueryTrail<'_, InitializeUserPayload, Walked>,
+        input: InitializeUserInput,
+    ) -> ResponseResult<InitializeUserPayload> {
+        let context = executor.context();
+
+        // The user should be logged in, but not had a User object created yet
+        match context.user_context {
+            Some(UserContext {
+                user_provider_id, ..
+            }) => {
+                let conn = &context.get_db_conn()?;
+                let new_user = models::NewUser {
+                    username: &input.username,
+                };
+                new_user.validate()?;
+
+                // We need to insert the new user row, then update the
+                // user_provider to point at that row. We need a transaction to
+                // prevent race conditions.
+                let created_user = conn
+                    .transaction::<models::User, ResponseError, _>(|| {
+                        let create_user_result: Result<models::User, _> =
+                            new_user
+                                .insert()
+                                .returning(users::all_columns)
+                                .get_result(conn);
+
+                        // Check if the username already exists
+                        let created_user = DbErrorConverter {
+                            unique_violation_to_exists: true,
+                            ..Default::default()
+                        }
+                        .convert(create_user_result)?;
+
+                        // We should update exactly 1 row. If not, then either
+                        // the referenced user_provider row is already linked to
+                        // a user, or it doesn't exist. In either case, just
+                        // return a NotFound error.
+                        let updated_rows = diesel::update(
+                            user_providers::table
+                                .find(user_provider_id)
+                                .filter(
+                                    user_providers::columns::user_id.is_null(),
+                                ),
+                        )
+                        .set(
+                            user_providers::columns::user_id
+                                .eq(Some(created_user.id)),
+                        )
+                        .execute(conn)?;
+
+                        if updated_rows == 0 {
+                            Err(ResponseError::NotFound)
+                        } else {
+                            Ok(created_user)
+                        }
+                    })?;
+
+                Ok(InitializeUserPayload { user: created_user })
+            }
+            // Get up on outta here
+            None => Err(ResponseError::Unauthenticated),
+        }
+    }
+
     fn field_create_hardware_spec(
         &self,
         executor: &juniper::Executor<'_, Context>,

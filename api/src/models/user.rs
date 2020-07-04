@@ -4,6 +4,7 @@ use diesel::{
     sql_types::Text, Identifiable, Queryable,
 };
 use uuid::Uuid;
+use validator::Validate;
 
 /// Expression to filter users by username
 pub type WithUsername<'a> =
@@ -30,9 +31,10 @@ impl User {
     }
 }
 
-#[derive(Debug, Default, PartialEq, Insertable)]
+#[derive(Debug, Default, PartialEq, Insertable, Validate)]
 #[table_name = "users"]
 pub struct NewUser<'a> {
+    #[validate(length(min = 1))]
     pub username: &'a str,
 }
 

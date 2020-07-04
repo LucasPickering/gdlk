@@ -3,7 +3,9 @@ use crate::{
     models,
     schema::users,
     server::gql::{
-        internal::NodeType, AuthStatusFields, Context, UserNodeFields,
+        internal::{GenericEdge, NodeType},
+        AuthStatusFields, Context, Cursor, InitializeUserPayloadFields,
+        UserEdgeFields, UserNodeFields,
     },
     util,
 };
@@ -41,6 +43,25 @@ impl UserNodeFields for UserNode {
         _executor: &juniper::Executor<'_, Context>,
     ) -> &String {
         &self.user.username
+    }
+}
+
+pub type UserEdge = GenericEdge<UserNode>;
+
+impl UserEdgeFields for UserEdge {
+    fn field_node(
+        &self,
+        _executor: &juniper::Executor<'_, Context>,
+        _trail: &QueryTrail<'_, UserNode, Walked>,
+    ) -> &UserNode {
+        self.node()
+    }
+
+    fn field_cursor(
+        &self,
+        _executor: &juniper::Executor<'_, Context>,
+    ) -> &Cursor {
+        self.cursor()
     }
 }
 
@@ -82,5 +103,19 @@ impl AuthStatusFields for AuthStatus {
             // This shouldn't be possible
             Err(err) => Err(err),
         }
+    }
+}
+
+pub struct InitializeUserPayload {
+    pub user: models::User,
+}
+
+impl InitializeUserPayloadFields for InitializeUserPayload {
+    fn field_user_edge(
+        &self,
+        _executor: &juniper::Executor<'_, Context>,
+        _trail: &QueryTrail<'_, UserEdge, Walked>,
+    ) -> UserEdge {
+        GenericEdge::from_db_row(self.user.clone(), 0)
     }
 }

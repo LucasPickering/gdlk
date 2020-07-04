@@ -8,7 +8,7 @@ use utils::QueryRunner;
 
 mod utils;
 
-const QUERY: &str = r#"
+static QUERY: &str = r#"
 query AuthStatusQuery {
     authStatus {
         authenticated

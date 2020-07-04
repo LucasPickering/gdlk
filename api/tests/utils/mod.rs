@@ -119,10 +119,10 @@ impl Drop for QueryRunner {
         let conn = self.context.get_db_conn().unwrap();
         delete_tables!(
             &conn,
+            models::UserProvider,
             models::UserProgram,
             models::ProgramSpec,
             models::HardwareSpec,
-            models::UserProvider,
             models::User,
             // Any new table needs to be added here!
         );
