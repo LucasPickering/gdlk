@@ -81,6 +81,14 @@ const Navigation: React.FC<{
                     {label}
                   </DrawerLink>
                 ))}
+                <Button
+                  color="primary"
+                  onClick={async () => {
+                    await fetch('/api/logout');
+                  }}
+                >
+                  Logout
+                </Button>
               </List>
             </SwipeableDrawer>
             <IconButton
@@ -115,6 +123,14 @@ const Navigation: React.FC<{
               {label}
             </HeaderLink>
           ))}
+        <Button
+          color="primary"
+          onClick={async () => {
+            await fetch('/api/logout', { method: 'POST' });
+          }}
+        >
+          Logout
+        </Button>
 
         <div className={localClasses.grow} />
       </Toolbar>

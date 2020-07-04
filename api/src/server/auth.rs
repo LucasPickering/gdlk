@@ -218,8 +218,5 @@ pub async fn route_login(
 #[post("/api/logout")]
 pub async fn logout_route(identity: Identity) -> HttpResponse {
     identity.forget();
-    // redirect to the homepage
-    HttpResponse::Found()
-        .header(http::header::LOCATION, "/")
-        .finish()
+    HttpResponse::Ok().finish()
 }
