@@ -159,6 +159,20 @@ type UserNode implements Node {
 }
 
 """
+Edge for UserNode.
+"""
+type UserEdge implements Edge {
+  """
+  The related node.
+  """
+  node: UserNode! @juniper(infallible: true)
+  """
+  Identifier for this edge.
+  """
+  cursor: Cursor! @juniper(infallible: true)
+}
+
+"""
 A wrapper for data related to the current user's authentication.
 """
 type AuthStatus {
@@ -474,6 +488,17 @@ The root mutation. Some general notes about mutations:
 """
 type Mutation {
   """
+  Perform first-time setup for a user. This needs to be run after first log in
+  for a user. This can only be run once (subsequent calls will return an error).
+  """
+  initializeUser(
+    """
+    All input fields
+    """
+    input: InitializeUserInput!
+  ): InitializeUserPayload! @juniper(ownership: "owned")
+
+  """
   Create a new hardware spec. An error is returned if the given name is
   already taken, or if the slug derived from that name is already taken.
   """
@@ -548,6 +573,26 @@ type Mutation {
     """
     input: DeleteUserProgramInput!
   ): DeleteUserProgramPayload! @juniper(ownership: "owned")
+}
+
+"""
+Input to the `initializeUser` mutation.
+"""
+input InitializeUserInput {
+  """
+  New username to set. Must be non-empty and globally unique.
+  """
+  username: String!
+}
+
+"""
+Output from the `initializeUser` mutation.
+"""
+type InitializeUserPayload {
+  """
+  The initialized user.
+  """
+  userEdge: UserEdge! @juniper(infallible: true, ownership: "owned")
 }
 
 """

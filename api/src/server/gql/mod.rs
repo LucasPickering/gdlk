@@ -31,6 +31,7 @@ mod user_program;
 graphql_schema_from_file!("schema.graphql", error_type: ResponseError);
 
 /// A nested part of context, representing the authenticated user.
+#[derive(Copy, Clone, Debug)]
 pub struct UserContext {
     /// The ID of the user_provider that the user used to log in.
     pub user_provider_id: Uuid,

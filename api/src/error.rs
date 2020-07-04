@@ -224,7 +224,7 @@ impl DbErrorConverter {
             Err(diesel::result::Error::QueryBuilderError(msg))
                 if self.query_builder_to_no_update
                 // Currently this is the only way a QueryBuilderError can occur,
-                // but diesel could change that so keep this error to be safe
+                // but diesel could change that so keep this check to be safe
                     && msg.to_string().contains("no changes to save") =>
             {
                 Err(ResponseError::NoUpdate)
