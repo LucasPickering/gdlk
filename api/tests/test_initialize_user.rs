@@ -149,7 +149,29 @@ fn test_initialize_user_invalid_username() {
                 "path": ["initializeUser"],
                 "extensions": {
                     "username": [
-                        {"min": "1", "value": "\"\""},
+                        {"min": "1", "value": "\"\"", "max": "20"},
+                    ]
+                },
+            })]
+        )
+    );
+    assert_eq!(
+        runner.query(
+            QUERY,
+            hashmap! {
+                // Length limit is 20 chars
+                "username" => InputValue::scalar("012345678901234567890"),
+            }
+        ),
+        (
+            serde_json::Value::Null,
+            vec![json!({
+                "message": "Input validation error(s)",
+                "locations": [{"line": 5, "column": 9}],
+                "path": ["initializeUser"],
+                "extensions": {
+                    "username": [
+                        {"min": "1", "value": "\"012345678901234567890\"", "max": "20"},
                     ]
                 },
             })]

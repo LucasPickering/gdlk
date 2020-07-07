@@ -34,7 +34,7 @@ impl User {
 #[derive(Debug, Default, PartialEq, Insertable, Validate)]
 #[table_name = "users"]
 pub struct NewUser<'a> {
-    #[validate(length(min = 1))]
+    #[validate(length(min = 1, max = 20))]
     pub username: &'a str,
 }
 
