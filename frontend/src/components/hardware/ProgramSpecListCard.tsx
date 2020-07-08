@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import {
   createPaginationContainer,
   RelayPaginationProp,
@@ -31,6 +31,7 @@ import {
 import { useRouteMatch } from 'react-router-dom';
 import Link from 'components/common/Link';
 import { ProgramSpecListCard_programSpec } from './__generated__/ProgramSpecListCard_programSpec.graphql';
+import { UserContext } from 'state/user';
 
 const useLocalStyles = makeStyles(({ spacing }) => ({
   programSpecRow: {
@@ -72,9 +73,11 @@ const ProgramSpecListRow = createFragmentContainer(
             </Link>
           </TableCell>
 
-          <TableCell align="right">
-            {programSpec.userPrograms.totalCount}
-          </TableCell>
+          {programSpec.userPrograms && (
+            <TableCell align="right">
+              {programSpec.userPrograms.totalCount}
+            </TableCell>
+          )}
         </TableRow>
         <TableRow>
           <TableCell className={localClasses.programSpecRowExtra} colSpan={3}>
@@ -92,7 +95,7 @@ const ProgramSpecListRow = createFragmentContainer(
     programSpec: graphql`
       fragment ProgramSpecListCard_programSpec on ProgramSpecNode {
         slug
-        userPrograms {
+        userPrograms @include(if: $loggedIn) {
           totalCount
         }
       }
@@ -104,6 +107,7 @@ const ProgramSpecListCard: React.FC<{
   hardwareSpec: ProgramSpecListCard_hardwareSpec;
   relay: RelayPaginationProp;
 }> = ({ hardwareSpec, relay: { hasMore, loadMore } }) => {
+  const { loggedIn } = useContext(UserContext);
   return (
     <Card>
       <CardHeader title={<Typography variant="h2">Puzzles</Typography>} />
@@ -114,7 +118,7 @@ const ProgramSpecListCard: React.FC<{
               <TableRow>
                 <TableCell />
                 <TableCell>Puzzle</TableCell>
-                <TableCell align="right">Solutions</TableCell>
+                {loggedIn && <TableCell align="right">Solutions</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -172,6 +176,7 @@ export default createPaginationContainer(
     },
     query: graphql`
       query ProgramSpecListCardPaginationQuery(
+        $loggedIn: Boolean!
         $hwSlug: String!
         $count: Int
         $cursor: Cursor

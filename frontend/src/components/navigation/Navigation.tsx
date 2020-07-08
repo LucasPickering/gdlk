@@ -16,6 +16,7 @@ import HeaderLink from './HeaderLink';
 import DrawerLink from './DrawerLink';
 import useScreenSize from 'hooks/useScreenSize';
 import UnstyledLink from 'components/common/UnstyledLink';
+import LoginMenu from 'components/user/LoginMenu';
 
 const LINKS = [
   {
@@ -24,11 +25,6 @@ const LINKS = [
     exact: true,
   },
   { to: '/docs', label: 'Docs' },
-  {
-    to: '/login',
-    label: 'Login',
-    exact: true,
-  },
 ];
 
 const useLocalStyles = makeStyles(({ spacing }) => ({
@@ -81,14 +77,6 @@ const Navigation: React.FC<{
                     {label}
                   </DrawerLink>
                 ))}
-                <Button
-                  color="primary"
-                  onClick={async () => {
-                    await fetch('/api/logout');
-                  }}
-                >
-                  Logout
-                </Button>
               </List>
             </SwipeableDrawer>
             <IconButton
@@ -123,16 +111,10 @@ const Navigation: React.FC<{
               {label}
             </HeaderLink>
           ))}
-        <Button
-          color="primary"
-          onClick={async () => {
-            await fetch('/api/logout', { method: 'POST' });
-          }}
-        >
-          Logout
-        </Button>
 
         <div className={localClasses.grow} />
+
+        <LoginMenu />
       </Toolbar>
     </AppBar>
   );

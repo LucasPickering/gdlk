@@ -13,12 +13,27 @@ use diesel::{
 };
 use openid::{Client, DiscoveredClient, Options, Token, Userinfo};
 use reqwest::Url;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Map of provider name to configured [Client]
 pub struct ClientMap {
     pub map: HashMap<String, Client>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct RedirectQuery {
+    next: Option<String>,
+}
+
+/// Contents of the `state` query param that gets passed through the OpenID
+/// login. These will be (de)serialized through JSON.
+/// https://auth0.com/docs/protocols/oauth2/oauth-state
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AuthState<'a> {
+    /// The next param determines what page to redirect the user to after login
+    next: Option<&'a str>,
+    // TODO add secure token here
 }
 
 impl ClientMap {
@@ -70,13 +85,18 @@ pub async fn build_client_map(open_id_config: &OpenIdConfig) -> ClientMap {
 pub async fn route_authorize(
     client_map: web::Data<ClientMap>,
     params: web::Path<(String,)>,
+    query: web::Query<RedirectQuery>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    // TODO: handle bad name
-    let provider_name = params.0.to_string();
-    let oidc_client = client_map.get_client(&provider_name)?;
+    let provider_name: &str = &params.0;
+    let oidc_client = client_map.get_client(provider_name)?;
+    let state = AuthState {
+        next: query.next.as_deref(),
+    };
 
     let auth_url = oidc_client.auth_url(&Options {
         scope: Some("email".into()),
+        // Serialization shouldn't ever fail so yeet that shit outta the Result
+        state: Some(serde_json::to_string(&state).unwrap()),
         ..Default::default()
     });
 
@@ -88,6 +108,7 @@ pub async fn route_authorize(
 #[derive(Deserialize, Debug)]
 pub struct LoginQuery {
     code: String,
+    state: Option<String>,
 }
 
 /// Exchanges the access token from the initial login in the openid provider
@@ -146,6 +167,7 @@ fn init_user(
 fn log_in_user(
     user_provider: &UserProvider,
     identity: &Identity,
+    redirect: Option<&str>,
 ) -> HttpResponse {
     // Adds a cookie which can be used to auth requests. We use the UserProvider
     // ID so that this works even if the User object hasn't been created yet.
@@ -154,7 +176,7 @@ fn log_in_user(
     // TODO: add redirect path to state param so we don't always
     // redirect to the homepage
     HttpResponse::Found()
-        .header(http::header::LOCATION, "/")
+        .header(http::header::LOCATION, redirect.unwrap_or("/"))
         .finish()
 }
 
@@ -171,6 +193,14 @@ pub async fn route_login(
     let oidc_client = client_map.get_client(provider_name)?;
     let conn = &pool.get().map_err(ResponseError::from)? as &PgConnection;
 
+    // Parse the state param
+    // TODO check for a security token here
+    let state: Option<AuthState> = match &query.state {
+        None => None,
+        Some(state_str) => Some(serde_json::from_str(state_str)?),
+    };
+    let redirect_dest = state.map(|st| st.next).flatten();
+
     // Send the user's code to the server to authenticate it
     let (_, userinfo) = request_token(oidc_client, &query.code).await?;
 
@@ -185,14 +215,14 @@ pub async fn route_login(
         Some(user_provider) => match user_provider.user_id {
             Some(_) => {
                 // User already exists so normal login
-                Ok(log_in_user(&user_provider, &identity))
+                Ok(log_in_user(&user_provider, &identity, redirect_dest))
             }
             None => {
                 // no user account associated with this user_provider
                 // yet so make one (they have logged in but did not set
                 // username)
                 init_user(&user_provider, userinfo, conn)?;
-                Ok(log_in_user(&user_provider, &identity))
+                Ok(log_in_user(&user_provider, &identity, redirect_dest))
             }
         },
         None => {
@@ -210,7 +240,7 @@ pub async fn route_login(
 
             // Create a new User object, then set the auth cookie
             init_user(&user_provider, userinfo, conn)?;
-            Ok(log_in_user(&user_provider, &identity))
+            Ok(log_in_user(&user_provider, &identity, redirect_dest))
         }
     }
 }

@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import graphql from 'babel-plugin-relay/macro';
 import { ProgramSpecViewQuery } from './__generated__/ProgramSpecViewQuery.graphql';
 import { useParams } from 'react-router-dom';
 import ProgramSpecDetails from './ProgramSpecDetails';
 import QueryResult from 'components/common/QueryResult';
 import NotFoundPage from 'components/NotFoundPage';
+import { UserContext } from 'state/user';
 
 interface RouteParams {
   hwSlug: string;
@@ -13,11 +14,16 @@ interface RouteParams {
 
 const ProgramSpecView: React.FC = () => {
   const { hwSlug, programSlug } = useParams<RouteParams>();
+  const { loggedIn } = useContext(UserContext);
 
   return (
     <QueryResult<ProgramSpecViewQuery>
       query={graphql`
-        query ProgramSpecViewQuery($hwSlug: String!, $programSlug: String!) {
+        query ProgramSpecViewQuery(
+          $loggedIn: Boolean!
+          $hwSlug: String!
+          $programSlug: String!
+        ) {
           hardwareSpec(slug: $hwSlug) {
             slug
             numRegisters
@@ -29,7 +35,7 @@ const ProgramSpecView: React.FC = () => {
           }
         }
       `}
-      variables={{ hwSlug, programSlug }}
+      variables={{ hwSlug, programSlug, loggedIn }}
       render={({ props }) => {
         if (props?.hardwareSpec?.programSpec) {
           return (

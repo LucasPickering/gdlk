@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { RelayProp, createFragmentContainer } from 'react-relay';
 import graphql from 'babel-plugin-relay/macro';
 import { ProgramSpecDetails_programSpec } from './__generated__/ProgramSpecDetails_programSpec.graphql';
@@ -13,6 +13,7 @@ import UserProgramsCard from '../userPrograms/UserProgramsCard';
 import HardwareSpecSummary from 'components/hardware/HardwareSpecSummary';
 import SimpleTable from 'components/common/SimpleTable';
 import Link from 'components/common/Link';
+import { UserContext } from 'state/user';
 
 const useLocalStyles = makeStyles(({ spacing }) => ({
   specSection: {
@@ -36,6 +37,8 @@ const ProgramSpecDetails: React.FC<{
   relay: RelayProp;
 }> = ({ programSpec }) => {
   const localClasses = useLocalStyles();
+  const { loggedIn } = useContext(UserContext);
+
   return (
     <Grid container>
       <Grid item xs={12}>
@@ -73,9 +76,11 @@ const ProgramSpecDetails: React.FC<{
         </Card>
       </Grid>
 
-      <Grid item sm={6} xs={12}>
-        <UserProgramsCard programSpec={programSpec} />
-      </Grid>
+      {loggedIn && (
+        <Grid item sm={6} xs={12}>
+          <UserProgramsCard programSpec={programSpec} />
+        </Grid>
+      )}
     </Grid>
   );
 };
@@ -91,7 +96,8 @@ export default createFragmentContainer(ProgramSpecDetails, {
         slug
         ...HardwareSpecSummary_hardwareSpec
       }
-      ...UserProgramsCard_programSpec
+      # Requesting user programs while not logged in causes an error
+      ...UserProgramsCard_programSpec @include(if: $loggedIn)
     }
   `,
 });
