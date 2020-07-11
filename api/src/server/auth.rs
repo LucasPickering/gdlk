@@ -1,20 +1,21 @@
 use crate::{
     config::{OpenIdConfig, ProviderConfig},
     error::ResponseError,
-    models::{NewUser, NewUserProvider, User, UserProvider},
-    schema::{user_providers, users},
+    models::NewUserProvider,
+    schema::user_providers,
     util::Pool,
 };
 use actix_identity::Identity;
 use actix_web::{get, http, post, web, HttpResponse};
 use diesel::{
-    prelude::RunQueryDsl, ExpressionMethods, OptionalExtension, PgConnection,
-    QueryDsl,
+    Connection, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
+    RunQueryDsl,
 };
 use openid::{Client, DiscoveredClient, Options, Token, Userinfo};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use uuid::Uuid;
 
 /// Map of provider name to configured [Client]
 pub struct ClientMap {
@@ -132,55 +133,6 @@ async fn request_token(
     }
 }
 
-/// Called when a [User] does not yet exist for the [UserProvider].
-/// Will redirect to a page to set their username to make the [User].
-#[allow(unused)]
-fn init_user(
-    user_provider: &UserProvider,
-    userinfo: Userinfo,
-    conn: &PgConnection,
-) -> Result<(), ResponseError> {
-    // Insert the user into the DB
-    let user: User = NewUser {
-        // TODO: for now this will set username automatically but
-        // we will need to redirect them to set it before making the
-        // user
-        username: &userinfo.email.unwrap()[..20],
-    }
-    .insert()
-    .returning(users::all_columns)
-    .get_result(conn)
-    .map_err(ResponseError::from)?;
-
-    // update provider with the user id
-    diesel::update(
-        user_providers::table
-            .filter(user_providers::dsl::id.eq(user_provider.id)),
-    )
-    .set(user_providers::columns::user_id.eq(user.id))
-    .execute(conn)
-    .map_err(ResponseError::from)?;
-
-    Ok(())
-}
-
-/// Logs the [User] in by setting a cookie based on the [UserProvider] id.
-fn log_in_user(
-    user_provider: &UserProvider,
-    identity: &Identity,
-    redirect: Option<&str>,
-) -> HttpResponse {
-    // Adds a cookie which can be used to auth requests. We use the UserProvider
-    // ID so that this works even if the User object hasn't been created yet.
-    identity.remember(user_provider.id.to_string());
-
-    // TODO: add redirect path to state param so we don't always
-    // redirect to the homepage
-    HttpResponse::Found()
-        .header(http::header::LOCATION, redirect.unwrap_or("/"))
-        .finish()
-}
-
 /// Provider redirects back to this route after the login
 #[get("/api/oidc/{provider_name}/callback")]
 pub async fn route_login(
@@ -200,50 +152,63 @@ pub async fn route_login(
         None => None,
         Some(state_str) => Some(serde_json::from_str(state_str)?),
     };
-    let redirect_dest = state.map(|st| st.next).flatten();
+    // This is where we'll redirect the user back to after login
+    let redirect_dest = match state {
+        Some(AuthState {
+            next: Some(next), ..
+        }) => next,
+        // Default to home page
+        _ => "/",
+    };
 
     // Send the user's code to the server to authenticate it
     let (_, userinfo) = request_token(oidc_client, &query.code).await?;
 
     // Not sure when this can be None, hopefully never??
     let sub: &str = userinfo.sub.as_ref().unwrap();
-    let existing_user_provider =
-        UserProvider::filter_by_sub_and_provider(sub, &provider_name)
-            .get_result::<UserProvider>(conn)
-            .optional()
-            .map_err(ResponseError::from)?;
-    match existing_user_provider {
-        Some(user_provider) => match user_provider.user_id {
-            Some(_) => {
-                // User already exists so normal login
-                Ok(log_in_user(&user_provider, &identity, redirect_dest))
-            }
-            None => {
-                // no user account associated with this user_provider
-                // yet so make one (they have logged in but did not set
-                // username)
-                // init_user(&user_provider, userinfo, conn)?;
-                Ok(log_in_user(&user_provider, &identity, redirect_dest))
-            }
-        },
-        None => {
-            // user_provider not found (first login) so make the row
-            // then init the user
-            let user_provider: UserProvider = NewUserProvider {
+
+    // Insert the sub+provider, or just return the existing one if it's already
+    // in the DB. We need to do this in a transaction to prevent race conditions
+    // if the provider gets deleted in another thread.
+    let user_provider_id: Uuid =
+        conn.transaction::<Uuid, ResponseError, _>(|| {
+            // Insert, if the row already exists, just return None
+            let inserted = NewUserProvider {
                 sub,
                 provider_name,
                 user_id: None,
             }
             .insert()
-            .returning(user_providers::all_columns)
+            .on_conflict_do_nothing()
+            .returning(user_providers::columns::id)
             .get_result(conn)
-            .unwrap();
+            .optional()
+            .map_err(ResponseError::from)?;
 
-            // Create a new User object, then set the auth cookie
-            // init_user(&user_provider, userinfo, conn)?;
-            Ok(log_in_user(&user_provider, &identity, redirect_dest))
-        }
-    }
+            match inserted {
+                // Insert didn't return anything, which means the row is already
+                // in the DB. Just select that row.
+                None => user_providers::table
+                    .select(user_providers::columns::id)
+                    .filter(user_providers::columns::sub.eq(sub))
+                    .filter(
+                        user_providers::columns::provider_name
+                            .eq(provider_name),
+                    )
+                    .get_result(conn)
+                    .map_err(ResponseError::from),
+                Some(inserted_id) => Ok(inserted_id),
+            }
+        })?;
+
+    // Add a cookie which can be used to auth requests. We use the UserProvider
+    // ID so that this works even if the User object hasn't been created yet.
+    identity.remember(user_provider_id.to_string());
+
+    // Redirect to the path specified in the OpenID state param
+    Ok(HttpResponse::Found()
+        .header(http::header::LOCATION, redirect_dest)
+        .finish())
 }
 
 #[post("/api/logout")]
