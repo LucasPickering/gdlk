@@ -1,4 +1,5 @@
 import React from 'react';
+import { noop } from 'lodash-es';
 
 export interface User {
   id: string;
@@ -23,6 +24,11 @@ export interface UserContextType {
    * The logged-in and initialized user.
    */
   user: User | undefined;
+
+  /**
+   * Trigger a re-fetch of this data from the API
+   */
+  refetch: () => void;
 }
 
 export const UserContext = React.createContext<UserContextType>(
@@ -33,4 +39,5 @@ export const defaultUserContext = {
   loggedInUnsafe: false,
   loggedIn: false,
   user: undefined,
+  refetch: noop,
 };

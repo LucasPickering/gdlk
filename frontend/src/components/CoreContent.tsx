@@ -10,6 +10,7 @@ import DocsPage from 'components/docs/DocsPage';
 import { UserContext, UserContextType, defaultUserContext } from 'state/user';
 import { useQuery } from 'relay-hooks';
 import { CoreContentQuery } from './__generated__/CoreContentQuery.graphql';
+import InitializeUserDialog from './user/InitializeUserDialog';
 
 const ProgramIdeView = React.lazy(() => import('./ide/ProgramIdeView'));
 
@@ -32,17 +33,24 @@ const ROOT_QUERY = graphql`
  */
 const CoreContent: React.FC = () => {
   // Query for global data, like auth status
-  const { props } = useQuery<CoreContentQuery>(ROOT_QUERY);
+  const { props, retry } = useQuery<CoreContentQuery>(ROOT_QUERY);
   const userContext: UserContextType = props
     ? {
         loggedInUnsafe: props.authStatus.authenticated,
         loggedIn: props.authStatus.userCreated,
         user: props.authStatus.user ?? undefined,
+        refetch: retry,
       }
     : defaultUserContext;
 
   return (
     <UserContext.Provider value={userContext}>
+      {/* If the user is logged in but hasn't finished setup, show the setup
+          modal */}
+      {userContext.loggedInUnsafe && !userContext.loggedIn && (
+        <InitializeUserDialog />
+      )}
+
       <Switch>
         {/* Full screen routes first */}
         <Route path="/hardware/:hwSlug/puzzles/:programSlug/:fileName" exact>
