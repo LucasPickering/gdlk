@@ -1,6 +1,12 @@
 import React, { useContext, useState, useRef } from 'react';
 import { UserContext } from 'state/user';
-import { Button, Menu, MenuItem, IconButton } from '@material-ui/core';
+import {
+  Button,
+  Menu,
+  MenuItem,
+  IconButton,
+  ListSubheader,
+} from '@material-ui/core';
 import { AccountCircle as IconAccountCircle } from '@material-ui/icons';
 import UnstyledLink from 'components/common/UnstyledLink';
 import { useLocation } from 'react-router-dom';
@@ -13,7 +19,7 @@ import queryString from 'query-string';
 const LoginMenu: React.FC = () => {
   // We want unsafe here because we should show the logout button even if the
   // user hasn't finished setup
-  const { loggedInUnsafe } = useContext(UserContext);
+  const { loggedInUnsafe, user } = useContext(UserContext);
   const { pathname } = useLocation();
   const [open, setOpen] = useState<boolean>(false);
   const anchorEl = useRef<HTMLDivElement>(null);
@@ -44,6 +50,12 @@ const LoginMenu: React.FC = () => {
               vertical: 'top',
               horizontal: 'right',
             }}
+            // Show username when available
+            MenuListProps={
+              user && {
+                subheader: <ListSubheader>{user.username}</ListSubheader>,
+              }
+            }
             open={open}
             onClose={() => setOpen(false)}
           >

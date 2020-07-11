@@ -134,6 +134,7 @@ async fn request_token(
 
 /// Called when a [User] does not yet exist for the [UserProvider].
 /// Will redirect to a page to set their username to make the [User].
+#[allow(unused)]
 fn init_user(
     user_provider: &UserProvider,
     userinfo: Userinfo,
@@ -221,7 +222,7 @@ pub async fn route_login(
                 // no user account associated with this user_provider
                 // yet so make one (they have logged in but did not set
                 // username)
-                init_user(&user_provider, userinfo, conn)?;
+                // init_user(&user_provider, userinfo, conn)?;
                 Ok(log_in_user(&user_provider, &identity, redirect_dest))
             }
         },
@@ -239,7 +240,7 @@ pub async fn route_login(
             .unwrap();
 
             // Create a new User object, then set the auth cookie
-            init_user(&user_provider, userinfo, conn)?;
+            // init_user(&user_provider, userinfo, conn)?;
             Ok(log_in_user(&user_provider, &identity, redirect_dest))
         }
     }
