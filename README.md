@@ -45,18 +45,10 @@ cargo run -p gdlk_cli -- run --hardware hw.json --program prog.json -s prog.gdlk
 
 ### Running the Web Stack
 
-Unfortunately, until [this GitHub bug](https://github.community/t5/GitHub-Actions/docker-pull-from-public-GitHub-Package-Registry-fail-with-quot/td-p/32782/page/2) is fixed, you'll have to login in to the GitHub docker registry in order to pull the images. [Go here to create a new token](https://github.com/settings/tokens), and give it these permissions:
-
-- `write:packages`
-- `read:packages`
-- `delete:packages`
-
-Then, in the repo root, run:
+In the repo root, run:
 
 ```sh
-cd api && cargo make secrets # Only needed on first execution
-cd ..
-docker login docker.pkg.github.com
+cd api && cargo make secrets && cd.. # Only needed on first execution
 # Enter your username and the new token as your password
 docker-compose up
 ```
@@ -115,3 +107,20 @@ We use nightly Rust. Here's a list of reasons why. If this list every gets empty
   - [wrap_comments](https://github.com/rust-lang/rustfmt/issues/3347)
 
 [Here's a helpful site for finding new nightly versions](https://rust-lang.github.io/rustup-components-history/).
+
+## Deployment
+
+This project is deployed through [Keskne](https://github.com/lucaspickering/keskne). Two different production images are built automatically on each merge to master: one for the API, and one for static assets. Then those get deployed.
+
+### API Environment Variables
+
+There are a few environment variables that need to be set in production:
+
+```
+DATABASE_URL
+GDLK_SERVER_HOST
+GDLK_SECRET_KEY
+GDLK_OPEN_ID__HOST_URL
+GDLK_OPEN_ID__PROVIDERS__GOOGLE__CLIENT_ID
+GDLK_OPEN_ID__PROVIDERS__GOOGLE__CLIENT_SECRET
+```

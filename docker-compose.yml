@@ -20,7 +20,7 @@ services:
       - "5432:5432"
 
   api:
-    image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-api:${DOCKER_TAG}
+    image: gcr.io/gdlkit/gdlk-api:${DOCKER_TAG}
     command: cargo make -p docker start
     tty: true # Colorize output
     volumes:
@@ -35,7 +35,7 @@ services:
       - "8000:8000"
 
   frontend:
-    image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-frontend:${DOCKER_TAG}
+    image: gcr.io/gdlkit/gdlk-frontend:${DOCKER_TAG}
     command: ./docker/run_frontend.sh
     init: true # Needed to kill the relay compiler background process
     tty: true # Colorize output

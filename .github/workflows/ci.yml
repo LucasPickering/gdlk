@@ -1,4 +1,4 @@
-name: Linting and Tests
+name: Lint, Test, and Build
 
 on:
   push:
@@ -91,25 +91,23 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
-      - name: Docker login
-        run: docker login -u lucaspickering -p ${{ secrets.GITHUB_TOKEN }} docker.pkg.github.com
       - name: Build API image
         run: |-
           docker-compose pull api
           docker-compose build api
       - name: Test API
-        run: docker-compose run api ./docker/run_tests.sh
+        run: docker-compose run api cargo make -p docker test
       - name: Push API image
         if: github.ref == 'refs/heads/master'
-        run: docker-compose push api
+        run: |-
+          docker login -u _json_key -p '${{ secrets.GCR_SECRET_KEY }}' gcr.io
+          docker-compose push api
 
   test-frontend:
     name: "[FE] Test"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - name: Docker login
-        run: docker login -u lucaspickering -p ${{ secrets.GITHUB_TOKEN }} docker.pkg.github.com
       - name: Build Frontend image
         run: |-
           docker-compose pull frontend
@@ -118,4 +116,41 @@ jobs:
         run: docker-compose run frontend ./docker/run_tests.sh
       - name: Push Frontend image
         if: github.ref == 'refs/heads/master'
-        run: docker-compose push frontend
+        run: |-
+          docker login -u _json_key -p '${{ secrets.GCR_SECRET_KEY }}' gcr.io
+          docker-compose push frontend
+
+  build-api-prd:
+    name: "[API] Build production image"
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    needs:
+      - lint
+      - test-core
+      - test-api
+    steps:
+      - uses: actions/checkout@master
+      - name: Build & push image
+        run: |
+          docker login -u _json_key -p '${{ secrets.GCR_SECRET_KEY }}' gcr.io
+          docker-compose pull api api-prd
+          docker-compose build api-prd
+          docker-compose push api-prd
+
+  build-frontend-prd:
+    name: "[FE] Build production image"
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    needs:
+      - lint
+      - test-core
+      - test-wasm
+      - test-frontend
+    steps:
+      - uses: actions/checkout@master
+      - name: Build & push image
+        run: |
+          docker-compose pull frontend frontend-prd
+          docker-compose build frontend-prd
+          docker login -u _json_key -p '${{ secrets.GCR_SECRET_KEY }}' gcr.io
+          docker-compose push frontend-prd
