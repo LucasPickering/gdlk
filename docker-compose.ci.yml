@@ -12,8 +12,8 @@ services:
       context: .
       dockerfile: ./api/Dockerfile
       cache_from:
-        - docker.pkg.github.com/lucaspickering/gdlk/gdlk-api:${DOCKER_TAG}
-    image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-api:${DOCKER_TAG}
+        - gcr.io/gdlkit/gdlk-api:${DOCKER_TAG}
+    image: gcr.io/gdlkit/gdlk-api:${DOCKER_TAG}
     volumes:
       - ./:/app:rw
     depends_on:
@@ -27,7 +27,23 @@ services:
       context: .
       dockerfile: ./frontend/Dockerfile
       cache_from:
-        - docker.pkg.github.com/lucaspickering/gdlk/gdlk-frontend:${DOCKER_TAG}
-    image: docker.pkg.github.com/lucaspickering/gdlk/gdlk-frontend:${DOCKER_TAG}
+        - gcr.io/gdlkit/gdlk-frontend:${DOCKER_TAG}
+    image: gcr.io/gdlkit/gdlk-frontend:${DOCKER_TAG}
     volumes:
       - ./:/app:rw
+
+  api-prd:
+    build:
+      context: .
+      dockerfile: ./api/prd.Dockerfile
+      cache_from:
+        - gcr.io/gdlkit/gdlk-api-prd:${DOCKER_TAG}
+    image: gcr.io/gdlkit/gdlk-api-prd:${DOCKER_TAG}
+
+  frontend-prd:
+    build:
+      context: .
+      dockerfile: ./frontend/prd.Dockerfile
+      cache_from:
+        - gcr.io/gdlkit/gdlk-frontend-prd:${DOCKER_TAG}
+    image: gcr.io/gdlkit/gdlk-frontend-prd:${DOCKER_TAG}
