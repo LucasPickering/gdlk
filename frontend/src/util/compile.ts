@@ -78,11 +78,16 @@ export class MachineWrapper {
   }
 
   /**
-   * Execute the next instruction. This will update the machine state after
-   * the step is run to reflect the new state.
+   * Execute the next instruction, or if specified, all remaining instructions.
+   * This will update the machine state after the step is run to reflect the new
+   * state.
    */
-  executeNext(): void {
-    this.machine.executeNext();
+  execute(executeAll: boolean): void {
+    if (executeAll) {
+      this.machine.executeAll();
+    } else {
+      this.machine.executeNext();
+    }
     this.updateState();
   }
 
