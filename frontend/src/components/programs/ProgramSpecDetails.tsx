@@ -55,6 +55,11 @@ const ProgramSpecDetails: React.FC<{
         <Card>
           <CardContent>
             <div className={localClasses.specSection}>
+              <Typography variant="h2">Description</Typography>
+              <Typography>{programSpec.description}</Typography>
+            </div>
+
+            <div className={localClasses.specSection}>
               <Typography variant="h2">Hardware Spec</Typography>
               <HardwareSpecSummary hardwareSpec={programSpec.hardwareSpec} />
             </div>
@@ -90,6 +95,7 @@ export default createFragmentContainer(ProgramSpecDetails, {
     fragment ProgramSpecDetails_programSpec on ProgramSpecNode {
       id
       slug
+      description
       input
       expectedOutput
       hardwareSpec {
