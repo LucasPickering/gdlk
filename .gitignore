@@ -1,8 +1,7 @@
 .vscode/
 pkg/
-node_modules/
-analysis/
-build/
-target/
+**/node_modules/
+**/build/
+**/target/
 **/__generated__/
 api/config/dev.json
