@@ -4,10 +4,11 @@ use crate::{
     schema::user_programs,
     server::gql::{
         internal::{GenericEdge, NodeType},
-        ConnectionPageParams, Context, CreateUserProgramPayloadFields, Cursor,
-        DeleteUserProgramPayloadFields, PageInfo, ProgramSpecNode,
-        UpdateUserProgramPayloadFields, UserNode, UserProgramConnectionFields,
-        UserProgramEdgeFields, UserProgramNodeFields,
+        ConnectionPageParams, Context, CopyUserProgramPayloadFields,
+        CreateUserProgramPayloadFields, Cursor, DeleteUserProgramPayloadFields,
+        PageInfo, ProgramSpecNode, UpdateUserProgramPayloadFields, UserNode,
+        UserProgramConnectionFields, UserProgramEdgeFields,
+        UserProgramNodeFields,
     },
     util::{self, Valid},
 };
@@ -234,6 +235,22 @@ impl UpdateUserProgramPayloadFields for UpdateUserProgramPayload {
             .as_ref()
             // Since this wasn't queried as part of a set, we can use a
             // bullshit offset to generate the cursor
+            .map(|row| GenericEdge::from_db_row(row.clone(), 0))
+    }
+}
+
+pub struct CopyUserProgramPayload {
+    pub user_program: Option<models::UserProgram>,
+}
+
+impl CopyUserProgramPayloadFields for CopyUserProgramPayload {
+    fn field_user_program_edge(
+        &self,
+        _executor: &juniper::Executor<'_, Context>,
+        _trail: &QueryTrail<'_, UserProgramEdge, Walked>,
+    ) -> Option<UserProgramEdge> {
+        self.user_program
+            .as_ref()
             .map(|row| GenericEdge::from_db_row(row.clone(), 0))
     }
 }

@@ -8,31 +8,16 @@ import { CopyUserProgramButton_userProgram } from './__generated__/CopyUserProgr
 import IconButton from 'components/common/IconButton';
 
 const updateUserProgramMutation = graphql`
-  mutation CopyUserProgramButton_Mutation(
-    $programSpecId: ID!
-    $fileName: String!
-    $sourceCode: String!
-  ) {
-    createUserProgram(
-      input: {
-        programSpecId: $programSpecId
-        fileName: $fileName
-        sourceCode: $sourceCode
-      }
-    ) {
+  mutation CopyUserProgramButton_Mutation($id: ID!) {
+    copyUserProgram(input: { id: $id }) {
       userProgramEdge {
         node {
           fileName
-          sourceCode
         }
       }
     }
   }
 `;
-
-function getNewFileName(fileName: string): string {
-  return `${fileName} copy`;
-}
 
 /**
  * A button that duplicates an existing user program.
@@ -56,9 +41,7 @@ const CopyUserProgramButton: React.FC<{
       onClick={() => {
         mutate({
           variables: {
-            programSpecId,
-            fileName: getNewFileName(userProgram.fileName),
-            sourceCode: userProgram.sourceCode,
+            id: userProgram.id,
           },
           configs: [
             // Update the list of programs in the parent after modification
@@ -86,8 +69,6 @@ export default createFragmentContainer(CopyUserProgramButton, {
   userProgram: graphql`
     fragment CopyUserProgramButton_userProgram on UserProgramNode {
       id
-      fileName
-      sourceCode
     }
   `,
 });

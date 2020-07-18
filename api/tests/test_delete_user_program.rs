@@ -16,7 +16,7 @@ mod utils;
 
 static QUERY: &str = r#"
     mutation DeleteUserProgramMutation($id: ID!) {
-        deleteUserProgram(input: { userProgramId: $id }) {
+        deleteUserProgram(input: { id: $id }) {
             deletedId
         }
     }
