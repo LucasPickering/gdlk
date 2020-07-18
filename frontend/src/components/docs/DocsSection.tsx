@@ -1,5 +1,7 @@
 import React from 'react';
 import { makeStyles, Typography, Theme } from '@material-ui/core';
+import { Link as IconLink } from '@material-ui/icons';
+import Link from 'components/common/Link';
 
 type Level = 2 | 3 | 4 | 5;
 
@@ -17,6 +19,14 @@ const useLocalStyles = makeStyles<Theme, string>(({ spacing }) => ({
   'docsSectionContent--3': {
     padding: `0 ${spacing(2)}px`,
   },
+  docsSectionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  docsSectionLink: {
+    fontSize: 0,
+    marginLeft: spacing(1),
+  },
 }));
 
 /**
@@ -31,7 +41,15 @@ const DocsSection: React.FC<{
 
   return (
     <section id={id} className={localClasses.docsSection}>
-      <Typography variant={HEADER_MAPPINGS[level]}>{title}</Typography>
+      <Typography
+        className={localClasses.docsSectionHeader}
+        variant={HEADER_MAPPINGS[level]}
+      >
+        {title}
+        <Link className={localClasses.docsSectionLink} to={`#${id}`}>
+          <IconLink />
+        </Link>
+      </Typography>
       <div className={localClasses[`docsSectionContent--${level}`]}>
         {children}
       </div>

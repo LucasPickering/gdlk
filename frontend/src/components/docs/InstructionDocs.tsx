@@ -3,7 +3,7 @@ import { Typography } from '@material-ui/core';
 import Link from 'components/common/Link';
 import DocsSection from './DocsSection';
 
-type ArgType = 'VAL' | 'REG' | 'STACK';
+type ArgType = 'VAL' | 'REG' | 'STACK' | 'LABEL';
 
 interface InstructionReference {
   name: string;
@@ -174,6 +174,67 @@ const INSTRUCTIONS: InstructionReference[] = [
     errorCases: [<>Popping from an empty stack causes a runtime error.</>],
     examples: ['POP S0 RX0 ; Move the top value of S0 into RX0'],
   },
+  {
+    name: 'JMP',
+    summary: 'Jump to a label, unconditionally.',
+    args: ['LABEL'],
+    examples: [
+      'JMP END\nREAD RX0 ; This instruction will be skipped\nEND:',
+      'LOOP:\nADD RX0 1\nJMP LOOP ; Infinite loop',
+    ],
+  },
+  {
+    name: 'JEZ',
+    summary: (
+      <>
+        Jump to a label if the value is equal to <code>0</code>.
+      </>
+    ),
+    args: ['VAL', 'LABEL'],
+    examples: [
+      'SET RX0 0\nJEZ END\nREAD RX0 ; This instruction will be skipped\nEND:',
+      'SET RX0 1\nJEZ END\nREAD RX0 ; This instruction will NOT be skipped\nEND:',
+    ],
+  },
+  {
+    name: 'JNZ',
+    summary: (
+      <>
+        Jump to a label if the value is NOT equal to <code>0</code>.
+      </>
+    ),
+    args: ['VAL', 'LABEL'],
+    examples: [
+      'SET RX0 1\nJNZ END\nREAD RX0 ; This instruction will be skipped\nEND:',
+      'SET RX0 0\nJNZ END\nREAD RX0 ; This instruction will NOT be skipped\nEND:',
+    ],
+  },
+  {
+    name: 'JGZ',
+    summary: (
+      <>
+        Jump to a label if the value is greater than <code>0</code>.
+      </>
+    ),
+    args: ['VAL', 'LABEL'],
+    examples: [
+      'SET RX0 1\nJGZ END\nREAD RX0 ; This instruction will be skipped\nEND:',
+      'SET RX0 -1\nJGZ END\nREAD RX0 ; This instruction will NOT be skipped\nEND:',
+    ],
+  },
+  {
+    name: 'JLZ',
+    summary: (
+      <>
+        Jump to a label if the value is less than <code>0</code>.
+      </>
+    ),
+    args: ['VAL', 'LABEL'],
+    examples: [
+      'SET RX0 -1\nJLZ END\nREAD RX0 ; This instruction will be skipped\nEND:',
+      'SET RX0 1\nJLZ END\nREAD RX0 ; This instruction will NOT be skipped\nEND:',
+    ],
+  },
 ];
 
 /**
@@ -194,7 +255,7 @@ const InstructionDocs: React.FC = () => {
           {INSTRUCTIONS.map(({ name, args, summary }) => (
             <tr key={name}>
               <td>
-                <code>{name}</code>
+                <Link to={`#instructions--${name.toLowerCase()}`}>{name}</Link>
               </td>
               <td>
                 <code>{args.map((arg) => `<${arg}>`).join(' ')}</code>
@@ -233,9 +294,11 @@ const InstructionDocs: React.FC = () => {
             )}
 
             <Typography variant="h5">Examples</Typography>
-            <pre>
-              <code>{examples.join('\n')}</code>
-            </pre>
+            {examples.map((example, i) => (
+              <pre key={i}>
+                <code>{example}</code>
+              </pre>
+            ))}
           </DocsSection>
         )
       )}
