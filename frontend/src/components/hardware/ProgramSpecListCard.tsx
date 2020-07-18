@@ -83,7 +83,7 @@ const ProgramSpecListRow = createFragmentContainer(
           <TableCell className={localClasses.programSpecRowExtra} colSpan={3}>
             <Collapse in={open} unmountOnExit>
               <div className={localClasses.programSpecSummaryWrapper}>
-                TODO show puzzle description here
+                {programSpec.description}
               </div>
             </Collapse>
           </TableCell>
@@ -95,6 +95,7 @@ const ProgramSpecListRow = createFragmentContainer(
     programSpec: graphql`
       fragment ProgramSpecListCard_programSpec on ProgramSpecNode {
         slug
+        description
         userPrograms @include(if: $loggedIn) {
           totalCount
         }
