@@ -517,4 +517,15 @@ impl Machine {
         // If an error occurred, that means something executed, so return true
         self.execute_next().unwrap_or(true)
     }
+
+    /// A wrapper for [Self::execute_all], to be called from wasm. We throw
+    /// away the error because it simplifies the logic on the TS side. That
+    /// error is accessible via [Self::wasm_error] anyway.
+    #[cfg(feature = "wasm")]
+    #[doc(hidden)]
+    #[wasm_bindgen(js_name = "executeAll")]
+    pub fn wasm_execute_all(&mut self) -> bool {
+        // If an error occurred, that means something executed, so return true
+        self.execute_all().unwrap_or(true)
+    }
 }

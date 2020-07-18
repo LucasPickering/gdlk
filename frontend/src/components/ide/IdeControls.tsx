@@ -1,4 +1,10 @@
-import React, { useState, useContext, useEffect, useRef } from 'react';
+import React, {
+  useCallback,
+  useState,
+  useContext,
+  useEffect,
+  useRef,
+} from 'react';
 import graphql from 'babel-plugin-relay/macro';
 import { makeStyles, Snackbar } from '@material-ui/core';
 import {
@@ -7,6 +13,7 @@ import {
   Refresh as IconRefresh,
   NavigateNext as IconNavigateNext,
   Save as IconSave,
+  SkipNext as IconSkipNext,
 } from '@material-ui/icons';
 import { Alert, ToggleButton, ToggleButtonGroup } from '@material-ui/lab';
 import { IdeContext } from 'state/ide';
@@ -60,12 +67,12 @@ const IdeControls: React.FC<{
   relay: RelayProp;
 }> = ({ className, userProgram }) => {
   const localClasses = useLocalStyles();
-  const { compiledState, sourceCode, executeNext, reset } = useContext(
-    IdeContext
-  );
+  const { compiledState, sourceCode, execute, reset } = useContext(IdeContext);
   const [mutate, { loading: saveLoading }] = useMutation<IdeControls_Mutation>(
     saveUserProgramMutation
   );
+  // We use this a few times so let's store it here
+  const executeNext = useCallback(() => execute(false), [execute]);
 
   const [saveState, setSaveState] = useState<'success' | 'error' | undefined>();
   const [stepping, setStepping] = useState<boolean>(false);
@@ -131,6 +138,14 @@ const IdeControls: React.FC<{
           onClick={() => setStepping((prev) => !prev)}
         >
           {stepping ? <IconPause /> : <IconPlayArrow />}
+        </IconButton>
+
+        <IconButton
+          title="Execute to End"
+          disabled={!machineState || machineState.terminated || stepping}
+          onClick={() => execute(true)}
+        >
+          <IconSkipNext />
         </IconButton>
 
         <IconButton

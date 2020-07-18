@@ -166,18 +166,21 @@ const ProgramIde: React.FC<{
     [wasmHardwareSpec, wasmProgramSpec, updateCompiledState]
   );
 
-  const executeNext = useCallback((): void => {
-    if (compileResult.current?.type === 'compiled') {
-      compileResult.current.machine.executeNext();
-      // We need to manually refresh since the wasm pointers won't change
-      updateCompiledState(compileResult.current);
-    } else {
-      // This indicates an FE bug, where we tried to step when not allowed
-      throw new Error(
-        'Program is not compiled, cannot execute next instruction.'
-      );
-    }
-  }, [compileResult, updateCompiledState]);
+  const execute = useCallback(
+    (executeAll: boolean = false): void => {
+      if (compileResult.current?.type === 'compiled') {
+        compileResult.current.machine.execute(executeAll);
+        // We need to manually refresh since the wasm pointers won't change
+        updateCompiledState(compileResult.current);
+      } else {
+        // This indicates an FE bug, where we tried to step when not allowed
+        throw new Error(
+          'Program is not compiled, cannot execute next instruction.'
+        );
+      }
+    },
+    [compileResult, updateCompiledState]
+  );
 
   // This will be used to read and write source from/to browser local storage
   const sourceStorageHandler = useStaticValue<StorageHandler<string>>(
@@ -220,7 +223,7 @@ const ProgramIde: React.FC<{
     sourceCode,
     compiledState,
     setSourceCode,
-    executeNext,
+    execute,
     reset: () => compile(sourceCode),
   };
 

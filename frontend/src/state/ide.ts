@@ -44,7 +44,7 @@ export interface IdeContextType {
   sourceCode: string;
   compiledState: CompiledState | undefined;
   setSourceCode: (newSourceCode: string) => void;
-  executeNext: () => void;
+  execute: (executeAll?: boolean) => void;
   reset: () => void;
 }
 
