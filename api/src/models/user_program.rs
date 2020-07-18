@@ -11,6 +11,12 @@ use uuid::Uuid;
 use validator::Validate;
 
 /// Expression to filter user_programs by owner's ID and program spec ID
+type WithIdAndUser = dsl::And<
+    dsl::Eq<user_programs::columns::id, Bound<sql_types::Uuid, Uuid>>,
+    dsl::Eq<user_programs::columns::user_id, Bound<sql_types::Uuid, Uuid>>,
+>;
+
+/// Expression to filter user_programs by owner's ID and program spec ID
 type WithUserAndProgramSpec = dsl::And<
     dsl::Eq<user_programs::columns::user_id, Bound<sql_types::Uuid, Uuid>>,
     dsl::Eq<
@@ -34,6 +40,18 @@ pub struct UserProgram {
 }
 
 impl UserProgram {
+    /// Find a user_program by ID, but only for the given user. Typically the ID
+    /// is sufficient, but we often want to include an additional user filter
+    /// to prevent users from accessing user_programs that they don't own.
+    pub fn find_for_user(
+        user_program_id: Uuid,
+        user_id: Uuid,
+    ) -> dsl::Filter<user_programs::table, WithIdAndUser> {
+        user_programs::table
+            .find(user_program_id)
+            .filter(user_programs::columns::user_id.eq(user_id))
+    }
+
     /// Start a query that filters this table by associated user's ID and by
     /// associated program spec's ID.
     pub fn filter_by_user_and_program_spec(

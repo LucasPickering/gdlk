@@ -565,6 +565,17 @@ type Mutation {
   ): UpdateUserProgramPayload! @juniper(ownership: "owned")
 
   """
+  Copy a user program. It will be identical, except it will have a new name
+  generated based on the old name.
+  """
+  copyUserProgram(
+    """
+    All input fields.
+    """
+    input: CopyUserProgramInput!
+  ): CopyUserProgramPayload! @juniper(ownership: "owned")
+
+  """
   Delete a user program by ID.
   """
   deleteUserProgram(
@@ -800,13 +811,34 @@ type UpdateUserProgramPayload {
 }
 
 """
+Input to the `copyUserProgram` mutation.
+"""
+input CopyUserProgramInput {
+  """
+  The ID of the user program to copy.
+  """
+  id: ID!
+}
+
+"""
+Output from the `copyUserProgram` mutation.
+"""
+type CopyUserProgramPayload {
+  """
+  The new user program. `null` if the given ID did not match any user programs.
+  """
+  userProgramEdge: UserProgramEdge
+    @juniper(infallible: true, ownership: "owned")
+}
+
+"""
 Input to the `deleteUserProgram` mutation.
 """
 input DeleteUserProgramInput {
   """
   The ID of the user program to delete.
   """
-  userProgramId: ID!
+  id: ID!
 }
 
 """

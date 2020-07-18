@@ -7,8 +7,8 @@ import { DeleteUserProgramButton_Mutation } from './__generated__/DeleteUserProg
 import ConfirmationDialog from 'components/common/ConfirmationDialog';
 
 const deleteUserProgramMutation = graphql`
-  mutation DeleteUserProgramButton_Mutation($userProgramId: ID!) {
-    deleteUserProgram(input: { userProgramId: $userProgramId }) {
+  mutation DeleteUserProgramButton_Mutation($id: ID!) {
+    deleteUserProgram(input: { id: $id }) {
       deletedId
     }
   }
@@ -48,7 +48,7 @@ const DeleteUserProgramButton: React.FC<{
         confirmColor="secondary"
         onConfirm={() => {
           mutate({
-            variables: { userProgramId },
+            variables: { id: userProgramId },
             configs: [
               {
                 type: 'RANGE_DELETE',

@@ -5,7 +5,8 @@ use crate::{
         hardware_specs, program_specs, user_programs, user_providers, users,
     },
     server::gql::{
-        Context, CreateHardwareSpecInput, CreateHardwareSpecPayload,
+        Context, CopyUserProgramInput, CopyUserProgramPayload,
+        CreateHardwareSpecInput, CreateHardwareSpecPayload,
         CreateProgramSpecInput, CreateProgramSpecPayload,
         CreateUserProgramInput, CreateUserProgramPayload,
         DeleteUserProgramInput, DeleteUserProgramPayload, InitializeUserInput,
@@ -313,17 +314,15 @@ impl MutationFields for Mutation {
 
         // Update the row, returning the new value. If the row doesn't
         // exist, this will return None.
-        let result: Result<Option<models::UserProgram>, _> = diesel::update(
-            user_programs::table
-                .find(modified_user_program.id)
-                // Extra filter to make sure the requesting user is the owner of
-                // the row.
-                .filter(user_programs::columns::user_id.eq(user_id)),
-        )
-        .set(modified_user_program)
-        .returning(user_programs::table::all_columns())
-        .get_result(conn)
-        .optional();
+        let result: Result<Option<models::UserProgram>, _> =
+            diesel::update(models::UserProgram::find_for_user(
+                modified_user_program.id,
+                user_id,
+            ))
+            .set(modified_user_program)
+            .returning(user_programs::table::all_columns())
+            .get_result(conn)
+            .optional();
 
         let updated_row: Option<models::UserProgram> = DbErrorConverter {
             // UserProgram already exists with this program spec/file name
@@ -336,6 +335,50 @@ impl MutationFields for Mutation {
 
         Ok(UpdateUserProgramPayload {
             user_program: updated_row,
+        })
+    }
+
+    fn field_copy_user_program(
+        &self,
+        executor: &juniper::Executor<'_, Context>,
+        _trail: &QueryTrail<'_, CopyUserProgramPayload, Walked>,
+        input: CopyUserProgramInput,
+    ) -> ResponseResult<CopyUserProgramPayload> {
+        let context = executor.context();
+        let conn: &PgConnection = &context.get_db_conn()? as &PgConnection;
+        // User needs to be logged in to make changes. This also has to be
+        // their user_program.
+        let user_id = context.user_id()?;
+
+        let existing_user_program: Option<models::UserProgram> =
+            models::UserProgram::find_for_user(
+                util::gql_id_to_uuid(&input.id),
+                user_id,
+            )
+            .get_result(conn)
+            .optional()?;
+
+        // If the requested user_program exists (for the given user), copy it
+        let inserted_row = match existing_user_program {
+            None => None,
+            Some(user_program) => {
+                Some(
+                    models::NewUserProgram {
+                        user_id,
+                        program_spec_id: user_program.program_spec_id,
+                        // Generate a new file name
+                        file_name: &format!("{} copy", &user_program.file_name),
+                        source_code: &user_program.source_code,
+                    }
+                    .insert()
+                    .returning(user_programs::all_columns)
+                    .get_result(conn)?,
+                )
+            }
+        };
+
+        Ok(CopyUserProgramPayload {
+            user_program: inserted_row,
         })
     }
 
@@ -352,17 +395,12 @@ impl MutationFields for Mutation {
         let user_id = context.user_id()?;
 
         // Delete and get the ID back
-        let row_id = util::gql_id_to_uuid(&input.user_program_id);
-        let deleted_id: Option<Uuid> = diesel::delete(
-            user_programs::table
-                .find(row_id)
-                // Extra filter to make sure the requesting user is the owner of
-                // the row.
-                .filter(user_programs::columns::user_id.eq(user_id)),
-        )
-        .returning(user_programs::columns::id)
-        .get_result(conn)
-        .optional()?;
+        let row_id = util::gql_id_to_uuid(&input.id);
+        let deleted_id: Option<Uuid> =
+            diesel::delete(models::UserProgram::find_for_user(row_id, user_id))
+                .returning(user_programs::columns::id)
+                .get_result(conn)
+                .optional()?;
 
         Ok(DeleteUserProgramPayload { deleted_id })
     }
