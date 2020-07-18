@@ -165,7 +165,12 @@ const IdeControls: React.FC<{
         className={localClasses.speedSelect}
         value={stepSpeed}
         exclusive
-        onChange={(e, newStepSpeed) => setStepSpeed(newStepSpeed)}
+        onChange={(e, newStepSpeed) => {
+          // Prevent de-selecting
+          if (newStepSpeed !== null) {
+            setStepSpeed(newStepSpeed);
+          }
+        }}
       >
         {STEP_SPEED_OPTIONS.map((speed, i) => (
           <ToggleButton
