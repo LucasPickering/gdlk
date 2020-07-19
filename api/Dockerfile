@@ -5,7 +5,6 @@ ENV DOCKERIZE_VERSION v0.6.1
 
 RUN apt-get update && \
     apt-get install -y \
-    curl \
     libpq-dev \
     libssl-dev \
     pkg-config \
@@ -13,13 +12,10 @@ RUN apt-get update && \
     && \
     rm -rf /var/lib/apt/lists/*
 
-RUN curl -sSL https://github.com/jwilder/dockerize/releases/download/${DOCKERIZE_VERSION}/dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
-    | tar xzv -C /usr/local/bin
-
 WORKDIR /app
 COPY rust-toolchain ./
-RUN cargo install cargo-make --version 0.31.0 && \
+RUN cargo install cargo-make --version 0.32.0 && \
     cargo install diesel_cli --version 1.4.1 --no-default-features --features=postgres && \
-    cargo install cargo-watch --version 7.4.1
+    cargo install cargo-watch --version 7.5.0
 
 WORKDIR /app/api

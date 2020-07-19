@@ -41,8 +41,7 @@ impl<T: Validate> Deref for Valid<T> {
     }
 }
 
-pub fn init_db_conn_pool() -> Fallible<Pool> {
-    let database_url = std::env::var("DATABASE_URL")?;
+pub fn init_db_conn_pool(database_url: &str) -> Fallible<Pool> {
     let manager = ConnectionManager::new(database_url);
     let pool = r2d2::Pool::builder().build(manager)?;
     Ok(pool)

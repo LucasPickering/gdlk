@@ -1,9 +1,15 @@
 # This is the default profile
 [env.development]
-DATABASE_URL = "postgres://root:root@localhost/gdlk"
+# This only controls the diesel CLI and GDLK in tests. When running the server,
+# it pulls from the config file instead.
+DATABASE_URL = "postgres://root:root@localhost/gdlk?connect_timeout=10"
+TEST_DATABASE_URL = "postgres://root:root@localhost/gdlk_test?connect_timeout=10"
 
 [env.docker]
-DATABASE_URL = "postgres://root:root@db/gdlk"
+# This only controls the diesel CLI and GDLK in tests. When running the server,
+# it pulls from the config file instead.
+DATABASE_URL = "postgres://root:root@db/gdlk?connect_timeout=10"
+TEST_DATABASE_URL = "postgres://root:root@localhost/gdlk_test?connect_timeout=10"
 
 [tasks.db]
 # TODO - only install w/ postgres feature
@@ -15,19 +21,12 @@ extend = "db"
 command = "diesel"
 args = ["${@}"]
 
-[tasks.wait-for-db]
-condition = { profiles = ["docker"] }
-command = "dockerize"
-args = ["-wait", "tcp://db:5432"]
-
 [tasks.db-setup]
 extend = "diesel"
-dependencies = ["wait-for-db"]
 args = ["db", "setup"]
 
 [tasks.db-reset]
 extend = "diesel"
-dependencies = ["wait-for-db"]
 args = ["db", "reset"]
 
 [tasks.migrations]
@@ -81,8 +80,7 @@ echo "You will need to set all OpenID client IDs and secrets manually."
 
 [tasks.test-db-reset]
 extend = "diesel"
-env = { DATABASE_URL = "${DATABASE_URL}_test" }
-dependencies = ["wait-for-db"]
+env = { DATABASE_URL = "${TEST_DATABASE_URL}" }
 # --locked-schema prevents changing schema.rs, which would trigger an API reload
 args = ["db", "reset", "--locked-schema"]
 

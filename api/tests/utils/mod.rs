@@ -38,8 +38,9 @@ pub struct QueryRunner {
 
 impl QueryRunner {
     pub fn new() -> Self {
+        let database_url = std::env::var("DATABASE_URL").unwrap();
         let context = Context {
-            pool: Arc::new(util::init_db_conn_pool().unwrap()),
+            pool: Arc::new(util::init_db_conn_pool(&database_url).unwrap()),
             user_context: None,
         };
         Self {

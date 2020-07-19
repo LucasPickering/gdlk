@@ -90,8 +90,9 @@ async fn route_graphql(
 }
 
 #[actix_rt::main]
-pub async fn run_server(config: GdlkConfig, pool: Pool) -> io::Result<()> {
-    // Init GraphQL schema
+pub async fn run_server(config: GdlkConfig) -> io::Result<()> {
+    // Initialize env shit
+    let pool = util::init_db_conn_pool(&config.database_url).unwrap();
     let gql_schema = Arc::new(create_gql_schema());
     let client_map =
         web::Data::new(auth::build_client_map(&config.open_id).await);
