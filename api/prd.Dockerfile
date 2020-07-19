@@ -20,7 +20,5 @@ COPY --from=rust-builder /app/target/release/gdlk_api .
 ADD ./api/migrations ./migrations/
 ADD ./api/config/default.json ./config/
 ADD ./api/docker/ /app/
-ADD https://raw.githubusercontent.com/LucasPickering/keskne/master/revproxy/load_secrets.sh /app/
 
-ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["/app/cmd.sh"]
