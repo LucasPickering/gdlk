@@ -26,6 +26,9 @@ pub struct OpenIdConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct GdlkConfig {
+    /// The URL of the DB that we connect to, as a Postgres URL.
+    /// https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
+    pub database_url: String,
     /// The hostname for the HTTP server to bind to.
     pub server_host: String,
     /// The secret key that's used to for authorization-related crypto stuff.

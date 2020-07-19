@@ -1,5 +1,5 @@
 use failure::Fallible;
-use gdlk_api::{config::GdlkConfig, util};
+use gdlk_api::config::GdlkConfig;
 use log::{debug, info};
 
 fn run() -> Fallible<()> {
@@ -9,8 +9,7 @@ fn run() -> Fallible<()> {
     info!("Loaded config");
     debug!("{:#?}", &config);
 
-    let pool = util::init_db_conn_pool()?;
-    Ok(gdlk_api::server::run_server(config, pool)?)
+    Ok(gdlk_api::server::run_server(config)?)
 }
 
 fn main() {

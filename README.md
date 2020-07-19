@@ -116,8 +116,9 @@ This project is deployed through [Keskne](https://github.com/lucaspickering/kesk
 
 There are a few environment variables that need to be set in production:
 
-```
-DATABASE_URL
+```sh
+DATABASE_URL # This controls the diesel CLI
+GDLK_DATABASE_URL # This controls our web app
 GDLK_SERVER_HOST
 GDLK_SECRET_KEY
 GDLK_OPEN_ID__HOST_URL
