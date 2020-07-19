@@ -114,14 +114,4 @@ This project is deployed through [Keskne](https://github.com/lucaspickering/kesk
 
 ### API Environment Variables
 
-There are a few environment variables that need to be set in production:
-
-```sh
-DATABASE_URL # This controls the diesel CLI
-GDLK_DATABASE_URL # This controls our web app
-GDLK_SERVER_HOST
-GDLK_SECRET_KEY
-GDLK_OPEN_ID__HOST_URL
-GDLK_OPEN_ID__PROVIDERS__GOOGLE__CLIENT_ID
-GDLK_OPEN_ID__PROVIDERS__GOOGLE__CLIENT_SECRET
-```
+There are a few environment variables that need to be set in production, which are listed in `api/docker/cmd.sh`.
