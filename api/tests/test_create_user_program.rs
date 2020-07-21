@@ -44,7 +44,7 @@ fn test_create_user_program_success() {
     let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
-    let user = NewUser { username: "user1" }.create(conn);
+    runner.log_in();
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -57,7 +57,6 @@ fn test_create_user_program_success() {
     }
     .create(conn)
     .id;
-    runner.set_user(user); // Log in
 
     assert_eq!(
         runner.query(
@@ -111,7 +110,7 @@ fn test_create_user_program_repeat_name() {
 
     // Create a user_program for user1
     let user1 = NewUser { username: "user1" }.create(conn);
-    runner.set_user(user1);
+    runner.set_user(&user1);
     assert_eq!(
         runner.query(
             QUERY,
@@ -143,7 +142,7 @@ fn test_create_user_program_repeat_name() {
 
     // Create a user_program with the same name for user2
     let user2 = NewUser { username: "user2" }.create(conn);
-    runner.set_user(user2);
+    runner.set_user(&user2);
     assert_eq!(
         runner.query(
             QUERY,
@@ -180,7 +179,7 @@ fn test_create_user_program_duplicate() {
     let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
-    let user = NewUser { username: "user1" }.create(conn);
+    let user = runner.log_in();
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -202,8 +201,6 @@ fn test_create_user_program_duplicate() {
         source_code: "READ RX0",
     }
     .create(conn);
-
-    runner.set_user(user); // Log in
 
     assert_eq!(
         runner.query(
@@ -230,7 +227,7 @@ fn test_create_user_program_invalid_program_spec() {
     let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
-    let user = NewUser { username: "user1" }.create(conn);
+    runner.log_in();
     NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -242,7 +239,6 @@ fn test_create_user_program_invalid_program_spec() {
         ..Default::default()
     }
     .create(conn);
-    runner.set_user(user); // Log in
 
     // Error - Unknown user+program spec combo
     assert_eq!(
@@ -270,7 +266,7 @@ fn test_create_user_program_invalid_values() {
     let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
-    let user = NewUser { username: "user1" }.create(conn);
+    runner.log_in();
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -283,7 +279,6 @@ fn test_create_user_program_invalid_values() {
     }
     .create(conn)
     .id;
-    runner.set_user(user); // Log in
 
     assert_eq!(
         runner.query(

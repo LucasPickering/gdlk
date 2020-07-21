@@ -3,7 +3,7 @@
 
 use diesel::{associations::HasTable, PgConnection, RunQueryDsl};
 use gdlk_api::{
-    models,
+    models::{self, Factory},
     schema::user_providers,
     server::{create_gql_schema, Context, GqlSchema, UserContext},
     util::{self, PooledConnection},
@@ -55,10 +55,10 @@ impl QueryRunner {
     }
 
     /// Modify the query context to set the current user. Creates a placeholder
-    /// UserProvider to be used for authentication. This should be used for
-    /// most tests that require a user.
-    #[allow(dead_code)] // Not all crates use this
-    pub fn set_user(&mut self, user: models::User) {
+    /// UserProvider to be used for authentication. For most tests you can just
+    /// use [Self::log_in], this is only necessary when you need more control
+    /// over the logged-in user.
+    pub fn set_user(&mut self, user: &models::User) {
         // Create a bogus user_provider for this user. We're not trying to test
         // the OpenID logic here, so this is fine.
         let user_provider_id = models::NewUserProvider {
@@ -86,6 +86,16 @@ impl QueryRunner {
             user_provider_id: user_provider.id,
             user_id: user_provider.user_id,
         })
+    }
+
+    /// Create a new user and set them as the logged-in user. This is the
+    /// easiest way to log in for a test, and should be used for most tests.
+    #[allow(dead_code)] // Not all crates use this
+    pub fn log_in(&mut self) -> models::User {
+        let user =
+            models::NewUser { username: "user1" }.create(&self.db_conn());
+        self.set_user(&user);
+        user
     }
 
     pub fn query<'a>(

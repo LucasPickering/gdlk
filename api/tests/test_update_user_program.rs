@@ -46,7 +46,7 @@ fn test_update_user_program_success() {
     let conn: &PgConnection = &runner.db_conn();
 
     // Initialize data
-    let user = NewUser { username: "user1" }.create(conn);
+    let user = runner.log_in();
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -66,7 +66,6 @@ fn test_update_user_program_success() {
         source_code: "READ RX0",
     }
     .create(conn);
-    runner.set_user(user); // Log in
 
     assert_eq!(
         runner.query(
@@ -155,7 +154,7 @@ fn test_update_user_program_wrong_owner() {
     let conn: &PgConnection = &runner.db_conn();
 
     // Initialize data
-    let owner = NewUser { username: "user1" }.create(conn);
+    let owner = NewUser { username: "owner" }.create(conn);
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -175,8 +174,7 @@ fn test_update_user_program_wrong_owner() {
         source_code: "READ RX0",
     }
     .create(conn);
-    let not_owner = NewUser { username: "user2" }.create(conn);
-    runner.set_user(not_owner); // Log in as someone other than the owner
+    runner.log_in(); // Log in as someone other than the owner
 
     assert_eq!(
         runner.query(
@@ -205,7 +203,7 @@ fn test_update_user_program_empty_modification() {
     let conn: &PgConnection = &runner.db_conn();
 
     // Initialize data
-    let user = NewUser { username: "user1" }.create(conn);
+    let user = runner.log_in();
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -225,7 +223,6 @@ fn test_update_user_program_empty_modification() {
         source_code: "READ RX0",
     }
     .create(conn);
-    runner.set_user(user); // Log in
 
     assert_eq!(
         runner.query(
@@ -252,7 +249,7 @@ fn test_update_user_program_duplicate() {
     let conn: &PgConnection = &runner.db_conn();
 
     // Initialize data
-    let user = NewUser { username: "user1" }.create(conn);
+    let user = runner.log_in();
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -280,7 +277,6 @@ fn test_update_user_program_duplicate() {
         source_code: "READ RX0",
     }
     .create(conn);
-    runner.set_user(user); // Log in
 
     assert_eq!(
         runner.query(
@@ -309,7 +305,7 @@ fn test_update_user_program_invalid_values() {
     let conn: &PgConnection = &runner.db_conn();
 
     // Initialize data
-    let user = NewUser { username: "user1" }.create(conn);
+    let user = runner.log_in();
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -329,7 +325,6 @@ fn test_update_user_program_invalid_values() {
         source_code: "READ RX0",
     }
     .create(conn);
-    runner.set_user(user); // Log in
 
     // Error - Known user program, but the target file name is invalid
     assert_eq!(

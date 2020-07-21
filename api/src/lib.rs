@@ -12,3 +12,4 @@ pub mod models;
 pub mod schema;
 pub mod server;
 pub mod util;
+pub mod views;

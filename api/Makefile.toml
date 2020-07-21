@@ -91,6 +91,7 @@ dependencies = ["test-db-reset"]
 command = "cargo"
 args = [
     "test",
+    "--no-fail-fast",
     "${@}",
     "--",
     "--test-threads=1",

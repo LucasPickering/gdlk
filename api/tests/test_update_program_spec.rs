@@ -40,8 +40,10 @@ static QUERY: &str = r#"
 /// Partial modification, make sure unmodified fields keep their old value
 #[test]
 fn test_update_program_spec_partial_modification() {
-    let runner = QueryRunner::new();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
+
+    runner.log_in();
     let hw_spec = NewHardwareSpec {
         name: "HW 1",
         ..Default::default()
@@ -86,8 +88,10 @@ fn test_update_program_spec_partial_modification() {
 /// Modify all fields
 #[test]
 fn test_update_program_spec_full_modification() {
-    let runner = QueryRunner::new();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
+
+    runner.log_in();
     let hw_spec = NewHardwareSpec {
         name: "HW 1",
         ..Default::default()
@@ -137,7 +141,8 @@ fn test_update_program_spec_full_modification() {
 /// Pass an invalid ID, get null back
 #[test]
 fn test_update_program_spec_invalid_id() {
-    let runner = QueryRunner::new();
+    let mut runner = QueryRunner::new();
+    runner.log_in();
 
     assert_eq!(
         runner.query(
@@ -160,9 +165,9 @@ fn test_update_program_spec_invalid_id() {
 
 #[test]
 fn test_update_program_spec_empty_modification() {
-    let runner = QueryRunner::new();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
-
+    runner.log_in();
     let hw_spec = NewHardwareSpec {
         name: "HW 1",
         ..Default::default()
@@ -203,9 +208,9 @@ fn test_update_program_spec_empty_modification() {
 
 #[test]
 fn test_update_program_spec_duplicate() {
-    let runner = QueryRunner::new();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
-
+    runner.log_in();
     let hw_spec = NewHardwareSpec {
         name: "HW 1",
         ..Default::default()
@@ -247,8 +252,9 @@ fn test_update_program_spec_duplicate() {
 
 #[test]
 fn test_update_program_spec_invalid_values() {
-    let runner = QueryRunner::new();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
+    runner.log_in();
 
     let hw_spec = NewHardwareSpec {
         name: "HW 1",
@@ -279,6 +285,42 @@ fn test_update_program_spec_invalid_values() {
                 "extensions": {
                     "name": [{"min": "1", "value": "\"\""}],
                 }
+            })]
+        )
+    );
+}
+
+/// [ERROR] You have to be logged in to do this
+#[test]
+fn test_update_program_spec_not_logged_in() {
+    let runner = QueryRunner::new();
+    let conn: &PgConnection = &runner.db_conn();
+    let hw_spec = NewHardwareSpec {
+        name: "HW 1",
+        ..Default::default()
+    }
+    .create(conn);
+    let program_spec = NewProgramSpec {
+        name: "Program 2",
+        hardware_spec_id: hw_spec.id,
+        ..Default::default()
+    }
+    .create(conn);
+
+    assert_eq!(
+        runner.query(
+            QUERY,
+            hashmap! {
+                "id" => InputValue::scalar(program_spec.id.to_string()),
+                "name" => InputValue::scalar(""),
+            }
+        ),
+        (
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 9, "column": 9}],
+                "message": "Not logged in",
+                "path": ["updateProgramSpec"],
             })]
         )
     );

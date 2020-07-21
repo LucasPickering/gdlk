@@ -40,8 +40,10 @@ static QUERY: &str = r#"
 /// Modify just a subset of fields, make sure the others keep their values
 #[test]
 fn test_update_hardware_spec_partial_modification() {
-    let runner = QueryRunner::new();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
+
+    runner.log_in();
     let hw_spec = NewHardwareSpec {
         name: "HW 2",
         ..Default::default()
@@ -79,8 +81,10 @@ fn test_update_hardware_spec_partial_modification() {
 /// Modify all fields
 #[test]
 fn test_update_hardware_spec_full_modification() {
-    let runner = QueryRunner::new();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
+    runner.log_in();
+
     let hw_spec = NewHardwareSpec {
         name: "HW 2",
         ..Default::default()
@@ -120,7 +124,8 @@ fn test_update_hardware_spec_full_modification() {
 /// Pass an invalid ID, get null back
 #[test]
 fn test_update_hardware_spec_invalid_id() {
-    let runner = QueryRunner::new();
+    let mut runner = QueryRunner::new();
+    runner.log_in();
 
     assert_eq!(
         runner.query(
@@ -144,8 +149,10 @@ fn test_update_hardware_spec_invalid_id() {
 /// [ERROR] Test that passing no modifications is an error
 #[test]
 fn test_update_hardware_spec_empty_modification() {
-    let runner = QueryRunner::new();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
+    runner.log_in();
+
     let hw_spec = NewHardwareSpec {
         name: "HW 2",
         ..Default::default()
@@ -173,8 +180,9 @@ fn test_update_hardware_spec_empty_modification() {
 /// [ERROR] Test that using a duplicate name returns an error
 #[test]
 fn test_update_hardware_spec_duplicate() {
-    let runner = QueryRunner::new();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
+    runner.log_in();
 
     // We'll test collisions against this
     NewHardwareSpec {
@@ -210,8 +218,10 @@ fn test_update_hardware_spec_duplicate() {
 /// [ERROR] Test that passing invalid values gives an error
 #[test]
 fn test_update_hardware_spec_invalid_values() {
-    let runner = QueryRunner::new();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
+    runner.log_in();
+
     let hw_spec = NewHardwareSpec {
         name: "HW 2",
         ..Default::default()
@@ -241,6 +251,39 @@ fn test_update_hardware_spec_invalid_values() {
                     "num_stacks": [{"min": "0.0", "max": "16.0", "value": "-1"}],
                     "max_stack_length": [{"min": "0.0", "max": "256.0", "value": "-1"}],
                 }
+            })]
+        )
+    );
+}
+
+/// [ERROR] Test createHardwareSpec when you aren't logged in
+#[test]
+fn test_update_hardware_spec_not_logged_in() {
+    let runner = QueryRunner::new();
+    let conn: &PgConnection = &runner.db_conn();
+    let hw_spec = NewHardwareSpec {
+        name: "HW 2",
+        ..Default::default()
+    }
+    .create(conn);
+
+    assert_eq!(
+        runner.query(
+            QUERY,
+            hashmap! {
+                "id" => InputValue::scalar(hw_spec.id.to_string()),
+                "name" => InputValue::scalar(""),
+                "numRegisters" => InputValue::scalar(-1),
+                "numStacks" => InputValue::scalar(-1),
+                "maxStackLength" => InputValue::scalar(-1),
+            }
+        ),
+        (
+            serde_json::Value::Null,
+            vec![json!({
+                "message": "Not logged in",
+                "locations": [{"line": 9, "column": 9}],
+                "path": ["updateHardwareSpec"],
             })]
         )
     );

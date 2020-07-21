@@ -27,7 +27,7 @@ fn test_delete_user_program_success() {
     let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
-    let user = NewUser { username: "user1" }.create(conn);
+    let user = runner.log_in();
     let user_program_id = NewUserProgram {
         user_id: user.id,
         program_spec_id: NewProgramSpec {
@@ -47,7 +47,6 @@ fn test_delete_user_program_success() {
     }
     .create(conn)
     .id;
-    runner.set_user(user); // Log in
 
     // Known row
     assert_eq!(
@@ -144,9 +143,11 @@ fn test_delete_user_program_not_logged_in() {
 fn test_delete_user_program_wrong_owner() {
     let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
+    runner.log_in();
 
+    let owner = NewUser { username: "user2" }.create(conn);
     let user_program_id = NewUserProgram {
-        user_id: NewUser { username: "user1" }.create(conn).id,
+        user_id: owner.id,
         program_spec_id: NewProgramSpec {
             name: "prog1",
             hardware_spec_id: NewHardwareSpec {
@@ -164,8 +165,6 @@ fn test_delete_user_program_wrong_owner() {
     }
     .create(conn)
     .id;
-    let not_owner = NewUser { username: "user2" }.create(conn);
-    runner.set_user(not_owner); // Log in as someone else
 
     // It should pretend like the user_program doesn't exist
     assert_eq!(

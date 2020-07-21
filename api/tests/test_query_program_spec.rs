@@ -1,9 +1,7 @@
 #![deny(clippy::all)]
 
 use diesel::PgConnection;
-use gdlk_api::models::{
-    self, Factory, NewHardwareSpec, NewProgramSpec, NewUser,
-};
+use gdlk_api::models::{self, Factory, NewHardwareSpec, NewProgramSpec};
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
@@ -79,7 +77,7 @@ fn test_program_spec_user_program() {
     let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
 
-    let user = NewUser { username: "user1" }.create(conn);
+    let user = runner.log_in();
     let hardware_spec_id = NewHardwareSpec {
         name: "hw1",
         ..Default::default()
@@ -129,7 +127,6 @@ fn test_program_spec_user_program() {
         source_code: "READ RX0",
     }
     .create(conn);
-    runner.set_user(user); // Log in
 
     let query = r#"
         query UserProgramQuery(
