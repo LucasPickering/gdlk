@@ -2,9 +2,9 @@ import React, { useContext } from 'react';
 import { makeStyles } from '@material-ui/core';
 import clsx from 'clsx';
 import { IdeContext, gdlkSpanToAce } from 'state/ide';
-import AceEditor, { IAnnotation, IMarker } from 'react-ace';
-import 'ace-builds/src-noconflict/mode-plain_text';
+import AceEditor, { IAnnotation, IMarker, IEditorProps } from 'react-ace';
 import 'ace-builds/src-noconflict/theme-terminal';
+import GDLKMode from 'util/ace_mode';
 
 const useLocalStyles = makeStyles(({ palette }) => ({
   codeEditor: {
@@ -85,14 +85,20 @@ const CodeEditor: React.FC<{ className?: string }> = ({ className }) => {
       break;
   }
 
+  const onLoad = (editor: IEditorProps): void => {
+    const gdlkMode = new GDLKMode();
+    editor.getSession().setMode(gdlkMode);
+  };
+
   return (
     <div className={clsx(className, localClasses.codeEditor)}>
       <AceEditor
         name="gdlk-editor"
-        mode="plain_text"
+        mode="text"
         theme="terminal" // TODO use a better theme
         width="100%"
         height="100%"
+        onLoad={onLoad}
         value={sourceCode}
         annotations={annotations}
         markers={markers}
