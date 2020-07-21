@@ -39,7 +39,7 @@ fn test_copy_user_program_success() {
     let conn: &PgConnection = &runner.db_conn();
 
     // Initialize data
-    let user = NewUser { username: "user1" }.create(conn);
+    let user = runner.log_in();
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -59,7 +59,6 @@ fn test_copy_user_program_success() {
         source_code: "READ RX0",
     }
     .create(conn);
-    runner.set_user(user); // Log in
 
     assert_eq!(
         runner.query(
@@ -94,11 +93,7 @@ fn test_copy_user_program_success() {
 #[test]
 fn test_copy_user_program_invalid_id() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
-
-    // Initialize data
-    let user = NewUser { username: "user1" }.create(conn);
-    runner.set_user(user); // Log in
+    runner.log_in();
 
     assert_eq!(
         runner.query(
@@ -171,7 +166,7 @@ fn test_copy_user_program_wrong_owner() {
     let conn: &PgConnection = &runner.db_conn();
 
     // Initialize data
-    let user = NewUser { username: "user1" }.create(conn);
+    runner.log_in();
     let other_user = NewUser { username: "user2" }.create(conn);
     let program_spec_id = NewProgramSpec {
         name: "prog1",
@@ -192,7 +187,6 @@ fn test_copy_user_program_wrong_owner() {
         source_code: "READ RX0",
     }
     .create(conn);
-    runner.set_user(user); // Log in
 
     assert_eq!(
         runner.query(

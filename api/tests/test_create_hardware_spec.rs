@@ -38,8 +38,9 @@ static QUERY: &str = r#"
 /// Test the standard success state of createHardwareSpec
 #[test]
 fn test_create_hardware_spec_success() {
-    let runner = QueryRunner::new();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
+    runner.log_in();
 
     // We'll test collisions against this
     NewHardwareSpec {
@@ -80,8 +81,9 @@ fn test_create_hardware_spec_success() {
 /// [ERROR] Test createHardwareSpec when you try to use a pre-existing name
 #[test]
 fn test_create_hardware_spec_duplicate() {
-    let runner = QueryRunner::new();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
+    runner.log_in();
 
     // We'll test collisions against this
     NewHardwareSpec {
@@ -114,7 +116,8 @@ fn test_create_hardware_spec_duplicate() {
 /// [ERROR] Test createHardwareSpec when you pass invalid data
 #[test]
 fn test_create_hardware_spec_invalid_values() {
-    let runner = QueryRunner::new();
+    let mut runner = QueryRunner::new();
+    runner.log_in();
 
     assert_eq!(
         runner.query(
@@ -138,6 +141,32 @@ fn test_create_hardware_spec_invalid_values() {
                     "num_stacks": [{"min": "0.0", "max": "16.0", "value": "-1"}],
                     "max_stack_length": [{"min": "0.0", "max": "256.0", "value": "-1"}],
                 }
+            })]
+        )
+    );
+}
+
+/// [ERROR] Test createHardwareSpec when you aren't logged in
+#[test]
+fn test_create_hardware_spec_not_logged_in() {
+    let runner = QueryRunner::new();
+
+    assert_eq!(
+        runner.query(
+            QUERY,
+            hashmap! {
+                "name" => InputValue::scalar(""),
+                "numRegisters" => InputValue::scalar(0),
+                "numStacks" => InputValue::scalar(-1),
+                "maxStackLength" => InputValue::scalar(-1),
+            }
+        ),
+        (
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 8, "column": 9}],
+                "message": "Not logged in",
+                "path": ["createHardwareSpec"],
             })]
         )
     );

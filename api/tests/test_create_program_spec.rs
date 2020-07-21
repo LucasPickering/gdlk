@@ -40,8 +40,9 @@ static QUERY: &str = r#"
 /// Create a program spec successfully
 #[test]
 fn test_create_program_spec_success() {
-    let runner = QueryRunner::new();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
+    runner.log_in();
     let hw_spec = NewHardwareSpec {
         name: "HW 1",
         ..Default::default()
@@ -85,7 +86,8 @@ fn test_create_program_spec_success() {
 /// [ERROR] References an invalid hardware spec
 #[test]
 fn test_create_program_spec_invalid_hw_spec() {
-    let runner = QueryRunner::new();
+    let mut runner = QueryRunner::new();
+    runner.log_in();
     let values_list: InputValue = InputValue::list(
         [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
     );
@@ -115,8 +117,9 @@ fn test_create_program_spec_invalid_hw_spec() {
 /// [ERROR] Program spec name is already taken
 #[test]
 fn test_create_program_spec_duplicate() {
-    let runner = QueryRunner::new();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
+    runner.log_in();
 
     let hw_spec = NewHardwareSpec {
         name: "HW 1",
@@ -160,8 +163,9 @@ fn test_create_program_spec_duplicate() {
 /// [ERROR] Values given are invalid
 #[test]
 fn test_create_program_spec_invalid_values() {
-    let runner = QueryRunner::new();
+    let mut runner = QueryRunner::new();
     let conn: &PgConnection = &runner.db_conn();
+    runner.log_in();
     let hw_spec = NewHardwareSpec {
         name: "HW 1",
         ..Default::default()
@@ -192,6 +196,43 @@ fn test_create_program_spec_invalid_values() {
                 "extensions": {
                     "name": [{"min": "1", "value": "\"\""}],
                 }
+            })]
+        )
+    );
+}
+
+/// [ERROR] You have to be logged in to do this
+#[test]
+fn test_create_program_spec_not_logged_in() {
+    let runner = QueryRunner::new();
+    let conn: &PgConnection = &runner.db_conn();
+    let hw_spec = NewHardwareSpec {
+        name: "HW 1",
+        ..Default::default()
+    }
+    .create(conn);
+    let values_list: InputValue = InputValue::list(
+        [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
+    );
+
+    assert_eq!(
+        runner.query(
+            QUERY,
+            hashmap! {
+                "hardwareSpecId" => InputValue::scalar(hw_spec.id.to_string()),
+                "name" => InputValue::scalar(""),
+                "description" => InputValue::scalar("description!"),
+                // TODO use invalid values here once the DB validation is working
+                "input" => values_list.clone(),
+                "expectedOutput" => values_list,
+            }
+        ),
+        (
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 9, "column": 9}],
+                "message": "Not logged in",
+                "path": ["createProgramSpec"],
             })]
         )
     );

@@ -65,6 +65,7 @@ pub struct NewProgramSpec<'a> {
 
     // IMPORTANT: If you update these validation values, make sure you update
     // ProgramSpec in the core crate as well!
+    // TODO once we remove validator, change these to slices
     #[validate(length(max = 256))]
     pub input: Vec<i32>,
     #[validate(length(max = 256))]
@@ -104,6 +105,7 @@ pub struct ModifiedProgramSpec<'a> {
     #[validate(length(min = 1))]
     pub name: Option<&'a str>,
     pub description: Option<&'a str>,
+    // TODO once we remove validator, change these to slices
     #[validate(length(max = 256))]
     pub input: Option<Vec<i32>>,
     #[validate(length(max = 256))]
