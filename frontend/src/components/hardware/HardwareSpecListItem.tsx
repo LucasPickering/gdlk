@@ -25,7 +25,7 @@ const HardwareSpecListItem: React.FC<{
         component={UnstyledLink}
         to={`/hardware/${hardwareSpec.slug}`}
       >
-        <ListItemText primary={hardwareSpec.slug} />
+        <ListItemText primary={hardwareSpec.name} />
       </ListItem>
       <List dense disablePadding>
         {hardwareSpec.programSpecs.edges.map(({ node: programSpec }) => (
@@ -37,7 +37,7 @@ const HardwareSpecListItem: React.FC<{
             to={`/hardware/${hardwareSpec.slug}/puzzles/${programSpec.slug}`}
           >
             <ListItemText
-              primary={`${hardwareSpec.slug}/${programSpec.slug}`}
+              primary={`${hardwareSpec.name} / ${programSpec.name}`}
             />
           </ListItem>
         ))}
@@ -51,6 +51,7 @@ export default createFragmentContainer(HardwareSpecListItem, {
     fragment HardwareSpecListItem_hardwareSpec on HardwareSpecNode {
       id
       slug
+      name
       ...HardwareSpecSummary_hardwareSpec
       programSpecs(first: 5) {
         totalCount
@@ -58,6 +59,7 @@ export default createFragmentContainer(HardwareSpecListItem, {
           node {
             id
             slug
+            name
           }
         }
       }

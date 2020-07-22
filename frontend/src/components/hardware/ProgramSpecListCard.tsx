@@ -69,7 +69,7 @@ const ProgramSpecListRow = createFragmentContainer(
           </TableCell>
           <TableCell>
             <Link to={`${url}/puzzles/${programSpec.slug}`}>
-              {programSpec.slug}
+              {programSpec.name}
             </Link>
           </TableCell>
 
@@ -95,6 +95,7 @@ const ProgramSpecListRow = createFragmentContainer(
     programSpec: graphql`
       fragment ProgramSpecListCard_programSpec on ProgramSpecNode {
         slug
+        name
         description
         userPrograms @include(if: $loggedIn) {
           totalCount
