@@ -19,7 +19,7 @@ const HardwareSpecDetails: React.FC<{
   return (
     <Grid container>
       <Grid item xs={12}>
-        <Typography variant="h1">{hardwareSpec.slug}</Typography>
+        <Typography variant="h1">{hardwareSpec.name}</Typography>
       </Grid>
 
       <Grid item sm={4} xs={12}>
@@ -43,6 +43,7 @@ export default createFragmentContainer(HardwareSpecDetails, {
     fragment HardwareSpecDetails_hardwareSpec on HardwareSpecNode {
       id
       slug
+      name
       ...HardwareSpecSummary_hardwareSpec
       ...ProgramSpecListCard_hardwareSpec @arguments(count: 5)
     }

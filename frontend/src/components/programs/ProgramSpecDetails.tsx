@@ -11,7 +11,6 @@ import {
 } from '@material-ui/core';
 import UserProgramsCard from '../userPrograms/UserProgramsCard';
 import HardwareSpecSummary from 'components/hardware/HardwareSpecSummary';
-import SimpleTable from 'components/common/SimpleTable';
 import Link from 'components/common/Link';
 import { UserContext } from 'state/user';
 
@@ -44,10 +43,10 @@ const ProgramSpecDetails: React.FC<{
       <Grid item xs={12}>
         <Typography variant="h1">
           <Link to={`/hardware/${programSpec.hardwareSpec.slug}`}>
-            {programSpec.hardwareSpec.slug}
+            {programSpec.hardwareSpec.name}
           </Link>
           {' / '}
-          {programSpec.slug}
+          {programSpec.name}
         </Typography>
       </Grid>
 
@@ -62,20 +61,6 @@ const ProgramSpecDetails: React.FC<{
             <div className={localClasses.specSection}>
               <Typography variant="h2">Hardware Spec</Typography>
               <HardwareSpecSummary hardwareSpec={programSpec.hardwareSpec} />
-            </div>
-
-            <div className={localClasses.specSection}>
-              <Typography variant="h2">Details</Typography>
-
-              <SimpleTable
-                data={[
-                  { label: 'Input', value: programSpec.input.join(' ') },
-                  {
-                    label: 'Expected Output',
-                    value: programSpec.expectedOutput.join(' '),
-                  },
-                ]}
-              />
             </div>
           </CardContent>
         </Card>
@@ -95,11 +80,11 @@ export default createFragmentContainer(ProgramSpecDetails, {
     fragment ProgramSpecDetails_programSpec on ProgramSpecNode {
       id
       slug
+      name
       description
-      input
-      expectedOutput
       hardwareSpec {
         slug
+        name
         ...HardwareSpecSummary_hardwareSpec
       }
       # Requesting user programs while not logged in causes an error
