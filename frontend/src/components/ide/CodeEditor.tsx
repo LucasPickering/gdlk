@@ -3,7 +3,7 @@ import { makeStyles } from '@material-ui/core';
 import clsx from 'clsx';
 import { IdeContext, gdlkSpanToAce } from 'state/ide';
 import AceEditor, { IAnnotation, IMarker, IEditorProps } from 'react-ace';
-import 'ace-builds/src-noconflict/theme-terminal';
+import 'ace-builds/src-noconflict/theme-chaos';
 import GDLKMode from 'util/ace_mode';
 
 const useLocalStyles = makeStyles(({ palette }) => ({
@@ -95,7 +95,7 @@ const CodeEditor: React.FC<{ className?: string }> = ({ className }) => {
       <AceEditor
         name="gdlk-editor"
         mode="text"
-        theme="terminal" // TODO use a better theme
+        theme="chaos" // TODO use a better theme
         width="100%"
         height="100%"
         onLoad={onLoad}

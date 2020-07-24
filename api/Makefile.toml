@@ -2,8 +2,8 @@
 [env.development]
 # This only controls the diesel CLI and GDLK in tests. When running the server,
 # it pulls from the config file instead.
-DATABASE_URL = "postgres://root:root@localhost/gdlk?connect_timeout=10"
-TEST_DATABASE_URL = "postgres://root:root@localhost/gdlk_test?connect_timeout=10"
+DATABASE_URL = "postgres://root:root@localhost:5432/gdlk?connect_timeout=10"
+TEST_DATABASE_URL = "postgres://root:root@localhost:5432/gdlk_test?connect_timeout=10"
 
 [env.docker]
 # This only controls the diesel CLI and GDLK in tests. When running the server,
