@@ -4,4 +4,5 @@ pkg/
 **/build/
 **/target/
 **/__generated__/
+**/logs
 api/config/dev.json

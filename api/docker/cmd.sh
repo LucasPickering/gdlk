@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -ex
+set -e
 
 # Env variables we expect as input:
 # - GDLK_DB_HOST
