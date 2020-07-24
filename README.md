@@ -110,8 +110,46 @@ We use nightly Rust. Here's a list of reasons why. If this list every gets empty
 
 ## Deployment
 
-This project is deployed through [Keskne](https://github.com/lucaspickering/keskne). Two different production images are built automatically on each merge to master: one for the API, and one for static assets. Then those get deployed.
+This project is deployed through docker-machine on Google Cloud. Production images are built automatically on each merge to master, then those get deployed by manually running a command.
 
-### API Environment Variables
+### Testing deployment
 
-There are a few environment variables that need to be set in production, which are listed in `api/docker/cmd.sh`.
+You can test the production stack locally, or initialize a new one, like so:
+
+- Make sure the values in `deploy/dev.env` are correct for you
+  - Change `GDLK_HOSTNAME` to another address (preferably one that is listed under the OpenID clients)
+    - You may need to add this to `/etc/hosts` to make it point at your development machine
+  - Change `GDLK_DOCKER_TAG` if you're going to be pushing different versions of images.
+- Run this:
+
+```sh
+cd deploy
+cargo make deploy
+# Fill in the secrets as necessary
+```
+
+### Production deployment
+
+Set the production machine as your docker-machine target, then:
+
+```sh
+docker-machine ssh <machine name>
+mkdir -p /var/log/gdlk/nginx
+exit
+
+# On your development machine
+cd deploy
+cargo make -p production deploy
+# Fill in the secrets as necessary
+```
+
+### DB Backup/Restore
+
+The database is backed up automatically. To restore from a backup, exec into the `db-backup` container, then run:
+
+```sh
+gsutil cp gs://<bucket>/<backup file> .
+tar xzvf <backup file>
+PGPASSWORD=$(cat $POSTGRES_PASSWORD_FILE) psql -h $POSTGRES_HOST -U $POSTGRES_USER -c "CREATE DATABASE gdlk;" # If necessary
+PGPASSWORD=$(cat $POSTGRES_PASSWORD_FILE) psql -h $POSTGRES_HOST -U $POSTGRES_USER gdlk < backups/gdlk.bak
+```

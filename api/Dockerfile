@@ -1,8 +1,6 @@
 # Version doesn't matter here, we're just going to install our own toolchain
 FROM rust:1.41.1-slim
 
-ENV DOCKERIZE_VERSION v0.6.1
-
 RUN apt-get update && \
     apt-get install -y \
     libpq-dev \

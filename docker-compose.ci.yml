@@ -32,6 +32,10 @@ services:
     volumes:
       - ./:/app:rw
 
+  db-prd:
+    build: ./db/prd
+    image: gcr.io/gdlkit/gdlk-db-prd:${DOCKER_TAG}
+
   api-prd:
     build:
       context: .
@@ -40,10 +44,8 @@ services:
         - gcr.io/gdlkit/gdlk-api-prd:${DOCKER_TAG}
     image: gcr.io/gdlkit/gdlk-api-prd:${DOCKER_TAG}
 
-  frontend-prd:
+  nginx-prd:
     build:
       context: .
-      dockerfile: ./frontend/prd.Dockerfile
-      cache_from:
-        - gcr.io/gdlkit/gdlk-frontend-prd:${DOCKER_TAG}
-    image: gcr.io/gdlkit/gdlk-frontend-prd:${DOCKER_TAG}
+      dockerfile: ./nginx/Dockerfile
+    image: gcr.io/gdlkit/gdlk-nginx-prd:${DOCKER_TAG}
