@@ -4,11 +4,10 @@ use crate::{
     schema::users,
     server::gql::{
         internal::{GenericEdge, NodeType},
-        AuthStatusFields, Cursor, InitializeUserPayloadFields, UserEdgeFields,
-        UserNodeFields,
+        AuthStatusFields, Cursor, InitializeUserPayloadFields, RequestContext,
+        UserEdgeFields, UserNodeFields,
     },
     util,
-    views::RequestContext,
 };
 use diesel::{PgConnection, QueryDsl, QueryResult, RunQueryDsl};
 use juniper::ID;
@@ -93,6 +92,8 @@ impl AuthStatusFields for AuthStatus {
         executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, UserNode, Walked>,
     ) -> ResponseResult<Option<UserNode>> {
+        // We have all the user data we need in the request context, no need
+        // to do another query
         match executor.context().user() {
             Ok(user) => Ok(Some(user.clone().into_model().into())),
             // User isn't authed or hasn't finished setup

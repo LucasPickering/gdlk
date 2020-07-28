@@ -55,6 +55,12 @@ pub enum ClientError {
     #[error("Not logged in")]
     Unauthenticated,
 
+    /// Action cannot be performed because the user doesn't have permission to
+    /// do so. This should only be used when the user is already logged in.
+    /// Equivalent of an HTTP 403.
+    #[error("Insufficient permissions to perform this action")]
+    PermissionDenied,
+
     /// CSRF failure during auth
     #[error("CSRF token was not provided or did not match the expected value")]
     CsrfError,
@@ -217,6 +223,10 @@ impl actix_web::ResponseError for ResponseError {
                     ClientError::CsrfError
                     | ClientError::ClaimsVerificationError(_) => {
                         HttpResponse::Unauthorized().into()
+                    }
+                    // 403
+                    ClientError::PermissionDenied => {
+                        HttpResponse::Forbidden().into()
                     }
                     // 409
                     ClientError::AlreadyExists { .. } => {

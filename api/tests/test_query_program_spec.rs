@@ -75,7 +75,7 @@ fn test_program_spec() {
 #[test]
 fn test_program_spec_user_program() {
     let mut context_builder = ContextBuilder::new();
-    let user = context_builder.log_in();
+    let user = context_builder.log_in(&[]);
     let conn = context_builder.db_conn();
 
     let hardware_spec_id = NewHardwareSpec {

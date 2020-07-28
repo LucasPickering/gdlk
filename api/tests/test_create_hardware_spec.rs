@@ -1,7 +1,7 @@
 #![deny(clippy::all)]
 
 use crate::utils::{ContextBuilder, QueryRunner};
-use gdlk_api::models::{Factory, NewHardwareSpec};
+use gdlk_api::models::{sql_types::RoleType, Factory, NewHardwareSpec};
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
@@ -38,7 +38,7 @@ static QUERY: &str = r#"
 #[test]
 fn test_create_hardware_spec_success() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[RoleType::SpecCreator]);
     let conn = context_builder.db_conn();
 
     // We'll test collisions against this
@@ -82,7 +82,7 @@ fn test_create_hardware_spec_success() {
 #[test]
 fn test_create_hardware_spec_duplicate() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[RoleType::SpecCreator]);
     let conn = context_builder.db_conn();
 
     // We'll test collisions against this
@@ -118,7 +118,7 @@ fn test_create_hardware_spec_duplicate() {
 #[test]
 fn test_create_hardware_spec_invalid_values() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[RoleType::SpecCreator]);
     let runner = QueryRunner::new(context_builder);
 
     assert_eq!(
@@ -169,6 +169,34 @@ fn test_create_hardware_spec_not_logged_in() {
             vec![json!({
                 "locations": [{"line": 8, "column": 9}],
                 "message": "Not logged in",
+                "path": ["createHardwareSpec"],
+            })]
+        )
+    );
+}
+
+/// [ERROR] Test createHardwareSpec when you don't have the proper permission
+#[test]
+fn test_create_hardware_spec_permission_denied() {
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in(&[]); // Insufficient permissions
+    let runner = QueryRunner::new(context_builder);
+
+    assert_eq!(
+        runner.query(
+            QUERY,
+            hashmap! {
+                "name" => InputValue::scalar(""),
+                "numRegisters" => InputValue::scalar(0),
+                "numStacks" => InputValue::scalar(-1),
+                "maxStackLength" => InputValue::scalar(-1),
+            }
+        ),
+        (
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 8, "column": 9}],
+                "message": "Insufficient permissions to perform this action",
                 "path": ["createHardwareSpec"],
             })]
         )

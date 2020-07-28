@@ -22,5 +22,12 @@ pub use user_program::*;
 pub trait View {
     type Output;
 
-    fn execute(&self) -> ResponseResult<Self::Output>;
+    fn check_permissions(&self) -> ResponseResult<()>;
+
+    fn execute_internal(&self) -> ResponseResult<Self::Output>;
+
+    fn execute(&self) -> ResponseResult<Self::Output> {
+        self.check_permissions()?;
+        self.execute_internal()
+    }
 }

@@ -1,17 +1,16 @@
 use crate::{
-    error::{DbErrorConverter, ResponseResult},
-    models,
+    error::{ClientError, DbErrorConverter, ResponseResult},
+    models::{self, sql_types::PermissionType},
     schema::program_specs,
-    views::View,
+    views::{RequestContext, View},
 };
-use diesel::{OptionalExtension, PgConnection, QueryDsl, RunQueryDsl, Table};
+use diesel::{OptionalExtension, QueryDsl, RunQueryDsl, Table};
 use uuid::Uuid;
 use validator::Validate;
 
 /// Create a new program spec
 pub struct CreateProgramSpecView<'a> {
-    pub conn: &'a PgConnection,
-    pub user_id: Uuid,
+    pub context: &'a RequestContext,
     pub hardware_spec_id: Uuid,
     pub name: &'a str,
     pub description: &'a str,
@@ -22,7 +21,16 @@ pub struct CreateProgramSpecView<'a> {
 impl<'a> View for CreateProgramSpecView<'a> {
     type Output = models::ProgramSpec;
 
-    fn execute(&self) -> ResponseResult<Self::Output> {
+    fn check_permissions(&self) -> ResponseResult<()> {
+        let user = self.context.user()?;
+        if user.has_permission(PermissionType::CreateSpecs) {
+            Ok(())
+        } else {
+            Err(ClientError::PermissionDenied.into())
+        }
+    }
+
+    fn execute_internal(&self) -> ResponseResult<Self::Output> {
         // User a helper type to do the insert
         let new_program_spec = models::NewProgramSpec {
             hardware_spec_id: self.hardware_spec_id,
@@ -37,7 +45,7 @@ impl<'a> View for CreateProgramSpecView<'a> {
         let result: Result<models::ProgramSpec, _> = new_program_spec
             .insert()
             .returning(program_specs::table::all_columns())
-            .get_result(self.conn);
+            .get_result(self.context.db_conn());
 
         DbErrorConverter {
             // Given hardware spec ID was invalid
@@ -52,8 +60,7 @@ impl<'a> View for CreateProgramSpecView<'a> {
 
 /// Modify an existing program spec
 pub struct UpdateProgramSpecView<'a> {
-    pub conn: &'a PgConnection,
-    pub user_id: Uuid,
+    pub context: &'a RequestContext,
     pub id: Uuid,
     pub name: Option<&'a str>,
     pub description: Option<&'a str>,
@@ -64,7 +71,16 @@ pub struct UpdateProgramSpecView<'a> {
 impl<'a> View for UpdateProgramSpecView<'a> {
     type Output = Option<models::ProgramSpec>;
 
-    fn execute(&self) -> ResponseResult<Self::Output> {
+    fn check_permissions(&self) -> ResponseResult<()> {
+        let user = self.context.user()?;
+        if user.has_permission(PermissionType::ModifyAllSpecs) {
+            Ok(())
+        } else {
+            Err(ClientError::PermissionDenied.into())
+        }
+    }
+
+    fn execute_internal(&self) -> ResponseResult<Self::Output> {
         // Use a helper type to do the insert
         let modified_program_spec = models::ModifiedProgramSpec {
             id: self.id,
@@ -81,7 +97,7 @@ impl<'a> View for UpdateProgramSpecView<'a> {
             diesel::update(program_specs::table.find(modified_program_spec.id))
                 .set(modified_program_spec)
                 .returning(program_specs::table::all_columns())
-                .get_result(self.conn)
+                .get_result(self.context.db_conn())
                 .optional();
 
         DbErrorConverter {

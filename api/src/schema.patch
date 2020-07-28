@@ -1,0 +1,13 @@
+diff --git a/api/src/schema.rs b/api/src/schema.rs
+index d7caa53..abdac0c 100644
+--- a/api/src/schema.rs
++++ b/api/src/schema.rs
+@@ -1,6 +1,8 @@
++#![allow(unused_imports)]
++
+ table! {
+     use diesel::sql_types::*;
+     use crate::models::sql_types::*;
+ 
+     hardware_specs (id) {
+         id -> Uuid,

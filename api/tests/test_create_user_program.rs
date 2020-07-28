@@ -41,7 +41,7 @@ static QUERY: &str = r#"
 #[test]
 fn test_create_user_program_success() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[]);
     let conn = context_builder.db_conn();
 
     let program_spec_id = NewProgramSpec {
@@ -93,7 +93,7 @@ fn test_create_user_program_success() {
 #[test]
 fn test_create_user_program_repeat_name() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[]);
     let conn = context_builder.db_conn();
 
     let other_user = NewUser { username: "other" }.create(conn);
@@ -152,7 +152,7 @@ fn test_create_user_program_repeat_name() {
 #[test]
 fn test_create_user_program_duplicate() {
     let mut context_builder = ContextBuilder::new();
-    let user = context_builder.log_in();
+    let user = context_builder.log_in(&[]);
     let conn = context_builder.db_conn();
 
     let program_spec_id = NewProgramSpec {
@@ -201,7 +201,7 @@ fn test_create_user_program_duplicate() {
 #[test]
 fn test_create_user_program_invalid_program_spec() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[]);
     let conn = context_builder.db_conn();
 
     NewProgramSpec {
@@ -241,7 +241,7 @@ fn test_create_user_program_invalid_program_spec() {
 #[test]
 fn test_create_user_program_invalid_values() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[]);
     let conn = context_builder.db_conn();
 
     let program_spec_id = NewProgramSpec {
