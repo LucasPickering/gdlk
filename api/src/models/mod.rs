@@ -10,17 +10,25 @@
 //!   implement the [Factory] trait.
 
 mod hardware_spec;
+mod permission;
 mod program_spec;
+mod role;
+mod role_permission;
 mod user;
 mod user_program;
 mod user_provider;
+mod user_role;
 
 use diesel::PgConnection;
 pub use hardware_spec::*;
+pub use permission::*;
 pub use program_spec::*;
+pub use role::*;
+pub use role_permission::*;
 pub use user::*;
 pub use user_program::*;
 pub use user_provider::*;
+pub use user_role::*;
 
 /// A trait that makes it easy to generate a row for a particular type. This
 /// should only be used for tests.
