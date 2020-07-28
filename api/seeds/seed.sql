@@ -1,6 +1,15 @@
+-- Users/roles
 WITH user_row AS (
     INSERT INTO users (username) VALUES ('user1') RETURNING id
 ),
+user_role_row AS (
+    INSERT INTO user_roles (user_id, role_id)
+        SELECT user_row.id, roles.id
+        FROM user_row, roles WHERE roles.name = 'admin'
+        RETURNING id
+),
+
+-- Hw specs
 hw_spec_rows AS (
     INSERT INTO hardware_specs (name, num_registers, num_stacks, max_stack_length)
         VALUES ('K100', 1, 0, 0), ('K210', 2, 1, 10), ('K320', 3, 2, 32)

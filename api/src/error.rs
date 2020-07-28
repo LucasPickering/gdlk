@@ -56,6 +56,12 @@ pub enum ClientError {
     #[error("Not logged in")]
     Unauthenticated,
 
+    /// Action cannot be performed because the user doesn't have permission to
+    /// do so. This should only be used when the user is already logged in.
+    /// Equivalent of an HTTP 403.
+    #[error("Insufficient permissions to perform this action")]
+    PermissionDenied,
+
     /// CSRF failure during auth
     #[error("CSRF token was not provided or did not match the expected value")]
     CsrfError,
@@ -96,6 +102,20 @@ pub enum ServerError {
     /// Wrapper for Diesel's error type
     #[error("Database error: {0}")]
     DieselError(#[from] diesel::result::Error),
+
+    /// We encountered a value in the DB that shouldn't be possible. This
+    /// indicates some flaw in the server logic, either in allowing the invalid
+    /// value into the DB, or not being able to handle a value that is actually
+    /// valid.
+    #[error("Invalid value in database column {column:?}: {value}")]
+    InvalidDbValue {
+        /// Should be a boxed reference to the column that the value was in.
+        /// `Debug` is the best type constraint we can put on this, but this
+        /// should always be something like `roles::columns::name`.
+        column: Box<dyn Debug>,
+        /// The invalid value.
+        value: String,
+    },
 
     /// When we do token exchange with an OpenID provider, we always expect to
     /// get an `id_token` field back in the response. If we don't for some
@@ -220,6 +240,10 @@ impl actix_web::ResponseError for ResponseError {
                     ClientError::CsrfError
                     | ClientError::ClaimsVerificationError(_) => {
                         HttpResponse::Unauthorized().into()
+                    }
+                    // 403
+                    ClientError::PermissionDenied => {
+                        HttpResponse::Forbidden().into()
                     }
                     // 409
                     ClientError::AlreadyExists { .. } => {
