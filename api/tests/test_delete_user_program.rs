@@ -1,5 +1,6 @@
 #![deny(clippy::all)]
 
+use crate::utils::{ContextBuilder, QueryRunner};
 use diesel::{OptionalExtension, QueryDsl, RunQueryDsl};
 use gdlk_api::{
     models::{
@@ -10,7 +11,6 @@ use gdlk_api::{
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
-use utils::QueryRunner;
 
 mod utils;
 
@@ -24,9 +24,9 @@ static QUERY: &str = r#"
 
 #[test]
 fn test_delete_user_program_success() {
-    let mut runner = QueryRunner::new();
-    let user = runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    let user = context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     let user_program_id = NewUserProgram {
         user_id: user.id,
@@ -48,6 +48,7 @@ fn test_delete_user_program_success() {
     .create(conn)
     .id;
 
+    let runner = QueryRunner::new(context_builder);
     // Known row
     assert_eq!(
         runner.query(
@@ -70,7 +71,7 @@ fn test_delete_user_program_success() {
     assert_eq!(
         user_programs::table
             .find(user_program_id)
-            .get_result::<models::UserProgram>(conn)
+            .get_result::<models::UserProgram>(runner.db_conn())
             .optional()
             .unwrap(),
         None
@@ -97,8 +98,8 @@ fn test_delete_user_program_success() {
 
 #[test]
 fn test_delete_user_program_not_logged_in() {
-    let runner = QueryRunner::new();
-    let conn = runner.db_conn();
+    let context_builder = ContextBuilder::new();
+    let conn = context_builder.db_conn();
 
     let user_program_id = NewUserProgram {
         user_id: NewUser { username: "user1" }.create(conn).id,
@@ -120,6 +121,7 @@ fn test_delete_user_program_not_logged_in() {
     .create(conn)
     .id;
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -141,9 +143,9 @@ fn test_delete_user_program_not_logged_in() {
 /// Test that you can't delete someone else's user_program
 #[test]
 fn test_delete_user_program_wrong_owner() {
-    let mut runner = QueryRunner::new();
-    runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     let owner = NewUser { username: "user2" }.create(conn);
     let user_program_id = NewUserProgram {
@@ -166,6 +168,7 @@ fn test_delete_user_program_wrong_owner() {
     .create(conn)
     .id;
 
+    let runner = QueryRunner::new(context_builder);
     // It should pretend like the user_program doesn't exist
     assert_eq!(
         runner.query(

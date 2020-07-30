@@ -5,11 +5,12 @@ use crate::{
     server::gql::{
         internal::{GenericEdge, NodeType},
         program_spec::{ProgramSpecConnection, ProgramSpecNode},
-        ConnectionPageParams, Context, CreateHardwareSpecPayloadFields, Cursor,
+        ConnectionPageParams, CreateHardwareSpecPayloadFields, Cursor,
         HardwareSpecConnectionFields, HardwareSpecEdgeFields,
         HardwareSpecNodeFields, PageInfo, UpdateHardwareSpecPayloadFields,
     },
     util::{self, Valid},
+    views::RequestContext,
 };
 use diesel::{
     dsl, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
@@ -42,48 +43,51 @@ impl NodeType for HardwareSpecNode {
 }
 
 impl HardwareSpecNodeFields for HardwareSpecNode {
-    fn field_id(&self, _executor: &juniper::Executor<'_, Context>) -> ID {
+    fn field_id(
+        &self,
+        _executor: &juniper::Executor<'_, RequestContext>,
+    ) -> ID {
         util::uuid_to_gql_id(self.hardware_spec.id)
     }
 
     fn field_slug(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
     ) -> &String {
         &self.hardware_spec.slug
     }
 
     fn field_name(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
     ) -> &String {
         &self.hardware_spec.name
     }
 
     fn field_num_registers(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
     ) -> i32 {
         self.hardware_spec.num_registers
     }
 
     fn field_num_stacks(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
     ) -> i32 {
         self.hardware_spec.num_stacks
     }
 
     fn field_max_stack_length(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
     ) -> i32 {
         self.hardware_spec.max_stack_length
     }
 
     fn field_program_spec(
         &self,
-        executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, ProgramSpecNode, Walked>,
         slug: String,
     ) -> ResponseResult<Option<ProgramSpecNode>> {
@@ -99,7 +103,7 @@ impl HardwareSpecNodeFields for HardwareSpecNode {
 
     fn field_program_specs(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, ProgramSpecConnection, Walked>,
         first: Option<i32>,
         after: Option<Cursor>,
@@ -113,7 +117,7 @@ pub type HardwareSpecEdge = GenericEdge<HardwareSpecNode>;
 impl HardwareSpecEdgeFields for HardwareSpecEdge {
     fn field_node(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, HardwareSpecNode, Walked>,
     ) -> &HardwareSpecNode {
         self.node()
@@ -121,7 +125,7 @@ impl HardwareSpecEdgeFields for HardwareSpecEdge {
 
     fn field_cursor(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
     ) -> &Cursor {
         self.cursor()
     }
@@ -142,7 +146,7 @@ impl HardwareSpecConnection {
         })
     }
 
-    fn get_total_count(&self, context: &Context) -> ResponseResult<i32> {
+    fn get_total_count(&self, context: &RequestContext) -> ResponseResult<i32> {
         match hardware_specs::table
             .select(dsl::count_star())
             .get_result::<i64>(context.db_conn())
@@ -155,7 +159,7 @@ impl HardwareSpecConnection {
 
     fn get_edges(
         &self,
-        context: &Context,
+        context: &RequestContext,
     ) -> ResponseResult<Vec<HardwareSpecEdge>> {
         let offset = self.page_params.offset();
 
@@ -177,14 +181,14 @@ impl HardwareSpecConnection {
 impl HardwareSpecConnectionFields for HardwareSpecConnection {
     fn field_total_count(
         &self,
-        executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, RequestContext>,
     ) -> ResponseResult<i32> {
         self.get_total_count(executor.context())
     }
 
     fn field_page_info(
         &self,
-        executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, PageInfo, Walked>,
     ) -> ResponseResult<PageInfo> {
         Ok(PageInfo::from_page_params(
@@ -195,7 +199,7 @@ impl HardwareSpecConnectionFields for HardwareSpecConnection {
 
     fn field_edges(
         &self,
-        executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, HardwareSpecEdge, Walked>,
     ) -> ResponseResult<Vec<HardwareSpecEdge>> {
         self.get_edges(executor.context())
@@ -209,7 +213,7 @@ pub struct CreateHardwareSpecPayload {
 impl CreateHardwareSpecPayloadFields for CreateHardwareSpecPayload {
     fn field_hardware_spec_edge(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, HardwareSpecEdge, Walked>,
     ) -> HardwareSpecEdge {
         GenericEdge::from_db_row(self.hardware_spec.clone(), 0)
@@ -223,7 +227,7 @@ pub struct UpdateHardwareSpecPayload {
 impl UpdateHardwareSpecPayloadFields for UpdateHardwareSpecPayload {
     fn field_hardware_spec_edge(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, HardwareSpecEdge, Walked>,
     ) -> Option<HardwareSpecEdge> {
         self.hardware_spec

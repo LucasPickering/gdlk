@@ -1,12 +1,12 @@
 #![deny(clippy::all)]
 
+use crate::utils::{ContextBuilder, QueryRunner};
 use gdlk_api::models::{
     Factory, NewHardwareSpec, NewProgramSpec, NewUser, NewUserProgram,
 };
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
-use utils::QueryRunner;
 
 mod utils;
 
@@ -41,9 +41,9 @@ static QUERY: &str = r#"
 /// Successful row modification
 #[test]
 fn test_update_user_program_success() {
-    let mut runner = QueryRunner::new();
-    let user = runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    let user = context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     // Initialize data
     let program_spec_id = NewProgramSpec {
@@ -66,6 +66,7 @@ fn test_update_user_program_success() {
     }
     .create(conn);
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -101,8 +102,8 @@ fn test_update_user_program_success() {
 /// No user logged in, gives an auth error
 #[test]
 fn test_update_user_program_not_logged_in() {
-    let runner = QueryRunner::new();
-    let conn = runner.db_conn();
+    let context_builder = ContextBuilder::new();
+    let conn = context_builder.db_conn();
 
     // Initialize data
     let user = NewUser { username: "user1" }.create(conn);
@@ -126,6 +127,7 @@ fn test_update_user_program_not_logged_in() {
     }
     .create(conn);
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -149,8 +151,9 @@ fn test_update_user_program_not_logged_in() {
 /// Try to modify someone else's program, it should behave like it doesn't exist
 #[test]
 fn test_update_user_program_wrong_owner() {
-    let mut runner = QueryRunner::new();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     // Initialize data
     let owner = NewUser { username: "owner" }.create(conn);
@@ -173,8 +176,8 @@ fn test_update_user_program_wrong_owner() {
         source_code: "READ RX0",
     }
     .create(conn);
-    runner.log_in(); // Log in as someone other than the owner
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -198,9 +201,9 @@ fn test_update_user_program_wrong_owner() {
 /// [ERROR] No fields were updated
 #[test]
 fn test_update_user_program_empty_modification() {
-    let mut runner = QueryRunner::new();
-    let user = runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    let user = context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     // Initialize data
     let program_spec_id = NewProgramSpec {
@@ -223,6 +226,7 @@ fn test_update_user_program_empty_modification() {
     }
     .create(conn);
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -244,9 +248,9 @@ fn test_update_user_program_empty_modification() {
 /// [ERROR] Attempted to use an existing name
 #[test]
 fn test_update_user_program_duplicate() {
-    let mut runner = QueryRunner::new();
-    let user = runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    let user = context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     // Initialize data
     let program_spec_id = NewProgramSpec {
@@ -277,6 +281,7 @@ fn test_update_user_program_duplicate() {
     }
     .create(conn);
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -300,9 +305,9 @@ fn test_update_user_program_duplicate() {
 /// [ERROR] Invalid values passed
 #[test]
 fn test_update_user_program_invalid_values() {
-    let mut runner = QueryRunner::new();
-    let user = runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    let user = context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     // Initialize data
     let program_spec_id = NewProgramSpec {
@@ -325,6 +330,7 @@ fn test_update_user_program_invalid_values() {
     }
     .create(conn);
 
+    let runner = QueryRunner::new(context_builder);
     // Error - Known user program, but the target file name is invalid
     assert_eq!(
         runner.query(

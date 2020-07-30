@@ -1,10 +1,10 @@
 #![deny(clippy::all)]
 
+use crate::utils::{ContextBuilder, QueryRunner};
 use gdlk_api::models::{Factory, NewHardwareSpec, NewProgramSpec};
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
-use utils::QueryRunner;
 
 mod utils;
 
@@ -39,9 +39,10 @@ static QUERY: &str = r#"
 /// Create a program spec successfully
 #[test]
 fn test_create_program_spec_success() {
-    let mut runner = QueryRunner::new();
-    runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in();
+    let conn = context_builder.db_conn();
+
     let hw_spec = NewHardwareSpec {
         name: "HW 1",
         ..Default::default()
@@ -52,6 +53,7 @@ fn test_create_program_spec_success() {
         [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
     );
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -85,8 +87,10 @@ fn test_create_program_spec_success() {
 /// [ERROR] References an invalid hardware spec
 #[test]
 fn test_create_program_spec_invalid_hw_spec() {
-    let mut runner = QueryRunner::new();
-    runner.log_in();
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in();
+    let runner = QueryRunner::new(context_builder);
+
     let values_list: InputValue = InputValue::list(
         [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
     );
@@ -116,9 +120,9 @@ fn test_create_program_spec_invalid_hw_spec() {
 /// [ERROR] Program spec name is already taken
 #[test]
 fn test_create_program_spec_duplicate() {
-    let mut runner = QueryRunner::new();
-    runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     let hw_spec = NewHardwareSpec {
         name: "HW 1",
@@ -137,6 +141,7 @@ fn test_create_program_spec_duplicate() {
         [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
     );
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -162,9 +167,10 @@ fn test_create_program_spec_duplicate() {
 /// [ERROR] Values given are invalid
 #[test]
 fn test_create_program_spec_invalid_values() {
-    let mut runner = QueryRunner::new();
-    runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in();
+    let conn = context_builder.db_conn();
+
     let hw_spec = NewHardwareSpec {
         name: "HW 1",
         ..Default::default()
@@ -174,6 +180,7 @@ fn test_create_program_spec_invalid_values() {
         [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
     );
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -203,8 +210,9 @@ fn test_create_program_spec_invalid_values() {
 /// [ERROR] You have to be logged in to do this
 #[test]
 fn test_create_program_spec_not_logged_in() {
-    let runner = QueryRunner::new();
-    let conn = runner.db_conn();
+    let context_builder = ContextBuilder::new();
+    let conn = context_builder.db_conn();
+
     let hw_spec = NewHardwareSpec {
         name: "HW 1",
         ..Default::default()
@@ -214,6 +222,7 @@ fn test_create_program_spec_not_logged_in() {
         [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
     );
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,

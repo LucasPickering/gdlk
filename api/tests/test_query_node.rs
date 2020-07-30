@@ -1,19 +1,19 @@
 #![deny(clippy::all)]
 
+use crate::utils::{ContextBuilder, QueryRunner};
 use gdlk_api::models::{
     self, Factory, NewHardwareSpec, NewProgramSpec, NewUser,
 };
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
-use utils::QueryRunner;
 
 mod utils;
 
 #[test]
 fn test_field_node() {
-    let runner = QueryRunner::new();
-    let conn = runner.db_conn();
+    let context_builder = ContextBuilder::new();
+    let conn = context_builder.db_conn();
 
     let user_id = NewUser { username: "user1" }.create(conn).id;
     let hardware_spec_id = NewHardwareSpec {
@@ -39,14 +39,15 @@ fn test_field_node() {
     .id;
 
     let query = r#"
-        query NodeQuery($nodeId: ID!) {
-            node(id: $nodeId) {
-                id
-            }
+    query NodeQuery($nodeId: ID!) {
+        node(id: $nodeId) {
+            id
         }
+    }
     "#;
 
     // Check a known UUID for each model type
+    let runner = QueryRunner::new(context_builder);
     for id in &[user_id, hardware_spec_id, program_spec_id, user_program_id] {
         assert_eq!(
             runner.query(

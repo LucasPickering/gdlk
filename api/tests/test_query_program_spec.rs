@@ -1,17 +1,17 @@
 #![deny(clippy::all)]
 
+use crate::utils::{ContextBuilder, QueryRunner};
 use gdlk_api::models::{self, Factory, NewHardwareSpec, NewProgramSpec};
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
-use utils::QueryRunner;
 
 mod utils;
 
 #[test]
 fn test_program_spec() {
-    let runner = QueryRunner::new();
-    let conn = runner.db_conn();
+    let context_builder = ContextBuilder::new();
+    let conn = context_builder.db_conn();
 
     let hardware_spec_id = NewHardwareSpec {
         name: "hw1",
@@ -44,6 +44,7 @@ fn test_program_spec() {
         }
     "#;
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             query,
@@ -73,9 +74,9 @@ fn test_program_spec() {
 
 #[test]
 fn test_program_spec_user_program() {
-    let mut runner = QueryRunner::new();
-    let user = runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    let user = context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     let hardware_spec_id = NewHardwareSpec {
         name: "hw1",
@@ -127,6 +128,7 @@ fn test_program_spec_user_program() {
     }
     .create(conn);
 
+    let runner = QueryRunner::new(context_builder);
     let query = r#"
         query UserProgramQuery(
             $hwSlug: String!,
@@ -216,8 +218,8 @@ fn test_program_spec_user_program() {
 /// triggers an error.
 #[test]
 fn test_program_spec_user_program_not_logged_in() {
-    let runner = QueryRunner::new();
-    let conn = runner.db_conn();
+    let context_builder = ContextBuilder::new();
+    let conn = context_builder.db_conn();
 
     let hardware_spec_id = NewHardwareSpec {
         name: "hw1",
@@ -232,6 +234,7 @@ fn test_program_spec_user_program_not_logged_in() {
     }
     .create(conn);
 
+    let runner = QueryRunner::new(context_builder);
     let query = r#"
         query UserProgramQuery(
             $hwSlug: String!,

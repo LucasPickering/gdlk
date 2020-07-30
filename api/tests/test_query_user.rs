@@ -1,17 +1,17 @@
 #![deny(clippy::all)]
 
+use crate::utils::{ContextBuilder, QueryRunner};
 use gdlk_api::models::{Factory, NewUser};
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
-use utils::QueryRunner;
 
 mod utils;
 
 #[test]
 fn test_field_user() {
-    let runner = QueryRunner::new();
-    let conn = runner.db_conn();
+    let context_builder = ContextBuilder::new();
+    let conn = context_builder.db_conn();
 
     let user_id = NewUser { username: "user1" }.create(conn).id;
     let query = r#"
@@ -23,6 +23,7 @@ fn test_field_user() {
         }
     "#;
 
+    let runner = QueryRunner::new(context_builder);
     // Known user
     assert_eq!(
         runner.query(

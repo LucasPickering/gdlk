@@ -1,12 +1,12 @@
 #![deny(clippy::all)]
 
+use crate::utils::{ContextBuilder, QueryRunner};
 use gdlk_api::models::{
     Factory, NewHardwareSpec, NewProgramSpec, NewUser, NewUserProgram,
 };
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
-use utils::QueryRunner;
 
 mod utils;
 
@@ -40,9 +40,9 @@ static QUERY: &str = r#"
 /// Test creating a user program successfully
 #[test]
 fn test_create_user_program_success() {
-    let mut runner = QueryRunner::new();
-    runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     let program_spec_id = NewProgramSpec {
         name: "prog1",
@@ -57,6 +57,7 @@ fn test_create_user_program_success() {
     .create(conn)
     .id;
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -91,9 +92,11 @@ fn test_create_user_program_success() {
 /// Test that two users can create the a user_program with the same name
 #[test]
 fn test_create_user_program_repeat_name() {
-    let mut runner = QueryRunner::new();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in();
+    let conn = context_builder.db_conn();
 
+    let other_user = NewUser { username: "other" }.create(conn);
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -106,10 +109,15 @@ fn test_create_user_program_repeat_name() {
     }
     .create(conn)
     .id;
+    NewUserProgram {
+        user_id: other_user.id,
+        program_spec_id,
+        file_name: "new.gdlk",
+        source_code: "",
+    }
+    .create(conn);
 
-    // Create a user_program for user1
-    let user1 = NewUser { username: "user1" }.create(runner.db_conn());
-    runner.set_user(&user1);
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -138,46 +146,14 @@ fn test_create_user_program_repeat_name() {
             vec![]
         )
     );
-
-    // Create a user_program with the same name for user2
-    let user2 = NewUser { username: "user2" }.create(runner.db_conn());
-    runner.set_user(&user2);
-    assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "programSpecId" => InputValue::scalar(program_spec_id.to_string()),
-                "fileName" => InputValue::scalar("new.gdlk"),
-            }
-        ),
-        (
-            json!({
-                "createUserProgram": {
-                    "userProgramEdge": {
-                        "node": {
-                            "fileName": "new.gdlk",
-                            "sourceCode": "",
-                            "user": {
-                                "username": "user2"
-                            },
-                            "programSpec": {
-                                "slug": "prog1"
-                            },
-                        }
-                    }
-                }
-            }),
-            vec![]
-        )
-    );
 }
 
 /// [ERROR] File name is already taken
 #[test]
 fn test_create_user_program_duplicate() {
-    let mut runner = QueryRunner::new();
-    let user = runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    let user = context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     let program_spec_id = NewProgramSpec {
         name: "prog1",
@@ -201,6 +177,7 @@ fn test_create_user_program_duplicate() {
     }
     .create(conn);
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -223,9 +200,9 @@ fn test_create_user_program_duplicate() {
 /// [ERROR] References an invalid program spec
 #[test]
 fn test_create_user_program_invalid_program_spec() {
-    let mut runner = QueryRunner::new();
-    runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     NewProgramSpec {
         name: "prog1",
@@ -239,6 +216,7 @@ fn test_create_user_program_invalid_program_spec() {
     }
     .create(conn);
 
+    let runner = QueryRunner::new(context_builder);
     // Error - Unknown user+program spec combo
     assert_eq!(
         runner.query(
@@ -262,9 +240,9 @@ fn test_create_user_program_invalid_program_spec() {
 /// [ERROR] Values given are invalid
 #[test]
 fn test_create_user_program_invalid_values() {
-    let mut runner = QueryRunner::new();
-    runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     let program_spec_id = NewProgramSpec {
         name: "prog1",
@@ -279,6 +257,7 @@ fn test_create_user_program_invalid_values() {
     .create(conn)
     .id;
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,

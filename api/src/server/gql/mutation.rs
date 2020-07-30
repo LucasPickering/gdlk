@@ -1,18 +1,17 @@
 use crate::{
     error::ResponseResult,
     server::gql::{
-        Context, CopyUserProgramInput, CopyUserProgramPayload,
-        CreateHardwareSpecInput, CreateHardwareSpecPayload,
-        CreateProgramSpecInput, CreateProgramSpecPayload,
-        CreateUserProgramInput, CreateUserProgramPayload,
-        DeleteUserProgramInput, DeleteUserProgramPayload, InitializeUserInput,
-        InitializeUserPayload, MutationFields, UpdateHardwareSpecInput,
-        UpdateHardwareSpecPayload, UpdateProgramSpecInput,
-        UpdateProgramSpecPayload, UpdateUserProgramInput,
-        UpdateUserProgramPayload,
+        CopyUserProgramInput, CopyUserProgramPayload, CreateHardwareSpecInput,
+        CreateHardwareSpecPayload, CreateProgramSpecInput,
+        CreateProgramSpecPayload, CreateUserProgramInput,
+        CreateUserProgramPayload, DeleteUserProgramInput,
+        DeleteUserProgramPayload, InitializeUserInput, InitializeUserPayload,
+        MutationFields, UpdateHardwareSpecInput, UpdateHardwareSpecPayload,
+        UpdateProgramSpecInput, UpdateProgramSpecPayload,
+        UpdateUserProgramInput, UpdateUserProgramPayload,
     },
     util,
-    views::{self, View},
+    views::{self, RequestContext, View},
 };
 use juniper_from_schema::{QueryTrail, Walked};
 
@@ -22,14 +21,12 @@ pub struct Mutation;
 impl MutationFields for Mutation {
     fn field_initialize_user(
         &self,
-        executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, InitializeUserPayload, Walked>,
         input: InitializeUserInput,
     ) -> ResponseResult<InitializeUserPayload> {
-        let context = executor.context();
         let view = views::InitializeUserView {
-            conn: context.db_conn(),
-            user_context: context.user_context,
+            context: executor.context(),
             username: &input.username,
         };
         let created_user = view.execute()?;
@@ -38,14 +35,14 @@ impl MutationFields for Mutation {
 
     fn field_create_hardware_spec(
         &self,
-        executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, CreateHardwareSpecPayload, Walked>,
         input: CreateHardwareSpecInput,
     ) -> ResponseResult<CreateHardwareSpecPayload> {
         let context = executor.context();
         let view = views::CreateHardwareSpecView {
             conn: context.db_conn(),
-            user_id: context.user_id()?,
+            user_id: context.user()?.id,
             name: &input.name,
             num_registers: input.num_registers,
             num_stacks: input.num_stacks,
@@ -58,14 +55,14 @@ impl MutationFields for Mutation {
 
     fn field_update_hardware_spec(
         &self,
-        executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, UpdateHardwareSpecPayload, Walked>,
         input: UpdateHardwareSpecInput,
     ) -> ResponseResult<UpdateHardwareSpecPayload> {
         let context = executor.context();
         let view = views::UpdateHardwareSpecView {
             conn: context.db_conn(),
-            user_id: context.user_id()?,
+            user_id: context.user()?.id,
             id: util::gql_id_to_uuid(&input.id),
             name: input.name.as_deref(),
             num_registers: input.num_registers,
@@ -79,14 +76,14 @@ impl MutationFields for Mutation {
 
     fn field_create_program_spec(
         &self,
-        executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, CreateProgramSpecPayload, Walked>,
         input: CreateProgramSpecInput,
     ) -> ResponseResult<CreateProgramSpecPayload> {
         let context = executor.context();
         let view = views::CreateProgramSpecView {
             conn: context.db_conn(),
-            user_id: context.user_id()?,
+            user_id: context.user()?.id,
             hardware_spec_id: util::gql_id_to_uuid(&input.hardware_spec_id),
             name: &input.name,
             description: &input.description,
@@ -100,14 +97,14 @@ impl MutationFields for Mutation {
 
     fn field_update_program_spec(
         &self,
-        executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, UpdateProgramSpecPayload, Walked>,
         input: UpdateProgramSpecInput,
     ) -> ResponseResult<UpdateProgramSpecPayload> {
         let context = executor.context();
         let view = views::UpdateProgramSpecView {
             conn: context.db_conn(),
-            user_id: context.user_id()?,
+            user_id: context.user()?.id,
             id: util::gql_id_to_uuid(&input.id),
             name: input.name.as_deref(),
             description: input.description.as_deref(),
@@ -121,14 +118,14 @@ impl MutationFields for Mutation {
 
     fn field_create_user_program(
         &self,
-        executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, CreateUserProgramPayload, Walked>,
         input: CreateUserProgramInput,
     ) -> ResponseResult<CreateUserProgramPayload> {
         let context = executor.context();
         let view = views::CreateUserProgramView {
             conn: context.db_conn(),
-            user_id: context.user_id()?,
+            user_id: context.user()?.id,
             program_spec_id: util::gql_id_to_uuid(&input.program_spec_id),
             file_name: &input.file_name,
             // If no source is provided, default to an empty string
@@ -141,14 +138,14 @@ impl MutationFields for Mutation {
 
     fn field_update_user_program(
         &self,
-        executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, UpdateUserProgramPayload, Walked>,
         input: UpdateUserProgramInput,
     ) -> ResponseResult<UpdateUserProgramPayload> {
         let context = executor.context();
         let view = views::UpdateUserProgramView {
             conn: context.db_conn(),
-            user_id: context.user_id()?,
+            user_id: context.user()?.id,
             id: util::gql_id_to_uuid(&input.id),
             file_name: input.file_name.as_deref(),
             source_code: input.source_code.as_deref(),
@@ -160,14 +157,14 @@ impl MutationFields for Mutation {
 
     fn field_copy_user_program(
         &self,
-        executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, CopyUserProgramPayload, Walked>,
         input: CopyUserProgramInput,
     ) -> ResponseResult<CopyUserProgramPayload> {
         let context = executor.context();
         let view = views::CopyUserProgramView {
             conn: context.db_conn(),
-            user_id: context.user_id()?,
+            user_id: context.user()?.id,
             id: util::gql_id_to_uuid(&input.id),
         };
         let user_program = view.execute()?;
@@ -177,14 +174,14 @@ impl MutationFields for Mutation {
 
     fn field_delete_user_program(
         &self,
-        executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, DeleteUserProgramPayload, Walked>,
         input: DeleteUserProgramInput,
     ) -> ResponseResult<DeleteUserProgramPayload> {
         let context = executor.context();
         let view = views::DeleteUserProgramView {
             conn: context.db_conn(),
-            user_id: context.user_id()?,
+            user_id: context.user()?.id,
             id: util::gql_id_to_uuid(&input.id),
         };
         let deleted_id = view.execute()?;

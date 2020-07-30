@@ -4,10 +4,11 @@ use crate::{
     schema::users,
     server::gql::{
         internal::{GenericEdge, NodeType},
-        AuthStatusFields, Context, Cursor, InitializeUserPayloadFields,
-        UserEdgeFields, UserNodeFields,
+        AuthStatusFields, Cursor, InitializeUserPayloadFields, UserEdgeFields,
+        UserNodeFields,
     },
     util,
+    views::RequestContext,
 };
 use diesel::{PgConnection, QueryDsl, QueryResult, RunQueryDsl};
 use juniper::ID;
@@ -34,13 +35,16 @@ impl NodeType for UserNode {
 }
 
 impl UserNodeFields for UserNode {
-    fn field_id(&self, _executor: &juniper::Executor<'_, Context>) -> ID {
+    fn field_id(
+        &self,
+        _executor: &juniper::Executor<'_, RequestContext>,
+    ) -> ID {
         util::uuid_to_gql_id(self.user.id)
     }
 
     fn field_username(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
     ) -> &String {
         &self.user.username
     }
@@ -51,7 +55,7 @@ pub type UserEdge = GenericEdge<UserNode>;
 impl UserEdgeFields for UserEdge {
     fn field_node(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, UserNode, Walked>,
     ) -> &UserNode {
         self.node()
@@ -59,7 +63,7 @@ impl UserEdgeFields for UserEdge {
 
     fn field_cursor(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
     ) -> &Cursor {
         self.cursor()
     }
@@ -72,31 +76,25 @@ pub struct AuthStatus();
 impl AuthStatusFields for AuthStatus {
     fn field_authenticated(
         &self,
-        executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, RequestContext>,
     ) -> bool {
         executor.context().user_context.is_some()
     }
 
     fn field_user_created(
         &self,
-        executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, RequestContext>,
     ) -> bool {
-        executor.context().user_id().is_ok()
+        executor.context().user().is_ok()
     }
 
     fn field_user(
         &self,
-        executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, UserNode, Walked>,
     ) -> ResponseResult<Option<UserNode>> {
-        let context = executor.context();
-
-        match executor.context().user_id() {
-            Ok(user_id) => {
-                let user: models::User =
-                    users::table.find(user_id).get_result(context.db_conn())?;
-                Ok(Some(user.into()))
-            }
+        match executor.context().user() {
+            Ok(user) => Ok(Some(user.clone().into_model().into())),
             // User isn't authed or hasn't finished setup
             Err(ResponseError::Unauthenticated) => Ok(None),
             // This shouldn't be possible
@@ -112,7 +110,7 @@ pub struct InitializeUserPayload {
 impl InitializeUserPayloadFields for InitializeUserPayload {
     fn field_user_edge(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, UserEdge, Walked>,
     ) -> UserEdge {
         GenericEdge::from_db_row(self.user.clone(), 0)
