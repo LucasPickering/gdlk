@@ -1,6 +1,5 @@
 #![deny(clippy::all)]
 
-use diesel::PgConnection;
 use gdlk_api::models::{Factory, NewHardwareSpec};
 use juniper::InputValue;
 use maplit::hashmap;
@@ -39,8 +38,8 @@ static QUERY: &str = r#"
 #[test]
 fn test_create_hardware_spec_success() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
     runner.log_in();
+    let conn = runner.db_conn();
 
     // We'll test collisions against this
     NewHardwareSpec {
@@ -82,8 +81,8 @@ fn test_create_hardware_spec_success() {
 #[test]
 fn test_create_hardware_spec_duplicate() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
     runner.log_in();
+    let conn = runner.db_conn();
 
     // We'll test collisions against this
     NewHardwareSpec {

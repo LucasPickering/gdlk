@@ -73,14 +73,12 @@ async fn route_graphql(
         }
     };
 
+    let context = Context {
+        db_conn: pool.get().map_err(ResponseError::from)?,
+        user_context,
+    };
     let response = web::block(move || {
-        let res = data.execute(
-            &gql_schema,
-            &Context {
-                pool: pool.into_inner(),
-                user_context,
-            },
-        );
+        let res = data.execute(&gql_schema, &context);
         Ok::<_, serde_json::error::Error>(serde_json::to_string(&res)?)
     })
     .await?;

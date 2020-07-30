@@ -1,6 +1,6 @@
 #![deny(clippy::all)]
 
-use diesel::{dsl, PgConnection, QueryDsl, RunQueryDsl};
+use diesel::{dsl, QueryDsl, RunQueryDsl};
 use gdlk_api::{
     models::{Factory, NewUser, NewUserProvider},
     schema::users,
@@ -32,7 +32,7 @@ static QUERY: &str = r#"
 #[test]
 fn test_initialize_user_success() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let conn = runner.db_conn();
 
     let user_provider = NewUserProvider {
         sub: "sub",
@@ -91,7 +91,7 @@ fn test_initialize_user_not_logged_in() {
 #[test]
 fn test_initialize_user_duplicate_username() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let conn = runner.db_conn();
 
     NewUser { username: "user1" }.create(conn);
     let user_provider = NewUserProvider {
@@ -124,7 +124,7 @@ fn test_initialize_user_duplicate_username() {
 #[test]
 fn test_initialize_user_invalid_username() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let conn = runner.db_conn();
 
     let user_provider = NewUserProvider {
         sub: "sub",
@@ -184,7 +184,7 @@ fn test_initialize_user_invalid_username() {
 #[test]
 fn test_initialize_user_already_initialized() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let conn = runner.db_conn();
 
     let user = NewUser { username: "user1" }.create(conn);
     let user_provider = NewUserProvider {
@@ -219,7 +219,7 @@ fn test_initialize_user_already_initialized() {
     assert_eq!(
         users::table
             .select(dsl::count_star())
-            .get_result::<i64>(conn)
+            .get_result::<i64>(runner.db_conn())
             .unwrap(),
         1
     );

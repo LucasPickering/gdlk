@@ -11,13 +11,15 @@ use crate::{
         hardware_spec::*, mutation::*, program_spec::*, user::*,
         user_program::*,
     },
-    util::{Pool, PooledConnection, Valid},
+    util::{PooledConnection, Valid},
 };
-use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
+use diesel::{
+    ExpressionMethods, OptionalExtension, PgConnection, QueryDsl, RunQueryDsl,
+};
 use failure::Fallible;
 use juniper_from_schema::graphql_schema_from_file;
 use serde::{Serialize, Serializer};
-use std::{convert::TryInto, sync::Arc};
+use std::convert::TryInto;
 use uuid::Uuid;
 use validator::{Validate, ValidationError, ValidationErrors};
 
@@ -42,15 +44,15 @@ pub struct UserContext {
 
 /// The GraphQL context that gets passed to each field handler.
 pub struct Context {
-    /// DB connection pool
-    pub pool: Arc<Pool>,
+    /// DB connection
+    pub db_conn: PooledConnection,
     /// The authenticated user. None if the requesting user is not logged in.
     pub user_context: Option<UserContext>,
 }
 
 impl Context {
-    pub fn get_db_conn(&self) -> Result<PooledConnection, ResponseError> {
-        Ok(self.pool.get()?)
+    pub fn db_conn(&self) -> &PgConnection {
+        &self.db_conn
     }
 
     /// Get the ID of the authenticated user. If the user isn't authenticated,
@@ -98,7 +100,7 @@ impl QueryFields for Query {
         username: String,
     ) -> ResponseResult<Option<UserNode>> {
         Ok(models::User::filter_by_username(&username)
-            .get_result::<models::User>(&executor.context().get_db_conn()?)
+            .get_result::<models::User>(executor.context().db_conn())
             .optional()?
             .map(UserNode::from))
     }
@@ -119,9 +121,7 @@ impl QueryFields for Query {
     ) -> ResponseResult<Option<HardwareSpecNode>> {
         Ok(hardware_specs::table
             .filter(hardware_specs::dsl::slug.eq(&slug))
-            .get_result::<models::HardwareSpec>(
-                &executor.context().get_db_conn()?,
-            )
+            .get_result::<models::HardwareSpec>(executor.context().db_conn())
             .optional()?
             .map(HardwareSpecNode::from))
     }

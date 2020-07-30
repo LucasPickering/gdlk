@@ -1,6 +1,5 @@
 #![deny(clippy::all)]
 
-use diesel::PgConnection;
 use gdlk_api::models::{
     Factory, NewHardwareSpec, NewProgramSpec, NewUser, NewUserProgram,
 };
@@ -36,10 +35,10 @@ static QUERY: &str = r#"
 #[test]
 fn test_copy_user_program_success() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let user = runner.log_in();
+    let conn = runner.db_conn();
 
     // Initialize data
-    let user = runner.log_in();
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -117,7 +116,7 @@ fn test_copy_user_program_invalid_id() {
 #[test]
 fn test_copy_user_program_not_logged_in() {
     let runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let conn = runner.db_conn();
 
     // Initialize data
     let user = NewUser { username: "user1" }.create(conn);
@@ -163,10 +162,10 @@ fn test_copy_user_program_not_logged_in() {
 #[test]
 fn test_copy_user_program_wrong_owner() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    runner.log_in();
+    let conn = runner.db_conn();
 
     // Initialize data
-    runner.log_in();
     let other_user = NewUser { username: "user2" }.create(conn);
     let program_spec_id = NewProgramSpec {
         name: "prog1",

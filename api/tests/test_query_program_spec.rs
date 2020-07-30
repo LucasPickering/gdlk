@@ -1,6 +1,5 @@
 #![deny(clippy::all)]
 
-use diesel::PgConnection;
 use gdlk_api::models::{self, Factory, NewHardwareSpec, NewProgramSpec};
 use juniper::InputValue;
 use maplit::hashmap;
@@ -12,7 +11,7 @@ mod utils;
 #[test]
 fn test_program_spec() {
     let runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let conn = runner.db_conn();
 
     let hardware_spec_id = NewHardwareSpec {
         name: "hw1",
@@ -75,9 +74,9 @@ fn test_program_spec() {
 #[test]
 fn test_program_spec_user_program() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
-
     let user = runner.log_in();
+    let conn = runner.db_conn();
+
     let hardware_spec_id = NewHardwareSpec {
         name: "hw1",
         ..Default::default()
@@ -218,7 +217,7 @@ fn test_program_spec_user_program() {
 #[test]
 fn test_program_spec_user_program_not_logged_in() {
     let runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let conn = runner.db_conn();
 
     let hardware_spec_id = NewHardwareSpec {
         name: "hw1",

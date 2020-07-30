@@ -14,7 +14,6 @@ use crate::{
     util,
     views::{self, View},
 };
-use diesel::PgConnection;
 use juniper_from_schema::{QueryTrail, Walked};
 
 /// The top-level mutation object.
@@ -29,7 +28,7 @@ impl MutationFields for Mutation {
     ) -> ResponseResult<InitializeUserPayload> {
         let context = executor.context();
         let view = views::InitializeUserView {
-            conn: &context.get_db_conn()? as &PgConnection,
+            conn: context.db_conn(),
             user_context: context.user_context,
             username: &input.username,
         };
@@ -45,7 +44,7 @@ impl MutationFields for Mutation {
     ) -> ResponseResult<CreateHardwareSpecPayload> {
         let context = executor.context();
         let view = views::CreateHardwareSpecView {
-            conn: &context.get_db_conn()? as &PgConnection,
+            conn: context.db_conn(),
             user_id: context.user_id()?,
             name: &input.name,
             num_registers: input.num_registers,
@@ -65,7 +64,7 @@ impl MutationFields for Mutation {
     ) -> ResponseResult<UpdateHardwareSpecPayload> {
         let context = executor.context();
         let view = views::UpdateHardwareSpecView {
-            conn: &context.get_db_conn()? as &PgConnection,
+            conn: context.db_conn(),
             user_id: context.user_id()?,
             id: util::gql_id_to_uuid(&input.id),
             name: input.name.as_deref(),
@@ -86,7 +85,7 @@ impl MutationFields for Mutation {
     ) -> ResponseResult<CreateProgramSpecPayload> {
         let context = executor.context();
         let view = views::CreateProgramSpecView {
-            conn: &context.get_db_conn()? as &PgConnection,
+            conn: context.db_conn(),
             user_id: context.user_id()?,
             hardware_spec_id: util::gql_id_to_uuid(&input.hardware_spec_id),
             name: &input.name,
@@ -107,7 +106,7 @@ impl MutationFields for Mutation {
     ) -> ResponseResult<UpdateProgramSpecPayload> {
         let context = executor.context();
         let view = views::UpdateProgramSpecView {
-            conn: &context.get_db_conn()? as &PgConnection,
+            conn: context.db_conn(),
             user_id: context.user_id()?,
             id: util::gql_id_to_uuid(&input.id),
             name: input.name.as_deref(),
@@ -128,7 +127,7 @@ impl MutationFields for Mutation {
     ) -> ResponseResult<CreateUserProgramPayload> {
         let context = executor.context();
         let view = views::CreateUserProgramView {
-            conn: &context.get_db_conn()? as &PgConnection,
+            conn: context.db_conn(),
             user_id: context.user_id()?,
             program_spec_id: util::gql_id_to_uuid(&input.program_spec_id),
             file_name: &input.file_name,
@@ -148,7 +147,7 @@ impl MutationFields for Mutation {
     ) -> ResponseResult<UpdateUserProgramPayload> {
         let context = executor.context();
         let view = views::UpdateUserProgramView {
-            conn: &context.get_db_conn()? as &PgConnection,
+            conn: context.db_conn(),
             user_id: context.user_id()?,
             id: util::gql_id_to_uuid(&input.id),
             file_name: input.file_name.as_deref(),
@@ -167,7 +166,7 @@ impl MutationFields for Mutation {
     ) -> ResponseResult<CopyUserProgramPayload> {
         let context = executor.context();
         let view = views::CopyUserProgramView {
-            conn: &context.get_db_conn()? as &PgConnection,
+            conn: context.db_conn(),
             user_id: context.user_id()?,
             id: util::gql_id_to_uuid(&input.id),
         };
@@ -184,7 +183,7 @@ impl MutationFields for Mutation {
     ) -> ResponseResult<DeleteUserProgramPayload> {
         let context = executor.context();
         let view = views::DeleteUserProgramView {
-            conn: &context.get_db_conn()? as &PgConnection,
+            conn: context.db_conn(),
             user_id: context.user_id()?,
             id: util::gql_id_to_uuid(&input.id),
         };

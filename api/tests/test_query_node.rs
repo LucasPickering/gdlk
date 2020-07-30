@@ -1,6 +1,5 @@
 #![deny(clippy::all)]
 
-use diesel::PgConnection;
 use gdlk_api::models::{
     self, Factory, NewHardwareSpec, NewProgramSpec, NewUser,
 };
@@ -14,7 +13,7 @@ mod utils;
 #[test]
 fn test_field_node() {
     let runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let conn = runner.db_conn();
 
     let user_id = NewUser { username: "user1" }.create(conn).id;
     let hardware_spec_id = NewHardwareSpec {

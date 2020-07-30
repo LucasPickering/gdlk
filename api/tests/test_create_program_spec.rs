@@ -1,6 +1,5 @@
 #![deny(clippy::all)]
 
-use diesel::PgConnection;
 use gdlk_api::models::{Factory, NewHardwareSpec, NewProgramSpec};
 use juniper::InputValue;
 use maplit::hashmap;
@@ -41,8 +40,8 @@ static QUERY: &str = r#"
 #[test]
 fn test_create_program_spec_success() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
     runner.log_in();
+    let conn = runner.db_conn();
     let hw_spec = NewHardwareSpec {
         name: "HW 1",
         ..Default::default()
@@ -118,8 +117,8 @@ fn test_create_program_spec_invalid_hw_spec() {
 #[test]
 fn test_create_program_spec_duplicate() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
     runner.log_in();
+    let conn = runner.db_conn();
 
     let hw_spec = NewHardwareSpec {
         name: "HW 1",
@@ -164,8 +163,8 @@ fn test_create_program_spec_duplicate() {
 #[test]
 fn test_create_program_spec_invalid_values() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
     runner.log_in();
+    let conn = runner.db_conn();
     let hw_spec = NewHardwareSpec {
         name: "HW 1",
         ..Default::default()
@@ -205,7 +204,7 @@ fn test_create_program_spec_invalid_values() {
 #[test]
 fn test_create_program_spec_not_logged_in() {
     let runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let conn = runner.db_conn();
     let hw_spec = NewHardwareSpec {
         name: "HW 1",
         ..Default::default()

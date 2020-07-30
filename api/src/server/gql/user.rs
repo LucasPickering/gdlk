@@ -93,9 +93,8 @@ impl AuthStatusFields for AuthStatus {
 
         match executor.context().user_id() {
             Ok(user_id) => {
-                let user: models::User = users::table
-                    .find(user_id)
-                    .get_result(&context.get_db_conn()?)?;
+                let user: models::User =
+                    users::table.find(user_id).get_result(context.db_conn())?;
                 Ok(Some(user.into()))
             }
             // User isn't authed or hasn't finished setup

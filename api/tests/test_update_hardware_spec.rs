@@ -1,6 +1,5 @@
 #![deny(clippy::all)]
 
-use diesel::PgConnection;
 use gdlk_api::models::{Factory, NewHardwareSpec};
 use juniper::InputValue;
 use maplit::hashmap;
@@ -41,9 +40,9 @@ static QUERY: &str = r#"
 #[test]
 fn test_update_hardware_spec_partial_modification() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
-
     runner.log_in();
+    let conn = runner.db_conn();
+
     let hw_spec = NewHardwareSpec {
         name: "HW 2",
         ..Default::default()
@@ -82,8 +81,8 @@ fn test_update_hardware_spec_partial_modification() {
 #[test]
 fn test_update_hardware_spec_full_modification() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
     runner.log_in();
+    let conn = runner.db_conn();
 
     let hw_spec = NewHardwareSpec {
         name: "HW 2",
@@ -150,8 +149,8 @@ fn test_update_hardware_spec_invalid_id() {
 #[test]
 fn test_update_hardware_spec_empty_modification() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
     runner.log_in();
+    let conn = runner.db_conn();
 
     let hw_spec = NewHardwareSpec {
         name: "HW 2",
@@ -181,8 +180,8 @@ fn test_update_hardware_spec_empty_modification() {
 #[test]
 fn test_update_hardware_spec_duplicate() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
     runner.log_in();
+    let conn = runner.db_conn();
 
     // We'll test collisions against this
     NewHardwareSpec {
@@ -219,8 +218,8 @@ fn test_update_hardware_spec_duplicate() {
 #[test]
 fn test_update_hardware_spec_invalid_values() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
     runner.log_in();
+    let conn = runner.db_conn();
 
     let hw_spec = NewHardwareSpec {
         name: "HW 2",
@@ -260,7 +259,7 @@ fn test_update_hardware_spec_invalid_values() {
 #[test]
 fn test_update_hardware_spec_not_logged_in() {
     let runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let conn = runner.db_conn();
     let hw_spec = NewHardwareSpec {
         name: "HW 2",
         ..Default::default()

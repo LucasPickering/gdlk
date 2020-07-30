@@ -1,6 +1,5 @@
 #![deny(clippy::all)]
 
-use diesel::PgConnection;
 use gdlk_api::models::{Factory, NewUser};
 use juniper::InputValue;
 use maplit::hashmap;
@@ -12,7 +11,7 @@ mod utils;
 #[test]
 fn test_field_user() {
     let runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let conn = runner.db_conn();
 
     let user_id = NewUser { username: "user1" }.create(conn).id;
     let query = r#"

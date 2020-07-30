@@ -1,6 +1,5 @@
 #![deny(clippy::all)]
 
-use diesel::PgConnection;
 use gdlk_api::models::{Factory, NewUser, NewUserProvider};
 use maplit::hashmap;
 use serde_json::json;
@@ -45,7 +44,7 @@ fn test_field_auth_status_not_logged_in() {
 #[test]
 fn test_field_auth_status_user_not_created() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let conn = runner.db_conn();
     let user_provider = NewUserProvider {
         sub: "asdf",
         provider_name: "provider",
@@ -75,7 +74,7 @@ fn test_field_auth_status_user_not_created() {
 #[test]
 fn test_field_auth_status_user_created() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let conn = runner.db_conn();
     let user = NewUser { username: "user1" }.create(conn);
     let user_provider = NewUserProvider {
         sub: "asdf",
