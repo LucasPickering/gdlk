@@ -1,5 +1,6 @@
 #![deny(clippy::all)]
 
+use crate::utils::{ContextBuilder, QueryRunner};
 use diesel::{dsl, QueryDsl, RunQueryDsl};
 use gdlk_api::{
     models::{Factory, NewUser, NewUserProvider},
@@ -8,7 +9,6 @@ use gdlk_api::{
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
-use utils::QueryRunner;
 
 mod utils;
 
@@ -31,8 +31,8 @@ static QUERY: &str = r#"
 /// Initialize a user successfully
 #[test]
 fn test_initialize_user_success() {
-    let mut runner = QueryRunner::new();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    let conn = context_builder.db_conn();
 
     let user_provider = NewUserProvider {
         sub: "sub",
@@ -40,8 +40,9 @@ fn test_initialize_user_success() {
         user_id: None,
     }
     .create(conn);
-    runner.set_user_provider(user_provider);
+    context_builder.set_user_provider(user_provider);
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -67,7 +68,8 @@ fn test_initialize_user_success() {
 /// Try to initialize a user while not logged in.
 #[test]
 fn test_initialize_user_not_logged_in() {
-    let runner = QueryRunner::new();
+    let context_builder = ContextBuilder::new();
+    let runner = QueryRunner::new(context_builder);
 
     assert_eq!(
         runner.query(
@@ -90,8 +92,8 @@ fn test_initialize_user_not_logged_in() {
 /// Setting a username that's already taken should return an error.
 #[test]
 fn test_initialize_user_duplicate_username() {
-    let mut runner = QueryRunner::new();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    let conn = context_builder.db_conn();
 
     NewUser { username: "user1" }.create(conn);
     let user_provider = NewUserProvider {
@@ -100,8 +102,9 @@ fn test_initialize_user_duplicate_username() {
         user_id: None,
     }
     .create(conn);
-    runner.set_user_provider(user_provider);
+    context_builder.set_user_provider(user_provider);
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -123,8 +126,8 @@ fn test_initialize_user_duplicate_username() {
 /// Setting a username that doesn't pass validation should return an error
 #[test]
 fn test_initialize_user_invalid_username() {
-    let mut runner = QueryRunner::new();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    let conn = context_builder.db_conn();
 
     let user_provider = NewUserProvider {
         sub: "sub",
@@ -132,8 +135,9 @@ fn test_initialize_user_invalid_username() {
         user_id: None,
     }
     .create(conn);
-    runner.set_user_provider(user_provider);
+    context_builder.set_user_provider(user_provider);
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -183,8 +187,8 @@ fn test_initialize_user_invalid_username() {
 /// an error.
 #[test]
 fn test_initialize_user_already_initialized() {
-    let mut runner = QueryRunner::new();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    let conn = context_builder.db_conn();
 
     let user = NewUser { username: "user1" }.create(conn);
     let user_provider = NewUserProvider {
@@ -193,8 +197,9 @@ fn test_initialize_user_already_initialized() {
         user_id: Some(user.id),
     }
     .create(conn);
-    runner.set_user_provider(user_provider);
+    context_builder.set_user_provider(user_provider);
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,

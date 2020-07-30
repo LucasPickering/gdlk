@@ -1,17 +1,17 @@
 #![deny(clippy::all)]
 
+use crate::utils::{ContextBuilder, QueryRunner};
 use gdlk_api::models::{Factory, NewHardwareSpec, NewProgramSpec};
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
-use utils::QueryRunner;
 
 mod utils;
 
 #[test]
 fn test_field_hardware_spec() {
-    let runner = QueryRunner::new();
-    let conn = runner.db_conn();
+    let context_builder = ContextBuilder::new();
+    let conn = context_builder.db_conn();
 
     let hardware_spec_id = NewHardwareSpec {
         name: "hw1",
@@ -37,6 +37,7 @@ fn test_field_hardware_spec() {
         }
     "#;
 
+    let runner = QueryRunner::new(context_builder);
     // Known hardware spec
     assert_eq!(
         runner.query(
@@ -72,8 +73,8 @@ fn test_field_hardware_spec() {
 
 #[test]
 fn test_field_hardware_specs() {
-    let runner = QueryRunner::new();
-    let conn = runner.db_conn();
+    let context_builder = ContextBuilder::new();
+    let conn = context_builder.db_conn();
 
     NewHardwareSpec {
         name: "hw1",
@@ -110,6 +111,7 @@ fn test_field_hardware_specs() {
         }
     "#;
 
+    let runner = QueryRunner::new(context_builder);
     // Query all nodes
     assert_eq!(
         runner.query(query, hashmap! {}),
@@ -185,8 +187,8 @@ fn test_field_hardware_specs() {
 
 #[test]
 fn test_field_hardware_spec_program_spec() {
-    let runner = QueryRunner::new();
-    let conn = runner.db_conn();
+    let context_builder = ContextBuilder::new();
+    let conn = context_builder.db_conn();
 
     let hardware_spec_id = NewHardwareSpec {
         name: "hw1",
@@ -248,6 +250,7 @@ fn test_field_hardware_spec_program_spec() {
         }
     "#;
 
+    let runner = QueryRunner::new(context_builder);
     // Known program spec
     assert_eq!(
         runner.query(

@@ -2,9 +2,10 @@ use crate::{
     error::ResponseResult,
     server::gql::{
         hardware_spec::HardwareSpecNode, program_spec::ProgramSpecNode,
-        user::UserNode, user_program::UserProgramNode, Context, Cursor, Node,
+        user::UserNode, user_program::UserProgramNode, Cursor, Node,
     },
     util,
+    views::RequestContext,
 };
 use diesel::{OptionalExtension, PgConnection, QueryResult};
 use std::convert::TryFrom;
@@ -88,7 +89,7 @@ impl<N: NodeType> GenericEdge<N> {
 /// associated with a node type, and finds the row with the matching ID. Since
 /// we use UUIDs, this will never match more than one row across all the tables.
 pub fn get_by_id_from_all_types(
-    context: &Context,
+    context: &RequestContext,
     id: &juniper::ID,
 ) -> ResponseResult<Option<Node>> {
     let conn = context.db_conn();

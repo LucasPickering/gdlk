@@ -11,16 +11,14 @@ use crate::{
         hardware_spec::*, mutation::*, program_spec::*, user::*,
         user_program::*,
     },
-    util::{PooledConnection, Valid},
+    util::Valid,
+    views::RequestContext,
 };
-use diesel::{
-    ExpressionMethods, OptionalExtension, PgConnection, QueryDsl, RunQueryDsl,
-};
+use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
 use failure::Fallible;
 use juniper_from_schema::graphql_schema_from_file;
 use serde::{Serialize, Serializer};
 use std::convert::TryInto;
-use uuid::Uuid;
 use validator::{Validate, ValidationError, ValidationErrors};
 
 mod hardware_spec;
@@ -30,48 +28,14 @@ mod program_spec;
 mod user;
 mod user_program;
 
-graphql_schema_from_file!("schema.graphql", error_type: ResponseError);
-
-/// A nested part of context, representing the authenticated user.
-#[derive(Copy, Clone, Debug)]
-pub struct UserContext {
-    /// The ID of the user_provider that the user used to log in.
-    pub user_provider_id: Uuid,
-    /// The ID of the requesting user. None if they are logged in but have not
-    /// set their username yet.
-    pub user_id: Option<Uuid>,
-}
-
-/// The GraphQL context that gets passed to each field handler.
-pub struct Context {
-    /// DB connection
-    pub db_conn: PooledConnection,
-    /// The authenticated user. None if the requesting user is not logged in.
-    pub user_context: Option<UserContext>,
-}
-
-impl Context {
-    pub fn db_conn(&self) -> &PgConnection {
-        &self.db_conn
-    }
-
-    /// Get the ID of the authenticated user. If the user isn't authenticated,
-    /// or they ARE authenticated but haven't finished initializing their user
-    /// yet (to the point where a row in the `users` table has been created),
-    /// then return an error.
-    pub fn user_id(&self) -> Result<Uuid, ResponseError> {
-        match self.user_context {
-            Some(UserContext {
-                user_id: Some(user_id),
-                ..
-            }) => Ok(user_id),
-            _ => Err(ResponseError::Unauthenticated),
-        }
-    }
-}
+graphql_schema_from_file!(
+    "schema.graphql",
+    context_type: RequestContext,
+    error_type: ResponseError
+);
 
 // To make our context usable by Juniper, we have to implement a marker trait.
-impl juniper::Context for Context {}
+impl juniper::Context for RequestContext {}
 
 pub type GqlSchema = juniper::RootNode<'static, Query, Mutation>;
 
@@ -86,7 +50,7 @@ impl QueryFields for Query {
     /// Get a node of any type by UUID.
     fn field_node(
         &self,
-        executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, Node, Walked>,
         id: juniper::ID,
     ) -> ResponseResult<Option<Node>> {
@@ -95,7 +59,7 @@ impl QueryFields for Query {
 
     fn field_user(
         &self,
-        executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, UserNode, Walked>,
         username: String,
     ) -> ResponseResult<Option<UserNode>> {
@@ -107,7 +71,7 @@ impl QueryFields for Query {
 
     fn field_auth_status(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, AuthStatus, Walked>,
     ) -> AuthStatus {
         AuthStatus()
@@ -115,7 +79,7 @@ impl QueryFields for Query {
 
     fn field_hardware_spec(
         &self,
-        executor: &juniper::Executor<'_, Context>,
+        executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, HardwareSpecNode, Walked>,
         slug: String,
     ) -> ResponseResult<Option<HardwareSpecNode>> {
@@ -128,7 +92,7 @@ impl QueryFields for Query {
 
     fn field_hardware_specs(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, HardwareSpecConnection, Walked>,
         first: Option<i32>,
         after: Option<Cursor>,
@@ -271,28 +235,28 @@ impl PageInfo {
 impl PageInfoFields for PageInfo {
     fn field_start_cursor(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
     ) -> &Option<Cursor> {
         &self.start_cursor
     }
 
     fn field_end_cursor(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
     ) -> &Option<Cursor> {
         &self.end_cursor
     }
 
     fn field_has_previous_page(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
     ) -> bool {
         self.has_previous_page
     }
 
     fn field_has_next_page(
         &self,
-        _executor: &juniper::Executor<'_, Context>,
+        _executor: &juniper::Executor<'_, RequestContext>,
     ) -> bool {
         self.has_next_page
     }

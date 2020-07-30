@@ -1,10 +1,10 @@
 #![deny(clippy::all)]
 
+use crate::utils::{ContextBuilder, QueryRunner};
 use gdlk_api::models::{Factory, NewHardwareSpec};
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
-use utils::QueryRunner;
 
 mod utils;
 
@@ -37,9 +37,9 @@ static QUERY: &str = r#"
 /// Test the standard success state of createHardwareSpec
 #[test]
 fn test_create_hardware_spec_success() {
-    let mut runner = QueryRunner::new();
-    runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     // We'll test collisions against this
     NewHardwareSpec {
@@ -48,6 +48,7 @@ fn test_create_hardware_spec_success() {
     }
     .create(conn);
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -80,9 +81,9 @@ fn test_create_hardware_spec_success() {
 /// [ERROR] Test createHardwareSpec when you try to use a pre-existing name
 #[test]
 fn test_create_hardware_spec_duplicate() {
-    let mut runner = QueryRunner::new();
-    runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     // We'll test collisions against this
     NewHardwareSpec {
@@ -91,6 +92,7 @@ fn test_create_hardware_spec_duplicate() {
     }
     .create(conn);
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -115,8 +117,9 @@ fn test_create_hardware_spec_duplicate() {
 /// [ERROR] Test createHardwareSpec when you pass invalid data
 #[test]
 fn test_create_hardware_spec_invalid_values() {
-    let mut runner = QueryRunner::new();
-    runner.log_in();
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in();
+    let runner = QueryRunner::new(context_builder);
 
     assert_eq!(
         runner.query(
@@ -148,7 +151,8 @@ fn test_create_hardware_spec_invalid_values() {
 /// [ERROR] Test createHardwareSpec when you aren't logged in
 #[test]
 fn test_create_hardware_spec_not_logged_in() {
-    let runner = QueryRunner::new();
+    let context_builder = ContextBuilder::new();
+    let runner = QueryRunner::new(context_builder);
 
     assert_eq!(
         runner.query(

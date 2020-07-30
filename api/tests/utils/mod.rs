@@ -1,12 +1,12 @@
 //! A helper module to hold utilities that are used across tests. This file
 //! DOES NOT container any of its own tests.
 
-use diesel::{PgConnection, RunQueryDsl};
+use diesel::PgConnection;
 use gdlk_api::{
     models::{self, Factory},
-    schema::user_providers,
-    server::{create_gql_schema, Context, GqlSchema, UserContext},
-    util,
+    server::{create_gql_schema, GqlSchema},
+    util::{self, PooledConnection},
+    views::RequestContext,
 };
 use juniper::{ExecutionError, InputValue, Variables};
 use serde::Serialize;
@@ -18,72 +18,76 @@ pub fn to_json<T: Serialize>(input: T) -> serde_json::Value {
     serde_json::from_str(&serialized).unwrap()
 }
 
-/// Helper type for setting up and executing test GraphQL queries
-pub struct QueryRunner {
-    schema: GqlSchema,
-    context: Context,
+pub struct ContextBuilder {
+    db_conn: PooledConnection,
+    user_provider: Option<models::UserProvider>,
+    user: Option<models::User>,
 }
 
-impl QueryRunner {
+impl ContextBuilder {
     pub fn new() -> Self {
-        let pool = util::init_test_db_conn_pool().unwrap();
-        let context = Context {
-            db_conn: pool.get().unwrap(),
-            user_context: None,
-        };
+        let db_conn = util::init_test_db_conn_pool().unwrap().get().unwrap();
         Self {
-            schema: create_gql_schema(),
-            context,
+            db_conn,
+            user_provider: None,
+            user: None,
         }
     }
 
-    /// Get a DB connection from the pool.
     pub fn db_conn(&self) -> &PgConnection {
-        self.context.db_conn()
+        &self.db_conn
     }
 
-    /// Modify the query context to set the current user. Creates a placeholder
-    /// UserProvider to be used for authentication. For most tests you can just
-    /// use [Self::log_in], this is only necessary when you need more control
-    /// over the logged-in user.
-    pub fn set_user(&mut self, user: &models::User) {
+    #[allow(dead_code)] // Not all test crates use this
+    pub fn set_user_provider(&mut self, user_provider: models::UserProvider) {
+        self.user_provider = Some(user_provider);
+    }
+
+    #[allow(dead_code)] // Not all test crates use this
+    pub fn log_in(&mut self) -> models::User {
+        let conn = &self.db_conn();
+        let user = models::NewUser { username: "user1" }.create(conn);
+
         // Create a bogus user_provider for this user. We're not trying to test
         // the OpenID logic here, so this is fine.
-        let user_provider_id = models::NewUserProvider {
+        let user_provider = models::NewUserProvider {
             sub: &user.id.to_string(), // guarantees uniqueness
             provider_name: "fake_provider",
             user_id: Some(user.id),
         }
-        .insert()
-        .returning(user_providers::columns::id)
-        .get_result(self.db_conn())
-        .unwrap(); // Failure here indicates some unexpected DB/network error
+        .create(conn);
 
-        self.context.user_context = Some(UserContext {
-            user_provider_id,
-            user_id: Some(user.id),
-        });
-    }
-
-    /// Modify the query context to set the current user_provider and user. This
-    /// is useful when testing the auth functionality, but if you just need
-    /// an authenticated user, then you probably want to use [Self::set_user].
-    #[allow(dead_code)] // Not all crates use this
-    pub fn set_user_provider(&mut self, user_provider: models::UserProvider) {
-        self.context.user_context = Some(UserContext {
-            user_provider_id: user_provider.id,
-            user_id: user_provider.user_id,
-        })
-    }
-
-    /// Create a new user and set them as the logged-in user. This is the
-    /// easiest way to log in for a test, and should be used for most tests.
-    #[allow(dead_code)] // Not all crates use this
-    pub fn log_in(&mut self) -> models::User {
-        let user =
-            models::NewUser { username: "user1" }.create(&self.db_conn());
-        self.set_user(&user);
+        self.user_provider = Some(user_provider);
+        self.user = Some(user.clone());
         user
+    }
+
+    pub fn build(self) -> RequestContext {
+        RequestContext::load_context(
+            self.db_conn,
+            self.user_provider.map(|up| up.id),
+        )
+        .unwrap()
+    }
+}
+
+/// Helper type for setting up and executing test GraphQL queries
+pub struct QueryRunner {
+    schema: GqlSchema,
+    context: RequestContext,
+}
+
+impl QueryRunner {
+    pub fn new(context_builder: ContextBuilder) -> Self {
+        Self {
+            schema: create_gql_schema(),
+            context: context_builder.build(),
+        }
+    }
+
+    #[allow(dead_code)] // Not all test crates use this
+    pub fn db_conn(&self) -> &PgConnection {
+        &self.context.db_conn
     }
 
     pub fn query<'a>(

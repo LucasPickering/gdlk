@@ -1,9 +1,9 @@
 #![deny(clippy::all)]
 
+use crate::utils::{ContextBuilder, QueryRunner};
 use gdlk_api::models::{Factory, NewUser, NewUserProvider};
 use maplit::hashmap;
 use serde_json::json;
-use utils::QueryRunner;
 
 mod utils;
 
@@ -23,7 +23,8 @@ query AuthStatusQuery {
 /// Test when the user isn't authenticated at all
 #[test]
 fn test_field_auth_status_not_logged_in() {
-    let runner = QueryRunner::new();
+    let context_builder = ContextBuilder::new();
+    let runner = QueryRunner::new(context_builder);
 
     assert_eq!(
         runner.query(QUERY, hashmap! {}),
@@ -43,8 +44,9 @@ fn test_field_auth_status_not_logged_in() {
 /// Test when the user is logged in, but hasn't finished user setup yet
 #[test]
 fn test_field_auth_status_user_not_created() {
-    let mut runner = QueryRunner::new();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    let conn = context_builder.db_conn();
+
     let user_provider = NewUserProvider {
         sub: "asdf",
         provider_name: "provider",
@@ -52,8 +54,9 @@ fn test_field_auth_status_user_not_created() {
     }
     .create(conn);
     // user_provider is set, but not user
-    runner.set_user_provider(user_provider);
+    context_builder.set_user_provider(user_provider);
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(QUERY, hashmap! {}),
         (
@@ -73,8 +76,9 @@ fn test_field_auth_status_user_not_created() {
 /// the most common auth status.
 #[test]
 fn test_field_auth_status_user_created() {
-    let mut runner = QueryRunner::new();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    let conn = context_builder.db_conn();
+
     let user = NewUser { username: "user1" }.create(conn);
     let user_provider = NewUserProvider {
         sub: "asdf",
@@ -83,8 +87,9 @@ fn test_field_auth_status_user_created() {
     }
     .create(conn);
     // user_provider is set, but not user
-    runner.set_user_provider(user_provider);
+    context_builder.set_user_provider(user_provider);
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(QUERY, hashmap! {}),
         (

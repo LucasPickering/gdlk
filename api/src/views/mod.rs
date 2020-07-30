@@ -2,12 +2,14 @@
 //! for fetching, mutations, etc. They're an abstraction layer between the
 //! models and the GQL responders.
 
+mod context;
 mod hardware_spec;
 mod program_spec;
 mod user;
 mod user_program;
 
 use crate::error::ResponseResult;
+pub use context::*;
 pub use hardware_spec::*;
 pub use program_spec::*;
 pub use user::*;

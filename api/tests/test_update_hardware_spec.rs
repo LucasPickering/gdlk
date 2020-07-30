@@ -1,10 +1,10 @@
 #![deny(clippy::all)]
 
+use crate::utils::{ContextBuilder, QueryRunner};
 use gdlk_api::models::{Factory, NewHardwareSpec};
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
-use utils::QueryRunner;
 
 mod utils;
 
@@ -39,9 +39,9 @@ static QUERY: &str = r#"
 /// Modify just a subset of fields, make sure the others keep their values
 #[test]
 fn test_update_hardware_spec_partial_modification() {
-    let mut runner = QueryRunner::new();
-    runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     let hw_spec = NewHardwareSpec {
         name: "HW 2",
@@ -49,6 +49,7 @@ fn test_update_hardware_spec_partial_modification() {
     }
     .create(conn);
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -80,9 +81,9 @@ fn test_update_hardware_spec_partial_modification() {
 /// Modify all fields
 #[test]
 fn test_update_hardware_spec_full_modification() {
-    let mut runner = QueryRunner::new();
-    runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     let hw_spec = NewHardwareSpec {
         name: "HW 2",
@@ -90,6 +91,7 @@ fn test_update_hardware_spec_full_modification() {
     }
     .create(conn);
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -123,8 +125,9 @@ fn test_update_hardware_spec_full_modification() {
 /// Pass an invalid ID, get null back
 #[test]
 fn test_update_hardware_spec_invalid_id() {
-    let mut runner = QueryRunner::new();
-    runner.log_in();
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in();
+    let runner = QueryRunner::new(context_builder);
 
     assert_eq!(
         runner.query(
@@ -148,9 +151,9 @@ fn test_update_hardware_spec_invalid_id() {
 /// [ERROR] Test that passing no modifications is an error
 #[test]
 fn test_update_hardware_spec_empty_modification() {
-    let mut runner = QueryRunner::new();
-    runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     let hw_spec = NewHardwareSpec {
         name: "HW 2",
@@ -158,6 +161,7 @@ fn test_update_hardware_spec_empty_modification() {
     }
     .create(conn);
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -179,9 +183,9 @@ fn test_update_hardware_spec_empty_modification() {
 /// [ERROR] Test that using a duplicate name returns an error
 #[test]
 fn test_update_hardware_spec_duplicate() {
-    let mut runner = QueryRunner::new();
-    runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     // We'll test collisions against this
     NewHardwareSpec {
@@ -195,6 +199,7 @@ fn test_update_hardware_spec_duplicate() {
     }
     .create(conn);
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -217,9 +222,9 @@ fn test_update_hardware_spec_duplicate() {
 /// [ERROR] Test that passing invalid values gives an error
 #[test]
 fn test_update_hardware_spec_invalid_values() {
-    let mut runner = QueryRunner::new();
-    runner.log_in();
-    let conn = runner.db_conn();
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in();
+    let conn = context_builder.db_conn();
 
     let hw_spec = NewHardwareSpec {
         name: "HW 2",
@@ -227,6 +232,7 @@ fn test_update_hardware_spec_invalid_values() {
     }
     .create(conn);
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -258,14 +264,16 @@ fn test_update_hardware_spec_invalid_values() {
 /// [ERROR] Test createHardwareSpec when you aren't logged in
 #[test]
 fn test_update_hardware_spec_not_logged_in() {
-    let runner = QueryRunner::new();
-    let conn = runner.db_conn();
+    let context_builder = ContextBuilder::new();
+    let conn = context_builder.db_conn();
+
     let hw_spec = NewHardwareSpec {
         name: "HW 2",
         ..Default::default()
     }
     .create(conn);
 
+    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
