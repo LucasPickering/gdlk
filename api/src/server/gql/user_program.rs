@@ -79,7 +79,7 @@ impl UserProgramNodeFields for UserProgramNode {
         _trail: &QueryTrail<'_, UserNode, Walked>,
     ) -> ResponseResult<UserNode> {
         Ok(UserNode::find(
-            &executor.context().get_db_conn()? as &PgConnection,
+            executor.context().db_conn(),
             self.user_program.user_id,
         )?
         .into())
@@ -91,7 +91,7 @@ impl UserProgramNodeFields for UserProgramNode {
         _trail: &QueryTrail<'_, ProgramSpecNode, Walked>,
     ) -> ResponseResult<ProgramSpecNode> {
         Ok(ProgramSpecNode::find(
-            &executor.context().get_db_conn()? as &PgConnection,
+            executor.context().db_conn(),
             self.user_program.program_spec_id,
         )?
         .into())
@@ -144,7 +144,7 @@ impl UserProgramConnection {
             self.program_spec_id,
         )
         .select(dsl::count_star())
-        .get_result::<i64>(&context.get_db_conn()?)
+        .get_result::<i64>(context.db_conn())
         {
             // Convert i64 to i32 - if this fails, we're in a rough spot
             Ok(count) => Ok(count.try_into().unwrap()),
@@ -173,7 +173,7 @@ impl UserProgramConnection {
         }
 
         let rows: Vec<models::UserProgram> =
-            query.get_results(&context.get_db_conn()?)?;
+            query.get_results(context.db_conn())?;
 
         Ok(UserProgramEdge::from_db_rows(rows, offset))
     }

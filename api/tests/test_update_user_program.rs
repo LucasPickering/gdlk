@@ -1,6 +1,5 @@
 #![deny(clippy::all)]
 
-use diesel::PgConnection;
 use gdlk_api::models::{
     Factory, NewHardwareSpec, NewProgramSpec, NewUser, NewUserProgram,
 };
@@ -43,10 +42,10 @@ static QUERY: &str = r#"
 #[test]
 fn test_update_user_program_success() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let user = runner.log_in();
+    let conn = runner.db_conn();
 
     // Initialize data
-    let user = runner.log_in();
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -103,7 +102,7 @@ fn test_update_user_program_success() {
 #[test]
 fn test_update_user_program_not_logged_in() {
     let runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let conn = runner.db_conn();
 
     // Initialize data
     let user = NewUser { username: "user1" }.create(conn);
@@ -151,7 +150,7 @@ fn test_update_user_program_not_logged_in() {
 #[test]
 fn test_update_user_program_wrong_owner() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let conn = runner.db_conn();
 
     // Initialize data
     let owner = NewUser { username: "owner" }.create(conn);
@@ -200,10 +199,10 @@ fn test_update_user_program_wrong_owner() {
 #[test]
 fn test_update_user_program_empty_modification() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let user = runner.log_in();
+    let conn = runner.db_conn();
 
     // Initialize data
-    let user = runner.log_in();
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -246,10 +245,10 @@ fn test_update_user_program_empty_modification() {
 #[test]
 fn test_update_user_program_duplicate() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let user = runner.log_in();
+    let conn = runner.db_conn();
 
     // Initialize data
-    let user = runner.log_in();
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -302,10 +301,10 @@ fn test_update_user_program_duplicate() {
 #[test]
 fn test_update_user_program_invalid_values() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let user = runner.log_in();
+    let conn = runner.db_conn();
 
     // Initialize data
-    let user = runner.log_in();
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {

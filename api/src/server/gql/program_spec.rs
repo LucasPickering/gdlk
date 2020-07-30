@@ -98,7 +98,7 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
         _trail: &QueryTrail<'_, HardwareSpecNode, Walked>,
     ) -> ResponseResult<HardwareSpecNode> {
         Ok(HardwareSpecNode::find(
-            &executor.context().get_db_conn()? as &PgConnection,
+            &executor.context().db_conn(),
             self.program_spec.hardware_spec_id,
         )?
         .into())
@@ -111,7 +111,6 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
         file_name: String,
     ) -> ResponseResult<Option<UserProgramNode>> {
         let context = executor.context();
-        let conn = &context.get_db_conn()? as &PgConnection;
         let user_id = context.user_id()?;
 
         Ok(models::UserProgram::filter_by_user_and_program_spec(
@@ -120,7 +119,7 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
         )
         .filter(user_programs::dsl::file_name.eq(&file_name))
         .select(user_programs::table::all_columns())
-        .get_result::<models::UserProgram>(conn)
+        .get_result::<models::UserProgram>(context.db_conn())
         .optional()?
         .map(UserProgramNode::from))
     }
@@ -180,7 +179,7 @@ impl ProgramSpecConnection {
                 self.hardware_spec_id,
             ))
             .select(dsl::count_star())
-            .get_result::<i64>(&context.get_db_conn()?)
+            .get_result::<i64>(context.db_conn())
         {
             // Convert i64 to i32 - if this fails, we're in a rough spot
             Ok(count) => Ok(count.try_into().unwrap()),
@@ -208,7 +207,7 @@ impl ProgramSpecConnection {
         }
 
         let rows: Vec<models::ProgramSpec> =
-            query.get_results(&context.get_db_conn()?)?;
+            query.get_results(context.db_conn())?;
 
         Ok(ProgramSpecEdge::from_db_rows(rows, offset))
     }

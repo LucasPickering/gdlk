@@ -1,28 +1,16 @@
 //! A helper module to hold utilities that are used across tests. This file
 //! DOES NOT container any of its own tests.
 
-use diesel::{associations::HasTable, PgConnection, RunQueryDsl};
+use diesel::{PgConnection, RunQueryDsl};
 use gdlk_api::{
     models::{self, Factory},
     schema::user_providers,
     server::{create_gql_schema, Context, GqlSchema, UserContext},
-    util::{self, PooledConnection},
+    util,
 };
 use juniper::{ExecutionError, InputValue, Variables};
 use serde::Serialize;
-use std::{collections::HashMap, sync::Arc};
-
-/// Macro to run a DELETE statement for each given table. Used to clean up all
-/// tables after each test.
-macro_rules! delete_tables {
-    ($conn:expr, $($model:ty),+ $(,)?) => {
-        $(
-            diesel::delete(<$model>::table())
-            .execute($conn as &PgConnection)
-            .unwrap();
-        )+
-    };
-}
+use std::collections::HashMap;
 
 /// Convert a serializable value into a JSON value.
 pub fn to_json<T: Serialize>(input: T) -> serde_json::Value {
@@ -38,9 +26,9 @@ pub struct QueryRunner {
 
 impl QueryRunner {
     pub fn new() -> Self {
-        let database_url = std::env::var("DATABASE_URL").unwrap();
+        let pool = util::init_test_db_conn_pool().unwrap();
         let context = Context {
-            pool: Arc::new(util::init_db_conn_pool(&database_url).unwrap()),
+            db_conn: pool.get().unwrap(),
             user_context: None,
         };
         Self {
@@ -50,8 +38,8 @@ impl QueryRunner {
     }
 
     /// Get a DB connection from the pool.
-    pub fn db_conn(&self) -> PooledConnection {
-        self.context.get_db_conn().unwrap()
+    pub fn db_conn(&self) -> &PgConnection {
+        self.context.db_conn()
     }
 
     /// Modify the query context to set the current user. Creates a placeholder
@@ -68,7 +56,7 @@ impl QueryRunner {
         }
         .insert()
         .returning(user_providers::columns::id)
-        .get_result(&self.db_conn())
+        .get_result(self.db_conn())
         .unwrap(); // Failure here indicates some unexpected DB/network error
 
         self.context.user_context = Some(UserContext {
@@ -121,21 +109,5 @@ impl QueryRunner {
 
         // Map the output data to JSON, for easier comparison
         (to_json(data), errors.into_iter().map(to_json).collect())
-    }
-}
-
-// Automatically wipe all tables when the test is done
-impl Drop for QueryRunner {
-    fn drop(&mut self) {
-        let conn = self.context.get_db_conn().unwrap();
-        delete_tables!(
-            &conn,
-            models::UserProvider,
-            models::UserProgram,
-            models::ProgramSpec,
-            models::HardwareSpec,
-            models::User,
-            // Any new table needs to be added here!
-        );
     }
 }

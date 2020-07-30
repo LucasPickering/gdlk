@@ -1,6 +1,5 @@
 #![deny(clippy::all)]
 
-use diesel::PgConnection;
 use gdlk_api::models::{
     Factory, NewHardwareSpec, NewProgramSpec, NewUser, NewUserProgram,
 };
@@ -42,9 +41,9 @@ static QUERY: &str = r#"
 #[test]
 fn test_create_user_program_success() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
-
     runner.log_in();
+    let conn = runner.db_conn();
+
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -93,7 +92,7 @@ fn test_create_user_program_success() {
 #[test]
 fn test_create_user_program_repeat_name() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let conn = runner.db_conn();
 
     let program_spec_id = NewProgramSpec {
         name: "prog1",
@@ -109,7 +108,7 @@ fn test_create_user_program_repeat_name() {
     .id;
 
     // Create a user_program for user1
-    let user1 = NewUser { username: "user1" }.create(conn);
+    let user1 = NewUser { username: "user1" }.create(runner.db_conn());
     runner.set_user(&user1);
     assert_eq!(
         runner.query(
@@ -141,7 +140,7 @@ fn test_create_user_program_repeat_name() {
     );
 
     // Create a user_program with the same name for user2
-    let user2 = NewUser { username: "user2" }.create(conn);
+    let user2 = NewUser { username: "user2" }.create(runner.db_conn());
     runner.set_user(&user2);
     assert_eq!(
         runner.query(
@@ -177,9 +176,9 @@ fn test_create_user_program_repeat_name() {
 #[test]
 fn test_create_user_program_duplicate() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
-
     let user = runner.log_in();
+    let conn = runner.db_conn();
+
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -225,9 +224,9 @@ fn test_create_user_program_duplicate() {
 #[test]
 fn test_create_user_program_invalid_program_spec() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
-
     runner.log_in();
+    let conn = runner.db_conn();
+
     NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {
@@ -264,9 +263,9 @@ fn test_create_user_program_invalid_program_spec() {
 #[test]
 fn test_create_user_program_invalid_values() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
-
     runner.log_in();
+    let conn = runner.db_conn();
+
     let program_spec_id = NewProgramSpec {
         name: "prog1",
         hardware_spec_id: NewHardwareSpec {

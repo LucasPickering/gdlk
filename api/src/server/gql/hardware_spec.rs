@@ -91,9 +91,7 @@ impl HardwareSpecNodeFields for HardwareSpecNode {
         Ok(
             models::ProgramSpec::filter_by_hardware_spec(self.hardware_spec.id)
                 .filter(program_specs::dsl::slug.eq(&slug))
-                .get_result::<models::ProgramSpec>(
-                    &executor.context().get_db_conn()?,
-                )
+                .get_result::<models::ProgramSpec>(executor.context().db_conn())
                 .optional()?
                 .map(ProgramSpecNode::from),
         )
@@ -147,7 +145,7 @@ impl HardwareSpecConnection {
     fn get_total_count(&self, context: &Context) -> ResponseResult<i32> {
         match hardware_specs::table
             .select(dsl::count_star())
-            .get_result::<i64>(&context.get_db_conn()?)
+            .get_result::<i64>(context.db_conn())
         {
             // Convert i64 to i32 - if this fails, we're in a rough spot
             Ok(count) => Ok(count.try_into().unwrap()),
@@ -170,7 +168,7 @@ impl HardwareSpecConnection {
         }
 
         let rows: Vec<models::HardwareSpec> =
-            query.get_results(&context.get_db_conn()?)?;
+            query.get_results(context.db_conn())?;
 
         Ok(HardwareSpecEdge::from_db_rows(rows, offset))
     }

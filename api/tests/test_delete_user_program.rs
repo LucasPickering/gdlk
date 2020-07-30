@@ -1,6 +1,6 @@
 #![deny(clippy::all)]
 
-use diesel::{OptionalExtension, PgConnection, QueryDsl, RunQueryDsl};
+use diesel::{OptionalExtension, QueryDsl, RunQueryDsl};
 use gdlk_api::{
     models::{
         self, Factory, NewHardwareSpec, NewProgramSpec, NewUser, NewUserProgram,
@@ -25,9 +25,9 @@ static QUERY: &str = r#"
 #[test]
 fn test_delete_user_program_success() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
-
     let user = runner.log_in();
+    let conn = runner.db_conn();
+
     let user_program_id = NewUserProgram {
         user_id: user.id,
         program_spec_id: NewProgramSpec {
@@ -98,7 +98,7 @@ fn test_delete_user_program_success() {
 #[test]
 fn test_delete_user_program_not_logged_in() {
     let runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
+    let conn = runner.db_conn();
 
     let user_program_id = NewUserProgram {
         user_id: NewUser { username: "user1" }.create(conn).id,
@@ -142,8 +142,8 @@ fn test_delete_user_program_not_logged_in() {
 #[test]
 fn test_delete_user_program_wrong_owner() {
     let mut runner = QueryRunner::new();
-    let conn: &PgConnection = &runner.db_conn();
     runner.log_in();
+    let conn = runner.db_conn();
 
     let owner = NewUser { username: "user2" }.create(conn);
     let user_program_id = NewUserProgram {

@@ -91,7 +91,7 @@ pub fn get_by_id_from_all_types(
     context: &Context,
     id: &juniper::ID,
 ) -> ResponseResult<Option<Node>> {
-    let conn: &PgConnection = &context.get_db_conn()? as &PgConnection;
+    let conn = context.db_conn();
     let uuid_id = util::gql_id_to_uuid(id);
 
     // Do one query per node type to fine the node with this ID
