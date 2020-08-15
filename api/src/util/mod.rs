@@ -1,17 +1,20 @@
-//! General utility functions and types.
+//! This module holds both general and niche utility functions and types.
+//! More general/miscellaneous things are in this file, while more specific
+//! sub-categories live in submodules. Everything is exported directly from this
+//! module though.
 
+mod auth;
+mod db;
 #[cfg(test)]
-pub use self::tests::*;
-use diesel::{r2d2::ConnectionManager, Connection, PgConnection};
-use r2d2::CustomizeConnection;
+mod tests;
+
+pub use auth::*;
+pub use db::*;
 use std::ops::Deref;
+#[cfg(test)]
+pub use tests::*;
 use uuid::Uuid;
 use validator::{Validate, ValidationErrors};
-
-/// Type aliases for DB connections
-pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
-pub type PooledConnection =
-    r2d2::PooledConnection<ConnectionManager<PgConnection>>;
 
 /// A small wrapper struct to indicate that the wrapped value has been
 /// validated. Built on top of [validator]. This struct can only be constructed
@@ -39,44 +42,6 @@ impl<T: Validate> Deref for Valid<T> {
     fn deref(&self) -> &T {
         &self.inner
     }
-}
-
-/// A DB connection customizer that wraps each connection in a transaction
-/// before returning it. This should be used in all unit tests to prevent
-/// make changes to the DB.
-#[derive(Copy, Clone, Debug)]
-struct TestConnectionCustomizer;
-
-impl CustomizeConnection<PgConnection, diesel::r2d2::Error>
-    for TestConnectionCustomizer
-{
-    fn on_acquire(
-        &self,
-        conn: &mut PgConnection,
-    ) -> Result<(), diesel::r2d2::Error> {
-        conn.begin_test_transaction()
-            .map_err(diesel::r2d2::Error::QueryError)?;
-        Ok(())
-    }
-
-    fn on_release(&self, _conn: PgConnection) {}
-}
-
-/// Initialize a new DB connection pool, for use in the webserver.
-pub fn init_db_conn_pool(database_url: &str) -> Result<Pool, r2d2::Error> {
-    let manager = ConnectionManager::new(database_url);
-    r2d2::Pool::builder().build(manager)
-}
-
-/// Initialize a new DB connection pool for use in tests. Reads the DB URL from
-/// the environment. Also, all connections are wrapped in a test transaction
-/// to prevent making modifications to the DB.
-pub fn init_test_db_conn_pool() -> Result<Pool, r2d2::Error> {
-    let database_url = std::env::var("DATABASE_URL").unwrap();
-    let manager = ConnectionManager::new(database_url);
-    r2d2::Pool::builder()
-        .connection_customizer(Box::new(TestConnectionCustomizer))
-        .build(manager)
 }
 
 /// Converts a UUID to a Juniper (GraphQL) ID.
@@ -113,19 +78,4 @@ pub fn map_to_gql_object<K: ToString, V>(
         },
     );
     juniper::Value::Object(obj)
-}
-
-#[cfg(test)]
-mod tests {
-    /// Assert that the first value is an Err, and that its string form matches
-    /// the second argument.
-    #[macro_export]
-    macro_rules! assert_err {
-        ($res:expr, $msg:tt $(,)?) => {
-            match $res {
-                Ok(_) => panic!("Expected Err, got Ok"),
-                Err(err) => assert_eq!(err.to_string(), $msg),
-            }
-        };
-    }
 }

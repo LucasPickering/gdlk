@@ -4,7 +4,7 @@
 //! their own files.
 
 use crate::{
-    error::{ResponseError, ResponseResult},
+    error::{IntDecodeError, ResponseError, ResponseResult},
     models,
     schema::hardware_specs,
     server::gql::{
@@ -15,7 +15,6 @@ use crate::{
     views::RequestContext,
 };
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
-use failure::Fallible;
 use juniper_from_schema::graphql_schema_from_file;
 use serde::{Serialize, Serializer};
 use std::convert::TryInto;
@@ -107,7 +106,7 @@ impl Cursor {
         Self(base64::encode(index.to_be_bytes()))
     }
 
-    fn to_index(&self) -> Fallible<i32> {
+    fn to_index(&self) -> Result<i32, IntDecodeError> {
         // base64 string to i32. Convert to bytes first, then to int.
         let decoded_bytes: Vec<u8> = base64::decode(&self.0)?;
         let byte_array: [u8; 4] = decoded_bytes.as_slice().try_into()?;
