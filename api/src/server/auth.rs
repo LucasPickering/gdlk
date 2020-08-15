@@ -3,7 +3,7 @@ use crate::{
     error::ResponseError,
     models::NewUserProvider,
     schema::user_providers,
-    util::Pool,
+    util::{self, Pool},
 };
 use actix_identity::Identity;
 use actix_web::{get, http, post, web, HttpResponse};
@@ -11,15 +11,19 @@ use diesel::{
     Connection, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
     RunQueryDsl,
 };
-use openid::{Client, DiscoveredClient, Options, Token, Userinfo};
-use reqwest::Url;
-use serde::{Deserialize, Serialize};
+use openidconnect::{
+    core::{CoreClient, CoreProviderMetadata, CoreResponseType},
+    AuthenticationFlow, ClientId, ClientSecret, IssuerUrl, Nonce, RedirectUrl,
+    Scope,
+};
+use serde::Deserialize;
 use std::collections::HashMap;
+use util::AuthState;
 use uuid::Uuid;
 
-/// Map of provider name to configured [Client]
+/// Map of provider name to configured [CoreClient]
 pub struct ClientMap {
-    pub map: HashMap<String, Client>,
+    pub map: HashMap<String, CoreClient>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -27,21 +31,11 @@ pub struct RedirectQuery {
     next: Option<String>,
 }
 
-/// Contents of the `state` query param that gets passed through the OpenID
-/// login. These will be (de)serialized through JSON.
-/// https://auth0.com/docs/protocols/oauth2/oauth-state
-#[derive(Serialize, Deserialize, Debug)]
-pub struct AuthState<'a> {
-    /// The next param determines what page to redirect the user to after login
-    next: Option<&'a str>,
-    // TODO add secure token here
-}
-
 impl ClientMap {
     pub fn get_client(
         &self,
         provider_name: &str,
-    ) -> Result<&Client, HttpResponse> {
+    ) -> Result<&CoreClient, HttpResponse> {
         self.map
             .get(provider_name)
             .ok_or_else(|| HttpResponse::NotFound().finish())
@@ -54,17 +48,28 @@ pub async fn build_client_map(open_id_config: &OpenIdConfig) -> ClientMap {
         host_url: &str,
         name: &str,
         provider_config: &ProviderConfig,
-    ) -> Client {
-        let redirect = Some(format!("{}/api/oidc/{}/callback", host_url, name));
-        let issuer = Url::parse(&provider_config.issuer_url).unwrap();
-        DiscoveredClient::discover(
-            provider_config.client_id.clone(),
-            provider_config.client_secret.clone(),
-            redirect,
+    ) -> CoreClient {
+        let redirect = RedirectUrl::new(format!(
+            "{}/api/oidc/{}/callback",
+            host_url, name
+        ))
+        .expect("Invalid redirect URL");
+        let issuer =
+            IssuerUrl::new(provider_config.issuer_url.clone()).unwrap();
+
+        let metadata = CoreProviderMetadata::discover_async(
             issuer,
+            util::oidc_http_client,
         )
         .await
-        .unwrap()
+        .unwrap();
+
+        CoreClient::from_provider_metadata(
+            metadata,
+            ClientId::new(provider_config.client_id.clone()),
+            Some(ClientSecret::new(provider_config.client_secret.clone())),
+        )
+        .set_redirect_uri(redirect)
     }
 
     let host_url: &str = &open_id_config.host_url;
@@ -90,16 +95,18 @@ pub async fn route_authorize(
 ) -> Result<HttpResponse, actix_web::Error> {
     let provider_name: &str = &params.0;
     let oidc_client = client_map.get_client(provider_name)?;
-    let state = AuthState {
-        next: query.next.as_deref(),
-    };
+    let next = query.next.clone();
 
-    let auth_url = oidc_client.auth_url(&Options {
-        scope: Some("email".into()),
+    let (auth_url, _csrf_state, _nonce) = oidc_client
+        .authorize_url(
+            AuthenticationFlow::<CoreResponseType>::AuthorizationCode,
+            move || AuthState::new(next).serialize(),
+            || Nonce::new("4".into()),
+        )
+        .add_scope(Scope::new("email".to_string()))
         // Serialization shouldn't ever fail so yeet that shit outta the Result
-        state: Some(serde_json::to_string(&state).unwrap()),
-        ..Default::default()
-    });
+        .add_extra_param("next", query.next.as_deref().unwrap_or(""))
+        .url();
 
     Ok(HttpResponse::Found()
         .header(http::header::LOCATION, auth_url.to_string())
@@ -110,27 +117,7 @@ pub async fn route_authorize(
 pub struct LoginQuery {
     code: String,
     state: Option<String>,
-}
-
-/// Exchanges the access token from the initial login in the openid provider
-/// for a normal token. The code here should come from the browser, which
-/// is passed along from the provider.
-async fn request_token(
-    oidc_client: &Client,
-    code: &str,
-) -> Result<(Token, Userinfo), ResponseError> {
-    let mut token: Token = oidc_client.request_token(&code).await?.into();
-    if let Some(mut id_token) = token.id_token.as_mut() {
-        // Decode the JWT and validate it was signed by the provider
-        oidc_client.decode_token(&mut id_token)?;
-        oidc_client.validate_token(&id_token, None, None)?;
-
-        // Call to the userinfo endpoint of the provider
-        let userinfo = oidc_client.request_userinfo(&token).await?;
-        Ok((token, userinfo))
-    } else {
-        Err(ResponseError::InvalidCredentials)
-    }
+    nonce: Option<String>,
 }
 
 /// Provider redirects back to this route after the login
@@ -146,26 +133,14 @@ pub async fn route_login(
     let oidc_client = client_map.get_client(provider_name)?;
     let conn = &pool.get().map_err(ResponseError::from)? as &PgConnection;
 
-    // Parse the state param
-    // TODO check for a security token here
-    let state: Option<AuthState> = match &query.state {
-        None => None,
-        Some(state_str) => Some(serde_json::from_str(state_str)?),
-    };
-    // This is where we'll redirect the user back to after login
-    let redirect_dest = match state {
-        Some(AuthState {
-            next: Some(next), ..
-        }) => next,
-        // Default to home page
-        _ => "/",
-    };
+    // Parse the state param and validate the CSRF token in there
+    let auth_state = AuthState::deserialize(query.state.as_deref())?;
 
     // Send the user's code to the server to authenticate it
-    let (_, userinfo) = request_token(oidc_client, &query.code).await?;
+    let user_info = util::oidc_request_token(oidc_client, &query.code).await?;
 
     // Not sure when this can be None, hopefully never??
-    let sub: &str = userinfo.sub.as_ref().unwrap();
+    let sub: &str = user_info.subject().as_str();
 
     // Insert the sub+provider, or just return the existing one if it's already
     // in the DB. We need to do this in a transaction to prevent race conditions
@@ -207,7 +182,7 @@ pub async fn route_login(
 
     // Redirect to the path specified in the OpenID state param
     Ok(HttpResponse::Found()
-        .header(http::header::LOCATION, redirect_dest)
+        .header(http::header::LOCATION, auth_state.next())
         .finish())
 }
 

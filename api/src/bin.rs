@@ -1,20 +1,12 @@
-use failure::Fallible;
 use gdlk_api::config::GdlkConfig;
 use log::{debug, info};
 
-fn run() -> Fallible<()> {
+fn main() {
     env_logger::init();
 
-    let config = GdlkConfig::load()?;
+    let config = GdlkConfig::load().unwrap();
     info!("Loaded config");
     debug!("{:#?}", &config);
 
-    Ok(gdlk_api::server::run_server(config)?)
-}
-
-fn main() {
-    let result = run();
-    if let Err(error) = result {
-        eprintln!("Error!\n{:?}", error);
-    }
+    gdlk_api::server::run_server(config).unwrap();
 }
