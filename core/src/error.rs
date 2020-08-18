@@ -3,9 +3,9 @@
 #[cfg(feature = "wasm")]
 use crate::ast::wasm::SourceElement;
 use crate::util::{self, Span};
-use failure::Fail;
 use serde::Serialize;
 use std::fmt::{self, Debug, Display, Formatter};
+use thiserror::Error;
 
 /// A trait for any error that originates in source code. [SourceError]s rely on
 /// having source code present in order to display themselves.
@@ -128,7 +128,7 @@ impl SourceError for RuntimeError {
 /// - The offending chunk of source code itself
 ///
 /// This type on its own can be formatted, without any external data.
-#[derive(Clone, Debug, Fail, Serialize)]
+#[derive(Clone, Debug, Error, Serialize)]
 pub struct SourceErrorWrapper<E: SourceError> {
     error: E,
     span: Span,
@@ -177,11 +177,11 @@ impl<E: SourceError> From<&SourceErrorWrapper<E>> for SourceElement {
 /// A wrapper around of a collection of errors. This holds the errors as well as
 /// the source code, and can be used to render associated source code with each
 /// error.
-#[derive(Clone, Debug, Fail, Serialize)]
+#[derive(Clone, Debug, Error, Serialize)]
 pub struct WithSource<E: SourceError> {
     errors: Vec<SourceErrorWrapper<E>>,
     #[serde(skip)]
-    source: String,
+    source_code: String,
 }
 
 impl<E: SourceError> WithSource<E> {
@@ -192,7 +192,7 @@ impl<E: SourceError> WithSource<E> {
     ) -> Self {
         Self {
             errors: errors.into_iter().collect(),
-            source,
+            source_code: source,
         }
     }
 
@@ -213,7 +213,7 @@ impl<E: SourceError> Display for WithSource<E> {
 
             write!(f, "{}", error)?;
             if f.alternate() {
-                util::fmt_src_highlights(f, &error.span, &self.source)?;
+                util::fmt_src_highlights(f, &error.span, &self.source_code)?;
             }
         }
         Ok(())
