@@ -1,12 +1,15 @@
-use crate::error::{ActixClientError, ResponseError, ResponseResult};
+use crate::error::{
+    ActixClientError, ClientError, ResponseError, ResponseResult, ServerError,
+};
 use openidconnect::{
     core::{CoreClient, CoreIdTokenClaims},
-    AuthorizationCode, CsrfToken, Nonce,
+    AuthorizationCode, CsrfToken, Nonce, TokenResponse,
 };
 use serde::{Deserialize, Serialize};
 
 /// HTTP client for OpenID Connect requests. Basically just a wrapper around
 /// the Actix HTTP client.
+#[allow(unused)]
 pub async fn oidc_http_client(
     request: openidconnect::HttpRequest,
 ) -> Result<openidconnect::HttpResponse, ActixClientError> {
@@ -31,7 +34,7 @@ pub async fn oidc_http_client(
     for (key, val) in actix_response.headers() {
         headers.insert(key, val.clone());
     }
-    let body = actix_response.body().await?.into_iter().collect();
+    let body: Vec<u8> = actix_response.body().await?.into_iter().collect();
 
     Ok(openidconnect::HttpResponse {
         status_code,
@@ -40,29 +43,34 @@ pub async fn oidc_http_client(
     })
 }
 
-/// Exchanges the access token from the initial login in the openid provider
-/// for a normal token. The code here should come from the browser, which
-/// is passed along from the provider.
+/// Exchanges an authorization code  from the initial login in the for an
+/// access token. The code here should come from the browser, which is passed
+/// along from the provider. This will make a request to the provider for the
+/// exchange.
 pub async fn oidc_request_token(
     oidc_client: &CoreClient,
     code: &str,
-) -> Result<CoreIdTokenClaims, ResponseError> {
+) -> ResponseResult<CoreIdTokenClaims> {
     // Exchange the temp code for a token
     let token_response = oidc_client
         .exchange_code(AuthorizationCode::new(code.into()))
         .request_async(oidc_http_client)
-        .await?;
+        .await
+        .map_err(ResponseError::from_client_error)?;
 
     // Verify the response token and get the claims out of it
     let token_verifier = oidc_client.id_token_verifier();
-    match token_response.extra_fields().id_token() {
-        None => Err(ResponseError::InvalidCredentials),
+    match token_response.id_token() {
+        // I'm not really sure what would cause this, hopefully only a provider
+        // bug? We should always get this back because of how we make the
+        // request.
+        None => Err(ServerError::MissingIdToken.into()),
         Some(id_token) => {
             // TODO better nonce handling here
             match id_token.claims(&token_verifier, &Nonce::new("4".into())) {
                 // TODO remove clone
                 Ok(claims) => Ok(claims.clone()),
-                Err(_) => Err(ResponseError::InvalidCredentials),
+                Err(source) => Err(ResponseError::from_client_error(source)),
             }
         }
     }
@@ -104,14 +112,15 @@ impl AuthState {
     /// validate the CSRF token in the param.
     pub fn deserialize(input: Option<&str>) -> ResponseResult<Self> {
         match input {
-            None => Err(ResponseError::InvalidCredentials),
+            None => Err(ClientError::CsrfError.into()),
             Some(json_str) => {
-                let state: Self = serde_json::from_str(json_str)?;
+                let state: Self = serde_json::from_str(json_str)
+                    .map_err(ResponseError::from_client_error)?;
                 // TODO make this secure
                 if "3" == state.csrf_token.secret() {
                     Ok(state)
                 } else {
-                    Err(ResponseError::InvalidCredentials)
+                    Err(ClientError::CsrfError.into())
                 }
             }
         }

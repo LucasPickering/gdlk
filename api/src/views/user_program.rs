@@ -1,5 +1,5 @@
 use crate::{
-    error::{DbErrorConverter, ResponseError, ResponseResult},
+    error::{DbErrorConverter, ResponseResult},
     models,
     schema::user_programs,
     views::View,
@@ -140,13 +140,12 @@ impl<'a> View for DeleteUserProgramView<'a> {
 
     fn execute(&self) -> ResponseResult<Self::Output> {
         // User has to own the program to delete it
-        diesel::delete(models::UserProgram::find_for_user(
+        Ok(diesel::delete(models::UserProgram::find_for_user(
             self.id,
             self.user_id,
         ))
         .returning(user_programs::columns::id)
         .get_result(self.conn)
-        .optional()
-        .map_err(ResponseError::from)
+        .optional()?)
     }
 }

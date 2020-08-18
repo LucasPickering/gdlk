@@ -2,7 +2,7 @@
 
 ## About
 
-GDLK is a programming language, as well as a game based on solving puzzles with the language. There is no usable product _yet_, but it's coming soon™!
+GDLK is a programming language, as well as a game based on solving puzzles with the language. We have a basic playable version available at [gdlk.lucaspickering.me](https://gdlk.lucaspickering.me). Feedback is appreciated!
 
 ### What does GDLK stand for?
 
@@ -101,6 +101,7 @@ DEBUG=1 cargo make test
 We use nightly Rust. Here's a list of reasons why. If this list every gets empty, we should switch to stable.
 
 - Rust features
+  - [backtrace](https://github.com/rust-lang/rust/issues/53487)
   - [or_patterns](https://github.com/rust-lang/rust/issues/54883)
 - Rustfmt
   - [merge_imports](https://github.com/rust-lang/rustfmt/issues/3362)

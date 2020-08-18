@@ -1,5 +1,5 @@
 use crate::{
-    error::{DbErrorConverter, ResponseError, ResponseResult},
+    error::{ClientError, DbErrorConverter, ResponseError, ResponseResult},
     models,
     schema::{user_providers, users},
     views::{RequestContext, UserContext, View},
@@ -60,15 +60,14 @@ impl<'a> View for InitializeUserView<'a> {
                     .execute(conn)?;
 
                     if updated_rows == 0 {
-                        Err(ResponseError::NotFound)
+                        Err(ClientError::NotFound { source: None }.into())
                     } else {
                         Ok(created_user)
                     }
                 })
-                .map_err(ResponseError::from)
             }
             // Get up on outta here
-            None => Err(ResponseError::Unauthenticated),
+            None => Err(ClientError::Unauthenticated.into()),
         }
     }
 }

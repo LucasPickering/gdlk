@@ -14,10 +14,10 @@ description = "Implementation of the GDLK language."
 wasm = ["wasm-bindgen"]
 
 [dependencies]
-failure = "0.1"
 nom = "5.1.1"
 nom_locate = "2.0"
 serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0"
 
 [dependencies.wasm-bindgen]
 version = "0.2.58"

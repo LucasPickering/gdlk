@@ -1,6 +1,6 @@
 #![deny(clippy::all)]
 
-use failure::Fallible;
+use anyhow::Context;
 use gdlk::{Compiler, HardwareSpec, ProgramSpec};
 use serde::de::DeserializeOwned;
 use std::{fs, path::PathBuf, process};
@@ -46,21 +46,26 @@ struct Opt {
     cmd: Command,
 }
 
+fn read_file(path: &PathBuf) -> anyhow::Result<String> {
+    fs::read_to_string(path)
+        .with_context(|| format!("Failed to read file {:?}", path))
+}
+
 /// Loads a hardware or program spec from a file. If the path is None, returns
 /// the default value instead.
 fn load_spec<T: Default + DeserializeOwned>(
     path_opt: &Option<PathBuf>,
-) -> Fallible<T> {
+) -> anyhow::Result<T> {
     match path_opt {
         None => Ok(T::default()),
         Some(path) => {
-            let spec_str = fs::read_to_string(path)?;
+            let spec_str = read_file(&path)?;
             Ok(serde_json::from_str(&spec_str)?)
         }
     }
 }
 
-fn run(opt: Opt) -> Fallible<()> {
+fn run(opt: Opt) -> anyhow::Result<()> {
     match opt.cmd {
         // Compile and build the given program
         Command::Compile {
@@ -69,7 +74,7 @@ fn run(opt: Opt) -> Fallible<()> {
         } => {
             let hw_spec: HardwareSpec = load_spec(&hardware_spec_path)?;
             // Read the source code from the file
-            let source = fs::read_to_string(source_path)?;
+            let source = read_file(&source_path)?;
             // Compile
             Compiler::compile(source, hw_spec)?;
         }
@@ -85,7 +90,7 @@ fn run(opt: Opt) -> Fallible<()> {
             let program_spec: ProgramSpec = load_spec(&program_spec_path)?;
 
             // Read the source code from the file
-            let source = fs::read_to_string(source_path)?;
+            let source = read_file(&source_path)?;
 
             // Compile and execute
             let mut machine =

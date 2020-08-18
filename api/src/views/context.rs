@@ -2,7 +2,7 @@
 //! top-level struct is [RequestContext].
 
 use crate::{
-    error::{ResponseError, ResponseResult},
+    error::{ClientError, ResponseResult},
     models,
     schema::{user_providers, users},
     util::PooledConnection,
@@ -67,8 +67,7 @@ impl UserContext {
                     users::columns::username.nullable(),
                 ))
                 .get_result(conn)
-                .optional()
-                .map_err(ResponseError::from)?;
+                .optional()?;
 
         let user_context = match user_query_result {
             // The cookie is invalid, so user isn't logged in
@@ -134,12 +133,12 @@ impl RequestContext {
     /// or they ARE authenticated but haven't finished initializing their user
     /// yet (to the point where a row in the `users` table has been created),
     /// then return an error.
-    pub fn user(&self) -> Result<&AuthorizedUser, ResponseError> {
+    pub fn user(&self) -> ResponseResult<&AuthorizedUser> {
         match &self.user_context {
             Some(UserContext {
                 user: Some(user), ..
             }) => Ok(&user),
-            _ => Err(ResponseError::Unauthenticated),
+            _ => Err(ClientError::Unauthenticated.into()),
         }
     }
 }
