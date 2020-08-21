@@ -1,9 +1,7 @@
 #![deny(clippy::all)]
 
-use crate::utils::{ContextBuilder, QueryRunner};
-use gdlk_api::models::{
-    self, Factory, NewHardwareSpec, NewProgramSpec, NewUser,
-};
+use crate::utils::{factories::*, ContextBuilder, QueryRunner};
+use diesel_factories::Factory;
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
@@ -15,28 +13,18 @@ fn test_field_node() {
     let context_builder = ContextBuilder::new();
     let conn = context_builder.db_conn();
 
-    let user_id = NewUser { username: "user1" }.create(conn).id;
-    let hardware_spec_id = NewHardwareSpec {
-        name: "hw1",
-        ..Default::default()
-    }
-    .create(conn)
-    .id;
-    let program_spec_id = NewProgramSpec {
-        name: "prog1",
-        hardware_spec_id,
-        ..Default::default()
-    }
-    .create(conn)
-    .id;
-    let user_program_id = models::NewUserProgram {
-        user_id,
-        program_spec_id,
-        file_name: "prog.gdlk",
-        source_code: "",
-    }
-    .create(conn)
-    .id;
+    let user = UserFactory::default().username("user1").insert(conn);
+    let hardware_spec =
+        HardwareSpecFactory::default().name("HW 1").insert(conn);
+    let program_spec = ProgramSpecFactory::default()
+        .name("prog1")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
+    let user_program = UserProgramFactory::default()
+        .user(&user)
+        .program_spec(&program_spec)
+        .file_name("new.gdlk")
+        .insert(conn);
 
     let query = r#"
     query NodeQuery($nodeId: ID!) {
@@ -48,7 +36,7 @@ fn test_field_node() {
 
     // Check a known UUID for each model type
     let runner = QueryRunner::new(context_builder);
-    for id in &[user_id, hardware_spec_id, program_spec_id, user_program_id] {
+    for id in &[user.id, hardware_spec.id, program_spec.id, user_program.id] {
         assert_eq!(
             runner.query(
                 query,

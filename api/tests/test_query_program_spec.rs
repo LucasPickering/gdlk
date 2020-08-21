@@ -1,7 +1,7 @@
 #![deny(clippy::all)]
 
-use crate::utils::{ContextBuilder, QueryRunner};
-use gdlk_api::models::{self, Factory, NewHardwareSpec, NewProgramSpec};
+use crate::utils::{factories::*, ContextBuilder, QueryRunner};
+use diesel_factories::Factory;
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
@@ -13,21 +13,14 @@ fn test_program_spec() {
     let context_builder = ContextBuilder::new();
     let conn = context_builder.db_conn();
 
-    let hardware_spec_id = NewHardwareSpec {
-        name: "hw1",
-        ..Default::default()
-    }
-    .create(conn)
-    .id;
-    let program_spec_id = models::NewProgramSpec {
-        name: "prog1",
-        description: "Program spec!",
-        hardware_spec_id,
-        input: vec![1, 2, 3],
-        expected_output: vec![1, 2, 3],
-    }
-    .create(conn)
-    .id;
+    let hardware_spec = HardwareSpecFactory::default().name("hw1").insert(conn);
+    let program_spec = ProgramSpecFactory::default()
+        .name("prog1")
+        .hardware_spec(&hardware_spec)
+        .input(vec![1, 2, 3])
+        .expected_output(vec![1, 2, 3])
+        .insert(conn);
+
     let query = r#"
         query ProgramSpecQuery($hwSlug: String!, $progSlug: String!) {
             hardwareSpec(slug: $hwSlug) {
@@ -57,7 +50,7 @@ fn test_program_spec() {
             json!({
                 "hardwareSpec": {
                     "programSpec": {
-                        "id": program_spec_id.to_string(),
+                        "id": program_spec.id.to_string(),
                         "slug": "prog1",
                         "input": vec![1, 2, 3],
                         "expectedOutput": vec![1, 2, 3],
@@ -78,55 +71,39 @@ fn test_program_spec_user_program() {
     let user = context_builder.log_in(&[]);
     let conn = context_builder.db_conn();
 
-    let hardware_spec_id = NewHardwareSpec {
-        name: "hw1",
-        ..Default::default()
-    }
-    .create(conn)
-    .id;
-    let program_spec_id = NewProgramSpec {
-        name: "prog1",
-        hardware_spec_id,
-        ..Default::default()
-    }
-    .create(conn)
-    .id;
-    let user_program_id = models::NewUserProgram {
-        user_id: user.id,
-        program_spec_id,
-        file_name: "sl1.gdlk",
-        source_code: "READ RX0",
-    }
-    .create(conn)
-    .id;
-    models::NewUserProgram {
-        user_id: user.id,
-        program_spec_id,
-        file_name: "sl2.gdlk",
-        source_code: "READ RX0",
-    }
-    .create(conn);
-    models::NewUserProgram {
-        user_id: user.id,
-        program_spec_id,
-        file_name: "sl3.gdlk",
-        source_code: "READ RX0",
-    }
-    .create(conn);
+    let hardware_spec = HardwareSpecFactory::default().name("hw1").insert(conn);
+    let program_spec = ProgramSpecFactory::default()
+        .name("prog1")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
+
+    let user_program = UserProgramFactory::default()
+        .user(&user)
+        .program_spec(&program_spec)
+        .file_name("sl1.gdlk")
+        .source_code("READ RX0")
+        .insert(conn);
+    UserProgramFactory::default()
+        .user(&user)
+        .program_spec(&program_spec)
+        .file_name("sl2.gdlk")
+        .insert(conn);
+    UserProgramFactory::default()
+        .user(&user)
+        .program_spec(&program_spec)
+        .file_name("sl3.gdlk")
+        .insert(conn);
+
     // Create a new program spec with a new solution for it
-    models::NewUserProgram {
-        user_id: user.id,
-        program_spec_id: NewProgramSpec {
-            name: "prog2",
-            hardware_spec_id,
-            ..Default::default()
-        }
-        .create(conn)
-        .id,
-        file_name: "sl1.gdlk",
-        source_code: "READ RX0",
-    }
-    .create(conn);
+    let program_spec2 = ProgramSpecFactory::default()
+        .name("prog2")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
+    UserProgramFactory::default()
+        .user(&user)
+        .program_spec(&program_spec2)
+        .file_name("sl1.gdlk")
+        .insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     let query = r#"
@@ -176,7 +153,7 @@ fn test_program_spec_user_program() {
                 "hardwareSpec": {
                     "programSpec": {
                         "userProgram": {
-                            "id": (user_program_id.to_string()),
+                            "id": (user_program.id.to_string()),
                             "fileName": "sl1.gdlk",
                             "sourceCode": "READ RX0",
                             "user": {
@@ -221,18 +198,11 @@ fn test_program_spec_user_program_not_logged_in() {
     let context_builder = ContextBuilder::new();
     let conn = context_builder.db_conn();
 
-    let hardware_spec_id = NewHardwareSpec {
-        name: "hw1",
-        ..Default::default()
-    }
-    .create(conn)
-    .id;
-    NewProgramSpec {
-        name: "prog1",
-        hardware_spec_id,
-        ..Default::default()
-    }
-    .create(conn);
+    let hardware_spec = HardwareSpecFactory::default().name("hw1").insert(conn);
+    ProgramSpecFactory::default()
+        .name("prog1")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     let query = r#"

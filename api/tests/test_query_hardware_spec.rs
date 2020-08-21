@@ -1,7 +1,7 @@
 #![deny(clippy::all)]
 
-use crate::utils::{ContextBuilder, QueryRunner};
-use gdlk_api::models::{Factory, NewHardwareSpec, NewProgramSpec};
+use crate::utils::{factories::*, ContextBuilder, QueryRunner};
+use diesel_factories::Factory;
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
@@ -13,18 +13,11 @@ fn test_field_hardware_spec() {
     let context_builder = ContextBuilder::new();
     let conn = context_builder.db_conn();
 
-    let hardware_spec_id = NewHardwareSpec {
-        name: "hw1",
-        ..Default::default()
-    }
-    .create(conn)
-    .id;
-    NewProgramSpec {
-        name: "prog1",
-        hardware_spec_id,
-        ..Default::default()
-    }
-    .create(conn);
+    let hardware_spec = HardwareSpecFactory::default().name("hw1").insert(conn);
+    ProgramSpecFactory::default()
+        .name("prog1")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
     let query = r#"
         query HardwareSpecQuery($slug: String!) {
             hardwareSpec(slug: $slug) {
@@ -50,7 +43,7 @@ fn test_field_hardware_spec() {
         (
             json!({
                 "hardwareSpec": {
-                    "id": (hardware_spec_id.to_string()),
+                    "id": (hardware_spec.id.to_string()),
                     "slug": "hw1",
                     "numRegisters": 1,
                     "numStacks": 0,
@@ -76,21 +69,9 @@ fn test_field_hardware_specs() {
     let context_builder = ContextBuilder::new();
     let conn = context_builder.db_conn();
 
-    NewHardwareSpec {
-        name: "hw1",
-        ..Default::default()
-    }
-    .create(conn);
-    NewHardwareSpec {
-        name: "hw2",
-        ..Default::default()
-    }
-    .create(conn);
-    NewHardwareSpec {
-        name: "hw3",
-        ..Default::default()
-    }
-    .create(conn);
+    HardwareSpecFactory::default().name("hw1").insert(conn);
+    HardwareSpecFactory::default().name("hw2").insert(conn);
+    HardwareSpecFactory::default().name("hw3").insert(conn);
     let query = r#"
         query HardwareSpecsQuery($first: Int, $after: Cursor) {
             hardwareSpecs(first: $first, after: $after) {
@@ -190,43 +171,27 @@ fn test_field_hardware_spec_program_spec() {
     let context_builder = ContextBuilder::new();
     let conn = context_builder.db_conn();
 
-    let hardware_spec_id = NewHardwareSpec {
-        name: "hw1",
-        ..Default::default()
-    }
-    .create(conn)
-    .id;
-    NewProgramSpec {
-        name: "prog1",
-        hardware_spec_id,
-        ..Default::default()
-    }
-    .create(conn);
-    NewProgramSpec {
-        name: "prog2",
-        hardware_spec_id,
-        ..Default::default()
-    }
-    .create(conn);
-    NewProgramSpec {
-        name: "prog3",
-        hardware_spec_id,
-        ..Default::default()
-    }
-    .create(conn);
+    // let hardware_spec_fac=HardwareSpecFactory::default().name("hw1")
+    let hardware_spec = HardwareSpecFactory::default().name("hw1").insert(conn);
+    ProgramSpecFactory::default()
+        .name("prog1")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
+    ProgramSpecFactory::default()
+        .name("prog2")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
+    ProgramSpecFactory::default()
+        .name("prog3")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
 
-    let hardware_spec2_id = NewHardwareSpec {
-        name: "hw2",
-        ..Default::default()
-    }
-    .create(conn)
-    .id;
-    NewProgramSpec {
-        name: "prog1",
-        hardware_spec_id: hardware_spec2_id,
-        ..Default::default()
-    }
-    .create(conn);
+    let hardware_spec2 =
+        HardwareSpecFactory::default().name("hw2").insert(conn);
+    ProgramSpecFactory::default()
+        .name("prog1")
+        .hardware_spec(&hardware_spec2)
+        .insert(conn);
 
     let query = r#"
         query HardwareSpecQuery(

@@ -1,4 +1,4 @@
-use crate::{models::Factory, schema::user_roles};
+use crate::schema::user_roles;
 use diesel::{
     prelude::*, query_builder::InsertStatement, Identifiable, Queryable,
 };
@@ -12,7 +12,7 @@ pub struct UserRole {
     pub role_id: Uuid,
 }
 
-#[derive(Debug, Default, PartialEq, Insertable)]
+#[derive(Debug, PartialEq, Insertable)]
 #[table_name = "user_roles"]
 pub struct NewUserRole {
     pub user_id: Uuid,
@@ -28,17 +28,5 @@ impl NewUserRole {
         <Self as Insertable<user_roles::table>>::Values,
     > {
         self.insert_into(user_roles::table)
-    }
-}
-
-// This trait is only needed for tests
-impl Factory for NewUserRole {
-    type ReturnType = UserRole;
-
-    fn create(self, conn: &PgConnection) -> UserRole {
-        self.insert()
-            .returning(user_roles::all_columns)
-            .get_result(conn)
-            .unwrap()
     }
 }

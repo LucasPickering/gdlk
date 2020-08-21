@@ -1,4 +1,4 @@
-use crate::{models::Factory, schema::hardware_specs};
+use crate::schema::hardware_specs;
 use diesel::{
     prelude::*, query_builder::InsertStatement, Identifiable, Queryable,
 };
@@ -32,7 +32,7 @@ pub struct HardwareSpec {
 /// This can be constructed manually and inserted into the DB. These fields
 /// all correspond to [HardwareSpec](HardwareSpec), so look there for
 /// field-level documentation.
-#[derive(Debug, PartialEq, Insertable, Validate)]
+#[derive(Copy, Clone, Debug, Insertable, Validate)]
 #[table_name = "hardware_specs"]
 pub struct NewHardwareSpec<'a> {
     #[validate(length(min = 1))]
@@ -58,33 +58,8 @@ impl NewHardwareSpec<'_> {
         self.insert_into(hardware_specs::table)
     }
 }
-
-// This trait is only needed for tests
-impl Default for NewHardwareSpec<'_> {
-    fn default() -> Self {
-        Self {
-            name: "", // this is invalid, you'll have to override
-            num_registers: 1,
-            num_stacks: 0,
-            max_stack_length: 0,
-        }
-    }
-}
-
-// This trait is only needed for tests
-impl Factory for NewHardwareSpec<'_> {
-    type ReturnType = HardwareSpec;
-
-    fn create(self, conn: &PgConnection) -> HardwareSpec {
-        self.insert()
-            .returning(hardware_specs::all_columns)
-            .get_result(conn)
-            .unwrap()
-    }
-}
-
 /// A struct used to modify a row in the hardware_specs table.
-#[derive(Clone, Debug, PartialEq, Identifiable, AsChangeset, Validate)]
+#[derive(Copy, Clone, Debug, Identifiable, AsChangeset, Validate)]
 #[table_name = "hardware_specs"]
 pub struct ModifiedHardwareSpec<'a> {
     pub id: Uuid,

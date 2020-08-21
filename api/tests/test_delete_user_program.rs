@@ -1,13 +1,9 @@
 #![deny(clippy::all)]
 
-use crate::utils::{ContextBuilder, QueryRunner};
+use crate::utils::{factories::*, ContextBuilder, QueryRunner};
 use diesel::{OptionalExtension, QueryDsl, RunQueryDsl};
-use gdlk_api::{
-    models::{
-        self, Factory, NewHardwareSpec, NewProgramSpec, NewUser, NewUserProgram,
-    },
-    schema::user_programs,
-};
+use diesel_factories::Factory;
+use gdlk_api::{models, schema::user_programs};
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
@@ -28,25 +24,17 @@ fn test_delete_user_program_success() {
     let user = context_builder.log_in(&[]);
     let conn = context_builder.db_conn();
 
-    let user_program_id = NewUserProgram {
-        user_id: user.id,
-        program_spec_id: NewProgramSpec {
-            name: "prog1",
-            hardware_spec_id: NewHardwareSpec {
-                name: "hw1",
-                ..Default::default()
-            }
-            .create(conn)
-            .id,
-            ..Default::default()
-        }
-        .create(conn)
-        .id,
-        file_name: "existing.gdlk",
-        source_code: "READ RX0",
-    }
-    .create(conn)
-    .id;
+    let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(conn);
+    let program_spec = ProgramSpecFactory::default()
+        .name("prog1")
+        .hardware_spec(&hw_spec)
+        .insert(conn);
+    let user_program = UserProgramFactory::default()
+        .user(&user)
+        .program_spec(&program_spec)
+        .file_name("existing.gdlk")
+        .source_code("READ RX0")
+        .insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     // Known row
@@ -54,13 +42,13 @@ fn test_delete_user_program_success() {
         runner.query(
             QUERY,
             hashmap! {
-                "id" => InputValue::scalar(user_program_id.to_string()),
+                "id" => InputValue::scalar(user_program.id.to_string()),
             }
         ),
         (
             json!({
                 "deleteUserProgram": {
-                    "deletedId": (user_program_id.to_string())
+                    "deletedId": (user_program.id.to_string())
                 }
             }),
             vec![]
@@ -70,7 +58,7 @@ fn test_delete_user_program_success() {
     // Not in DB anymore
     assert_eq!(
         user_programs::table
-            .find(user_program_id)
+            .find(user_program.id)
             .get_result::<models::UserProgram>(runner.db_conn())
             .optional()
             .unwrap(),
@@ -82,7 +70,7 @@ fn test_delete_user_program_success() {
         runner.query(
             QUERY,
             hashmap! {
-                "id" => InputValue::scalar(user_program_id.to_string()),
+                "id" => InputValue::scalar(user_program.id.to_string()),
             }
         ),
         (
@@ -101,32 +89,25 @@ fn test_delete_user_program_not_logged_in() {
     let context_builder = ContextBuilder::new();
     let conn = context_builder.db_conn();
 
-    let user_program_id = NewUserProgram {
-        user_id: NewUser { username: "user1" }.create(conn).id,
-        program_spec_id: NewProgramSpec {
-            name: "prog1",
-            hardware_spec_id: NewHardwareSpec {
-                name: "hw1",
-                ..Default::default()
-            }
-            .create(conn)
-            .id,
-            ..Default::default()
-        }
-        .create(conn)
-        .id,
-        file_name: "existing.gdlk",
-        source_code: "READ RX0",
-    }
-    .create(conn)
-    .id;
+    let other_user = UserFactory::default().username("other").insert(conn);
+    let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(conn);
+    let program_spec = ProgramSpecFactory::default()
+        .name("prog1")
+        .hardware_spec(&hw_spec)
+        .insert(conn);
+    let user_program = UserProgramFactory::default()
+        .user(&other_user)
+        .program_spec(&program_spec)
+        .file_name("existing.gdlk")
+        .source_code("READ RX0")
+        .insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
             hashmap! {
-                "id" => InputValue::scalar(user_program_id.to_string()),
+                "id" => InputValue::scalar(user_program.id.to_string()),
             }
         ),
         (
@@ -147,26 +128,18 @@ fn test_delete_user_program_wrong_owner() {
     context_builder.log_in(&[]);
     let conn = context_builder.db_conn();
 
-    let owner = NewUser { username: "user2" }.create(conn);
-    let user_program_id = NewUserProgram {
-        user_id: owner.id,
-        program_spec_id: NewProgramSpec {
-            name: "prog1",
-            hardware_spec_id: NewHardwareSpec {
-                name: "hw1",
-                ..Default::default()
-            }
-            .create(conn)
-            .id,
-            ..Default::default()
-        }
-        .create(conn)
-        .id,
-        file_name: "existing.gdlk",
-        source_code: "READ RX0",
-    }
-    .create(conn)
-    .id;
+    let other_user = UserFactory::default().username("other").insert(conn);
+    let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(conn);
+    let program_spec = ProgramSpecFactory::default()
+        .name("prog1")
+        .hardware_spec(&hw_spec)
+        .insert(conn);
+    let user_program = UserProgramFactory::default()
+        .user(&other_user)
+        .program_spec(&program_spec)
+        .file_name("existing.gdlk")
+        .source_code("READ RX0")
+        .insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     // It should pretend like the user_program doesn't exist
@@ -174,7 +147,7 @@ fn test_delete_user_program_wrong_owner() {
         runner.query(
             QUERY,
             hashmap! {
-                "id" => InputValue::scalar(user_program_id.to_string()),
+                "id" => InputValue::scalar(user_program.id.to_string()),
             }
         ),
         (

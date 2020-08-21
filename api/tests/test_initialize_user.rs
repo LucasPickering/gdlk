@@ -1,11 +1,9 @@
 #![deny(clippy::all)]
 
-use crate::utils::{ContextBuilder, QueryRunner};
+use crate::utils::{factories::*, ContextBuilder, QueryRunner};
 use diesel::{dsl, QueryDsl, RunQueryDsl};
-use gdlk_api::{
-    models::{Factory, NewUser, NewUserProvider},
-    schema::users,
-};
+use diesel_factories::Factory;
+use gdlk_api::schema::users;
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
@@ -34,12 +32,7 @@ fn test_initialize_user_success() {
     let mut context_builder = ContextBuilder::new();
     let conn = context_builder.db_conn();
 
-    let user_provider = NewUserProvider {
-        sub: "sub",
-        provider_name: "provider",
-        user_id: None,
-    }
-    .create(conn);
+    let user_provider = UserProviderFactory::default().insert(conn);
     context_builder.set_user_provider(user_provider);
 
     let runner = QueryRunner::new(context_builder);
@@ -95,13 +88,8 @@ fn test_initialize_user_duplicate_username() {
     let mut context_builder = ContextBuilder::new();
     let conn = context_builder.db_conn();
 
-    NewUser { username: "user1" }.create(conn);
-    let user_provider = NewUserProvider {
-        sub: "sub",
-        provider_name: "provider",
-        user_id: None,
-    }
-    .create(conn);
+    UserFactory::default().username("user1").insert(conn);
+    let user_provider = UserProviderFactory::default().insert(conn);
     context_builder.set_user_provider(user_provider);
 
     let runner = QueryRunner::new(context_builder);
@@ -129,12 +117,7 @@ fn test_initialize_user_invalid_username() {
     let mut context_builder = ContextBuilder::new();
     let conn = context_builder.db_conn();
 
-    let user_provider = NewUserProvider {
-        sub: "sub",
-        provider_name: "provider",
-        user_id: None,
-    }
-    .create(conn);
+    let user_provider = UserProviderFactory::default().insert(conn);
     context_builder.set_user_provider(user_provider);
 
     let runner = QueryRunner::new(context_builder);
@@ -190,13 +173,10 @@ fn test_initialize_user_already_initialized() {
     let mut context_builder = ContextBuilder::new();
     let conn = context_builder.db_conn();
 
-    let user = NewUser { username: "user1" }.create(conn);
-    let user_provider = NewUserProvider {
-        sub: "sub",
-        provider_name: "provider",
-        user_id: Some(user.id),
-    }
-    .create(conn);
+    let user = UserFactory::default().username("user1").insert(conn);
+    let user_provider = UserProviderFactory::default()
+        .user(Some(&user))
+        .insert(conn);
     context_builder.set_user_provider(user_provider);
 
     let runner = QueryRunner::new(context_builder);

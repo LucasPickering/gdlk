@@ -1,7 +1,8 @@
 #![deny(clippy::all)]
 
-use crate::utils::{ContextBuilder, QueryRunner};
-use gdlk_api::models::{Factory, NewHardwareSpec, RoleType};
+use crate::utils::{factories::*, ContextBuilder, QueryRunner};
+use diesel_factories::Factory;
+use gdlk_api::models::RoleType;
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
@@ -43,11 +44,7 @@ fn test_update_hardware_spec_partial_modification() {
     context_builder.log_in(&[RoleType::Admin]);
     let conn = context_builder.db_conn();
 
-    let hw_spec = NewHardwareSpec {
-        name: "HW 2",
-        ..Default::default()
-    }
-    .create(conn);
+    let hw_spec = HardwareSpecFactory::default().name("HW 2").insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     assert_eq!(
@@ -85,11 +82,7 @@ fn test_update_hardware_spec_full_modification() {
     context_builder.log_in(&[RoleType::Admin]);
     let conn = context_builder.db_conn();
 
-    let hw_spec = NewHardwareSpec {
-        name: "HW 2",
-        ..Default::default()
-    }
-    .create(conn);
+    let hw_spec = HardwareSpecFactory::default().name("HW 2").insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     assert_eq!(
@@ -155,11 +148,7 @@ fn test_update_hardware_spec_empty_modification() {
     context_builder.log_in(&[RoleType::Admin]);
     let conn = context_builder.db_conn();
 
-    let hw_spec = NewHardwareSpec {
-        name: "HW 2",
-        ..Default::default()
-    }
-    .create(conn);
+    let hw_spec = HardwareSpecFactory::default().name("HW 2").insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     assert_eq!(
@@ -188,16 +177,8 @@ fn test_update_hardware_spec_duplicate() {
     let conn = context_builder.db_conn();
 
     // We'll test collisions against this
-    NewHardwareSpec {
-        name: "HW 1",
-        ..Default::default()
-    }
-    .create(conn);
-    let hw_spec = NewHardwareSpec {
-        name: "HW 2",
-        ..Default::default()
-    }
-    .create(conn);
+    HardwareSpecFactory::default().name("HW 1").insert(conn);
+    let hw_spec = HardwareSpecFactory::default().name("HW 2").insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     assert_eq!(
@@ -226,11 +207,7 @@ fn test_update_hardware_spec_invalid_values() {
     context_builder.log_in(&[RoleType::Admin]);
     let conn = context_builder.db_conn();
 
-    let hw_spec = NewHardwareSpec {
-        name: "HW 2",
-        ..Default::default()
-    }
-    .create(conn);
+    let hw_spec = HardwareSpecFactory::default().name("HW 2").insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     assert_eq!(
@@ -267,11 +244,7 @@ fn test_update_hardware_spec_not_logged_in() {
     let context_builder = ContextBuilder::new();
     let conn = context_builder.db_conn();
 
-    let hw_spec = NewHardwareSpec {
-        name: "HW 2",
-        ..Default::default()
-    }
-    .create(conn);
+    let hw_spec = HardwareSpecFactory::default().name("HW 2").insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     assert_eq!(
@@ -303,11 +276,7 @@ fn test_update_hardware_spec_permission_denied() {
     context_builder.log_in(&[]); // Insufficient permissions
     let conn = context_builder.db_conn();
 
-    let hw_spec = NewHardwareSpec {
-        name: "HW 2",
-        ..Default::default()
-    }
-    .create(conn);
+    let hw_spec = HardwareSpecFactory::default().name("HW 2").insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     assert_eq!(

@@ -1,5 +1,5 @@
 use crate::{
-    models::{Factory, ProgramSpec, User},
+    models::{ProgramSpec, User},
     schema::user_programs,
 };
 use chrono::{offset::Utc, DateTime};
@@ -64,7 +64,7 @@ impl UserProgram {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Insertable, Validate)]
+#[derive(Copy, Clone, Debug, Insertable, Validate)]
 #[table_name = "user_programs"]
 pub struct NewUserProgram<'a> {
     pub user_id: Uuid,
@@ -83,18 +83,6 @@ impl NewUserProgram<'_> {
         <Self as Insertable<user_programs::table>>::Values,
     > {
         self.insert_into(user_programs::table)
-    }
-}
-
-// This trait is only needed for tests
-impl Factory for NewUserProgram<'_> {
-    type ReturnType = UserProgram;
-
-    fn create(self, conn: &PgConnection) -> UserProgram {
-        self.insert()
-            .returning(user_programs::all_columns)
-            .get_result(conn)
-            .unwrap()
     }
 }
 

@@ -1,7 +1,7 @@
 #![deny(clippy::all)]
 
-use crate::utils::{ContextBuilder, QueryRunner};
-use gdlk_api::models::{Factory, NewUser};
+use crate::utils::{factories::*, ContextBuilder, QueryRunner};
+use diesel_factories::Factory;
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
@@ -13,7 +13,7 @@ fn test_field_user() {
     let context_builder = ContextBuilder::new();
     let conn = context_builder.db_conn();
 
-    let user_id = NewUser { username: "user1" }.create(conn).id;
+    let user = UserFactory::default().username("user1").insert(conn);
     let query = r#"
         query UserQuery($username: String!) {
             user(username: $username) {
@@ -33,7 +33,7 @@ fn test_field_user() {
         (
             json!({
                 "user": {
-                    "id": (user_id.to_string()),
+                    "id": (user.id.to_string()),
                     "username": "user1"
                 }
             }),

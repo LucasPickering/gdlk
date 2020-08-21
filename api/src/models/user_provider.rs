@@ -1,7 +1,4 @@
-use crate::{
-    models::{Factory, User},
-    schema::user_providers,
-};
+use crate::{models::User, schema::user_providers};
 use diesel::{prelude::*, query_builder::InsertStatement, Queryable};
 use uuid::Uuid;
 
@@ -15,7 +12,7 @@ pub struct UserProvider {
     pub user_id: Option<Uuid>,
 }
 
-#[derive(Debug, Default, PartialEq, Insertable)]
+#[derive(Debug, Insertable)]
 #[table_name = "user_providers"]
 pub struct NewUserProvider<'a> {
     pub sub: &'a str,
@@ -32,17 +29,5 @@ impl NewUserProvider<'_> {
         <Self as Insertable<user_providers::table>>::Values,
     > {
         self.insert_into(user_providers::table)
-    }
-}
-
-// This trait is only needed for tests
-impl Factory for NewUserProvider<'_> {
-    type ReturnType = UserProvider;
-
-    fn create(self, conn: &PgConnection) -> UserProvider {
-        self.insert()
-            .returning(user_providers::all_columns)
-            .get_result(conn)
-            .unwrap()
     }
 }

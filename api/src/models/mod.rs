@@ -19,7 +19,6 @@ mod user_program;
 mod user_provider;
 mod user_role;
 
-use diesel::PgConnection;
 pub use hardware_spec::*;
 pub use permission::*;
 pub use program_spec::*;
@@ -29,13 +28,3 @@ pub use user::*;
 pub use user_program::*;
 pub use user_provider::*;
 pub use user_role::*;
-
-/// A trait that makes it easy to generate a row for a particular type. This
-/// should only be used for tests.
-pub trait Factory {
-    /// The type returned from an insert of this type.
-    type ReturnType;
-
-    /// Insert this object into the DB and return the full DB row.
-    fn create(self, conn: &PgConnection) -> Self::ReturnType;
-}
