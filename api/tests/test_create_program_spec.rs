@@ -1,7 +1,8 @@
 #![deny(clippy::all)]
 
-use crate::utils::{ContextBuilder, QueryRunner};
-use gdlk_api::models::{Factory, NewHardwareSpec, NewProgramSpec, RoleType};
+use crate::utils::{factories::*, ContextBuilder, QueryRunner};
+use diesel_factories::Factory;
+use gdlk_api::models::RoleType;
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
@@ -43,11 +44,7 @@ fn test_create_program_spec_success() {
     context_builder.log_in(&[RoleType::SpecCreator]);
     let conn = context_builder.db_conn();
 
-    let hw_spec = NewHardwareSpec {
-        name: "HW 1",
-        ..Default::default()
-    }
-    .create(conn);
+    let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(conn);
 
     let values_list: InputValue = InputValue::list(
         [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
@@ -124,18 +121,12 @@ fn test_create_program_spec_duplicate() {
     context_builder.log_in(&[RoleType::SpecCreator]);
     let conn = context_builder.db_conn();
 
-    let hw_spec = NewHardwareSpec {
-        name: "HW 1",
-        ..Default::default()
-    }
-    .create(conn);
+    let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(conn);
     // We'll test collisions against this
-    NewProgramSpec {
-        name: "program 1",
-        hardware_spec_id: hw_spec.id,
-        ..Default::default()
-    }
-    .create(conn);
+    ProgramSpecFactory::default()
+        .name("program 1")
+        .hardware_spec(&hw_spec)
+        .insert(conn);
 
     let values_list: InputValue = InputValue::list(
         [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
@@ -171,11 +162,7 @@ fn test_create_program_spec_invalid_values() {
     context_builder.log_in(&[RoleType::SpecCreator]);
     let conn = context_builder.db_conn();
 
-    let hw_spec = NewHardwareSpec {
-        name: "HW 1",
-        ..Default::default()
-    }
-    .create(conn);
+    let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(conn);
     let values_list: InputValue = InputValue::list(
         [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
     );
@@ -213,11 +200,7 @@ fn test_create_program_spec_not_logged_in() {
     let context_builder = ContextBuilder::new();
     let conn = context_builder.db_conn();
 
-    let hw_spec = NewHardwareSpec {
-        name: "HW 1",
-        ..Default::default()
-    }
-    .create(conn);
+    let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(conn);
     let values_list: InputValue = InputValue::list(
         [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
     );
@@ -252,11 +235,7 @@ fn test_create_program_spec_permission_denied() {
     context_builder.log_in(&[]); // Insufficient permissions
     let conn = context_builder.db_conn();
 
-    let hw_spec = NewHardwareSpec {
-        name: "HW 1",
-        ..Default::default()
-    }
-    .create(conn);
+    let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(conn);
     let values_list: InputValue = InputValue::list(
         [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
     );

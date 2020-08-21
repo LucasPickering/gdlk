@@ -1,5 +1,5 @@
 use crate::{
-    models::{Factory, RoleType},
+    models::RoleType,
     schema::{roles, user_roles, users},
 };
 use diesel::{
@@ -59,7 +59,7 @@ impl User {
     }
 }
 
-#[derive(Debug, Default, PartialEq, Insertable, Validate)]
+#[derive(Copy, Clone, Debug, Insertable, Validate)]
 #[table_name = "users"]
 pub struct NewUser<'a> {
     #[validate(length(min = 1, max = 20))]
@@ -73,17 +73,5 @@ impl NewUser<'_> {
     ) -> InsertStatement<users::table, <Self as Insertable<users::table>>::Values>
     {
         self.insert_into(users::table)
-    }
-}
-
-// This trait is only needed for tests
-impl Factory for NewUser<'_> {
-    type ReturnType = User;
-
-    fn create(self, conn: &PgConnection) -> User {
-        self.insert()
-            .returning(users::all_columns)
-            .get_result(conn)
-            .unwrap()
     }
 }

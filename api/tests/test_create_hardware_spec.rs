@@ -1,7 +1,10 @@
 #![deny(clippy::all)]
 
-use crate::utils::{ContextBuilder, QueryRunner};
-use gdlk_api::models::{Factory, NewHardwareSpec, RoleType};
+use crate::utils::{
+    factories::HardwareSpecFactory, ContextBuilder, QueryRunner,
+};
+use diesel_factories::Factory;
+use gdlk_api::models::RoleType;
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
@@ -42,11 +45,7 @@ fn test_create_hardware_spec_success() {
     let conn = context_builder.db_conn();
 
     // We'll test collisions against this
-    NewHardwareSpec {
-        name: "HW 1",
-        ..Default::default()
-    }
-    .create(conn);
+    HardwareSpecFactory::default().name("HW 1").insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     assert_eq!(
@@ -86,11 +85,7 @@ fn test_create_hardware_spec_duplicate() {
     let conn = context_builder.db_conn();
 
     // We'll test collisions against this
-    NewHardwareSpec {
-        name: "HW 1",
-        ..Default::default()
-    }
-    .create(conn);
+    HardwareSpecFactory::default().name("HW 1").insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     assert_eq!(

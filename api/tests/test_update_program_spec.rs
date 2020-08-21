@@ -1,7 +1,8 @@
 #![deny(clippy::all)]
 
-use crate::utils::{ContextBuilder, QueryRunner};
-use gdlk_api::models::{Factory, NewHardwareSpec, NewProgramSpec, RoleType};
+use crate::utils::{factories::*, ContextBuilder, QueryRunner};
+use diesel_factories::Factory;
+use gdlk_api::models::RoleType;
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
@@ -43,18 +44,13 @@ fn test_update_program_spec_partial_modification() {
     context_builder.log_in(&[RoleType::Admin]);
     let conn = context_builder.db_conn();
 
-    let hw_spec = NewHardwareSpec {
-        name: "HW 1",
-        ..Default::default()
-    }
-    .create(conn);
+    let hardware_spec =
+        HardwareSpecFactory::default().name("HW 1").insert(conn);
     // This is the one we'll be modifying
-    let program_spec = NewProgramSpec {
-        name: "Program 2",
-        hardware_spec_id: hw_spec.id,
-        ..Default::default()
-    }
-    .create(conn);
+    let program_spec = ProgramSpecFactory::default()
+        .name("Program 2")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     assert_eq!(
@@ -92,17 +88,12 @@ fn test_update_program_spec_full_modification() {
     context_builder.log_in(&[RoleType::Admin]);
     let conn = context_builder.db_conn();
 
-    let hw_spec = NewHardwareSpec {
-        name: "HW 1",
-        ..Default::default()
-    }
-    .create(conn);
-    let program_spec = NewProgramSpec {
-        name: "Program 2",
-        hardware_spec_id: hw_spec.id,
-        ..Default::default()
-    }
-    .create(conn);
+    let hardware_spec =
+        HardwareSpecFactory::default().name("HW 1").insert(conn);
+    let program_spec = ProgramSpecFactory::default()
+        .name("Program 2")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
 
     let values_list: InputValue = InputValue::list(
         [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
@@ -171,25 +162,18 @@ fn test_update_program_spec_empty_modification() {
     context_builder.log_in(&[RoleType::Admin]);
     let conn = context_builder.db_conn();
 
-    let hw_spec = NewHardwareSpec {
-        name: "HW 1",
-        ..Default::default()
-    }
-    .create(conn);
+    let hardware_spec =
+        HardwareSpecFactory::default().name("HW 1").insert(conn);
     // We'll test collisions against this
-    NewProgramSpec {
-        name: "Program 1",
-        hardware_spec_id: hw_spec.id,
-        ..Default::default()
-    }
-    .create(conn);
+    ProgramSpecFactory::default()
+        .name("Program 1")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
     // This is the one we'll actually be modifying
-    let program_spec = NewProgramSpec {
-        name: "Program 2",
-        hardware_spec_id: hw_spec.id,
-        ..Default::default()
-    }
-    .create(conn);
+    let program_spec = ProgramSpecFactory::default()
+        .name("Program 2")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     assert_eq!(
@@ -216,25 +200,18 @@ fn test_update_program_spec_duplicate() {
     context_builder.log_in(&[RoleType::Admin]);
     let conn = context_builder.db_conn();
 
-    let hw_spec = NewHardwareSpec {
-        name: "HW 1",
-        ..Default::default()
-    }
-    .create(conn);
+    let hardware_spec =
+        HardwareSpecFactory::default().name("HW 1").insert(conn);
     // We'll test collisions against this
-    NewProgramSpec {
-        name: "Program 1",
-        hardware_spec_id: hw_spec.id,
-        ..Default::default()
-    }
-    .create(conn);
+    ProgramSpecFactory::default()
+        .name("Program 1")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
     // This is the one we'll actually be modifying
-    let program_spec = NewProgramSpec {
-        name: "Program 2",
-        hardware_spec_id: hw_spec.id,
-        ..Default::default()
-    }
-    .create(conn);
+    let program_spec = ProgramSpecFactory::default()
+        .name("Program 2")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     assert_eq!(
@@ -262,17 +239,12 @@ fn test_update_program_spec_invalid_values() {
     context_builder.log_in(&[RoleType::Admin]);
     let conn = context_builder.db_conn();
 
-    let hw_spec = NewHardwareSpec {
-        name: "HW 1",
-        ..Default::default()
-    }
-    .create(conn);
-    let program_spec = NewProgramSpec {
-        name: "Program 2",
-        hardware_spec_id: hw_spec.id,
-        ..Default::default()
-    }
-    .create(conn);
+    let hardware_spec =
+        HardwareSpecFactory::default().name("HW 1").insert(conn);
+    let program_spec = ProgramSpecFactory::default()
+        .name("Program 2")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     assert_eq!(
@@ -303,17 +275,12 @@ fn test_update_program_spec_not_logged_in() {
     let context_builder = ContextBuilder::new();
     let conn = context_builder.db_conn();
 
-    let hw_spec = NewHardwareSpec {
-        name: "HW 1",
-        ..Default::default()
-    }
-    .create(conn);
-    let program_spec = NewProgramSpec {
-        name: "Program 2",
-        hardware_spec_id: hw_spec.id,
-        ..Default::default()
-    }
-    .create(conn);
+    let hardware_spec =
+        HardwareSpecFactory::default().name("HW 1").insert(conn);
+    let program_spec = ProgramSpecFactory::default()
+        .name("Program 2")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     assert_eq!(
@@ -342,17 +309,11 @@ fn test_update_program_spec_permission_denied() {
     context_builder.log_in(&[]); // Insufficient permissions
     let conn = context_builder.db_conn();
 
-    let hw_spec = NewHardwareSpec {
-        name: "HW 1",
-        ..Default::default()
-    }
-    .create(conn);
-    let program_spec = NewProgramSpec {
-        name: "Program 2",
-        hardware_spec_id: hw_spec.id,
-        ..Default::default()
-    }
-    .create(conn);
+    let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(conn);
+    let program_spec = ProgramSpecFactory::default()
+        .name("Program 2")
+        .hardware_spec(&hw_spec)
+        .insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     assert_eq!(

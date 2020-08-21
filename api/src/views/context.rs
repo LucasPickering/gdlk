@@ -201,7 +201,7 @@ impl RequestContext {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{models::Factory, util};
+    use crate::util;
     use maplit::hashset;
 
     /// Test when the given user provider ID isn't in the DB
@@ -218,12 +218,15 @@ mod tests {
     fn test_user_load_context_uninitialized_user() {
         let pool = util::init_test_db_conn_pool().unwrap();
         let conn = &pool.get().unwrap();
-        let user_provider = models::NewUserProvider {
+        let user_provider: models::UserProvider = models::NewUserProvider {
             sub: "sub",
             provider_name: "provider",
             user_id: None,
         }
-        .create(conn);
+        .insert()
+        .returning(user_providers::all_columns)
+        .get_result(conn)
+        .unwrap();
 
         let ctx = UserContext::load_context(conn, user_provider.id);
         assert_eq!(
@@ -240,13 +243,20 @@ mod tests {
         let pool = util::init_test_db_conn_pool().unwrap();
         let conn = &pool.get().unwrap();
 
-        let user = models::NewUser { username: "user1" }.create(conn);
-        let user_provider = models::NewUserProvider {
+        let user: models::User = models::NewUser { username: "user1" }
+            .insert()
+            .returning(users::all_columns)
+            .get_result(conn)
+            .unwrap();
+        let user_provider: models::UserProvider = models::NewUserProvider {
             sub: "sub",
             provider_name: "provider",
             user_id: Some(user.id),
         }
-        .create(conn);
+        .insert()
+        .returning(user_providers::all_columns)
+        .get_result(conn)
+        .unwrap();
         user.add_roles_x(conn, &[models::RoleType::SpecCreator])
             .unwrap();
 
@@ -270,13 +280,20 @@ mod tests {
         let pool = util::init_test_db_conn_pool().unwrap();
         let conn = &pool.get().unwrap();
 
-        let user = models::NewUser { username: "user1" }.create(conn);
-        let user_provider = models::NewUserProvider {
+        let user: models::User = models::NewUser { username: "user1" }
+            .insert()
+            .returning(users::all_columns)
+            .get_result(conn)
+            .unwrap();
+        let user_provider: models::UserProvider = models::NewUserProvider {
             sub: "sub",
             provider_name: "provider",
             user_id: Some(user.id),
         }
-        .create(conn);
+        .insert()
+        .returning(user_providers::all_columns)
+        .get_result(conn)
+        .unwrap();
         user.add_roles_x(
             conn,
             &[models::RoleType::SpecCreator, models::RoleType::Admin],

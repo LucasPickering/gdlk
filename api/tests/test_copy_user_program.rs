@@ -1,9 +1,7 @@
 #![deny(clippy::all)]
 
-use crate::utils::{ContextBuilder, QueryRunner};
-use gdlk_api::models::{
-    Factory, NewHardwareSpec, NewProgramSpec, NewUser, NewUserProgram,
-};
+use crate::utils::{factories::*, ContextBuilder, QueryRunner};
+use diesel_factories::Factory;
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
@@ -39,25 +37,17 @@ fn test_copy_user_program_success() {
     let conn = context_builder.db_conn();
 
     // Initialize data
-    let program_spec_id = NewProgramSpec {
-        name: "prog1",
-        hardware_spec_id: NewHardwareSpec {
-            name: "hw1",
-            ..Default::default()
-        }
-        .create(conn)
-        .id,
-        ..Default::default()
-    }
-    .create(conn)
-    .id;
-    let user_program = NewUserProgram {
-        user_id: user.id,
-        program_spec_id,
-        file_name: "existing.gdlk",
-        source_code: "READ RX0",
-    }
-    .create(conn);
+    let hardware_spec = HardwareSpecFactory::default().name("hw1").insert(conn);
+    let program_spec = ProgramSpecFactory::default()
+        .name("prog1")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
+    let user_program = UserProgramFactory::default()
+        .user(&user)
+        .program_spec(&program_spec)
+        .file_name("existing.gdlk")
+        .source_code("READ RX0")
+        .insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     assert_eq!(
@@ -121,26 +111,18 @@ fn test_copy_user_program_not_logged_in() {
     let conn = context_builder.db_conn();
 
     // Initialize data
-    let user = NewUser { username: "user1" }.create(conn);
-    let program_spec_id = NewProgramSpec {
-        name: "prog1",
-        hardware_spec_id: NewHardwareSpec {
-            name: "hw1",
-            ..Default::default()
-        }
-        .create(conn)
-        .id,
-        ..Default::default()
-    }
-    .create(conn)
-    .id;
-    let user_program = NewUserProgram {
-        user_id: user.id,
-        program_spec_id,
-        file_name: "existing.gdlk",
-        source_code: "READ RX0",
-    }
-    .create(conn);
+    let user = UserFactory::default().username("user1").insert(conn);
+    let hardware_spec = HardwareSpecFactory::default().name("hw1").insert(conn);
+    let program_spec = ProgramSpecFactory::default()
+        .name("prog1")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
+    let user_program = UserProgramFactory::default()
+        .user(&user)
+        .program_spec(&program_spec)
+        .file_name("existing.gdlk")
+        .source_code("READ RX0")
+        .insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     assert_eq!(
@@ -169,26 +151,18 @@ fn test_copy_user_program_wrong_owner() {
     let conn = context_builder.db_conn();
 
     // Initialize data
-    let other_user = NewUser { username: "user2" }.create(conn);
-    let program_spec_id = NewProgramSpec {
-        name: "prog1",
-        hardware_spec_id: NewHardwareSpec {
-            name: "hw1",
-            ..Default::default()
-        }
-        .create(conn)
-        .id,
-        ..Default::default()
-    }
-    .create(conn)
-    .id;
-    let user_program = NewUserProgram {
-        user_id: other_user.id,
-        program_spec_id,
-        file_name: "existing.gdlk",
-        source_code: "READ RX0",
-    }
-    .create(conn);
+    let other_user = UserFactory::default().username("user2").insert(conn);
+    let hardware_spec = HardwareSpecFactory::default().name("hw1").insert(conn);
+    let program_spec = ProgramSpecFactory::default()
+        .name("prog1")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
+    let user_program = UserProgramFactory::default()
+        .user(&other_user)
+        .program_spec(&program_spec)
+        .file_name("existing.gdlk")
+        .source_code("READ RX0")
+        .insert(conn);
 
     let runner = QueryRunner::new(context_builder);
     assert_eq!(

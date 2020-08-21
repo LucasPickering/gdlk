@@ -1,7 +1,7 @@
 #![deny(clippy::all)]
 
-use crate::utils::{ContextBuilder, QueryRunner};
-use gdlk_api::models::{Factory, NewUser, NewUserProvider};
+use crate::utils::{factories::*, ContextBuilder, QueryRunner};
+use diesel_factories::Factory;
 use maplit::hashmap;
 use serde_json::json;
 
@@ -47,12 +47,7 @@ fn test_field_auth_status_user_not_created() {
     let mut context_builder = ContextBuilder::new();
     let conn = context_builder.db_conn();
 
-    let user_provider = NewUserProvider {
-        sub: "asdf",
-        provider_name: "provider",
-        user_id: None,
-    }
-    .create(conn);
+    let user_provider = UserProviderFactory::default().insert(conn);
     // user_provider is set, but not user
     context_builder.set_user_provider(user_provider);
 
@@ -79,13 +74,10 @@ fn test_field_auth_status_user_created() {
     let mut context_builder = ContextBuilder::new();
     let conn = context_builder.db_conn();
 
-    let user = NewUser { username: "user1" }.create(conn);
-    let user_provider = NewUserProvider {
-        sub: "asdf",
-        provider_name: "provider",
-        user_id: Some(user.id),
-    }
-    .create(conn);
+    let user = UserFactory::default().username("user1").insert(conn);
+    let user_provider = UserProviderFactory::default()
+        .user(Some(&user))
+        .insert(conn);
     // user_provider is set, but not user
     context_builder.set_user_provider(user_provider);
 

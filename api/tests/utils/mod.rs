@@ -1,9 +1,13 @@
 //! A helper module to hold utilities that are used across tests. This file
 //! DOES NOT container any of its own tests.
 
+pub mod factories;
+
+use crate::utils::factories::*;
 use diesel::PgConnection;
+use diesel_factories::Factory;
 use gdlk_api::{
-    models::{self, Factory},
+    models,
     server::{create_gql_schema, GqlSchema},
     util::{self, PooledConnection},
     views::RequestContext,
@@ -46,16 +50,14 @@ impl ContextBuilder {
     #[allow(dead_code)] // Not all test crates use this
     pub fn log_in(&mut self, roles: &[models::RoleType]) -> models::User {
         let conn = self.db_conn();
-        let user = models::NewUser { username: "user1" }.create(conn);
+        let user = UserFactory::default().username("user1").insert(conn);
 
         // Create a bogus user_provider for this user. We're not trying to test
         // the OpenID logic here, so this is fine.
-        let user_provider = models::NewUserProvider {
-            sub: &user.id.to_string(), // guarantees uniqueness
-            provider_name: "fake_provider",
-            user_id: Some(user.id),
-        }
-        .create(conn);
+        let user_provider = UserProviderFactory::default()
+            .sub(&user.id.to_string()) // guarantees uniqueness
+            .user(Some(&user))
+            .insert(conn);
 
         // Insert one row into user_roles for each requested row
         user.add_roles_x(conn, roles).unwrap();

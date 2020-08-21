@@ -1,7 +1,4 @@
-use crate::{
-    models::{Factory, HardwareSpec},
-    schema::program_specs,
-};
+use crate::{models::HardwareSpec, schema::program_specs};
 use diesel::{
     dsl, expression::bound::Bound, prelude::*, query_builder::InsertStatement,
     sql_types, Identifiable, Queryable,
@@ -55,7 +52,7 @@ impl ProgramSpec {
 /// This can be constructed manually and inserted into the DB. These fields
 /// all correspond to [ProgramSpec](ProgramSpec), so look there for
 /// field-level documentation.
-#[derive(Clone, Debug, Default, PartialEq, Insertable, Validate)]
+#[derive(Clone, Debug, Insertable, Validate)]
 #[table_name = "program_specs"]
 pub struct NewProgramSpec<'a> {
     pub hardware_spec_id: Uuid,
@@ -84,19 +81,7 @@ impl NewProgramSpec<'_> {
     }
 }
 
-// This trait is only needed for tests
-impl Factory for NewProgramSpec<'_> {
-    type ReturnType = ProgramSpec;
-
-    fn create(self, conn: &PgConnection) -> ProgramSpec {
-        self.insert()
-            .returning(program_specs::all_columns)
-            .get_result(conn)
-            .unwrap()
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Identifiable, AsChangeset, Validate)]
+#[derive(Clone, Debug, Identifiable, AsChangeset, Validate)]
 #[table_name = "program_specs"]
 pub struct ModifiedProgramSpec<'a> {
     pub id: Uuid,
