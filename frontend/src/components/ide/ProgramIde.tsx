@@ -98,8 +98,8 @@ const ProgramIde: React.FC<{
   const wasmProgramSpec = useStaticValue(
     () =>
       new ProgramSpec(
-        Int16Array.from(programSpec.input),
-        Int16Array.from(programSpec.expectedOutput)
+        Int32Array.from(programSpec.input),
+        Int32Array.from(programSpec.expectedOutput)
       )
   );
 

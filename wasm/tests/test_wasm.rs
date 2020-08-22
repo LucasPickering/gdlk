@@ -104,7 +104,7 @@ fn test_compile_success() {
         cycle_count = 0,
         terminated = false,
         successful = false,
-        input = &[1i16],
+        input = &[1],
         output = &[],
         registers = hashmap! {
             "RLI".into() => 1,
@@ -195,7 +195,7 @@ fn test_execute() {
         cycle_count = 0,
         terminated = false,
         successful = false,
-        input = &[1i16, 2i16, 3i16],
+        input = &[1, 2, 3],
         output = &[],
         registers = hashmap! {
             "RLI".into() => 3,
@@ -216,7 +216,7 @@ fn test_execute() {
         cycle_count = 1,
         terminated = false,
         successful = false,
-        input = &[1i16, 2i16, 3i16],
+        input = &[1, 2, 3],
         output = &[],
         registers = hashmap! {
             "RLI".into() => 3,
@@ -237,7 +237,7 @@ fn test_execute() {
         cycle_count = 2,
         terminated = false,
         successful = false,
-        input = &[2i16, 3i16],
+        input = &[2, 3],
         output = &[],
         registers = hashmap! {
             "RLI".into() => 2,
@@ -258,7 +258,7 @@ fn test_execute() {
         cycle_count = 3,
         terminated = false,
         successful = false,
-        input = &[2i16, 3i16],
+        input = &[2, 3],
         output = &[],
         registers = hashmap! {
             "RLI".into() => 2,
@@ -279,7 +279,7 @@ fn test_execute() {
         cycle_count = 4,
         terminated = false,
         successful = false,
-        input = &[2i16, 3i16],
+        input = &[2, 3],
         output = &[],
         registers = hashmap! {
             "RLI".into() => 2,
@@ -300,8 +300,8 @@ fn test_execute() {
         cycle_count = 5,
         terminated = false,
         successful = false,
-        input = &[2i16, 3i16],
-        output = &[1i16],
+        input = &[2, 3],
+        output = &[1],
         registers = hashmap! {
             "RLI".into() => 2,
             "RS0".into() => 0,
@@ -321,8 +321,8 @@ fn test_execute() {
         cycle_count = 6,
         terminated = false,
         successful = false,
-        input = &[2i16, 3i16],
-        output = &[1i16],
+        input = &[2, 3],
+        output = &[1],
         registers = hashmap! {
             "RLI".into() => 2,
             "RS0".into() => 0,
@@ -347,7 +347,7 @@ fn test_execute() {
         terminated = true,
         successful = true,
         input = &[],
-        output = &[1i16, 2i16, 3i16],
+        output = &[1, 2, 3],
         registers = hashmap! {
             "RLI".into() => 0,
             "RS0".into() => 0,

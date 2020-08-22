@@ -16,7 +16,6 @@ CREATE TABLE program_specs (
     name VARCHAR(50) NOT NULL CHECK (char_length(name) > 0),
     description TEXT NOT NULL,
     hardware_spec_id UUID NOT NULL REFERENCES hardware_specs(id),
-    -- TODO add constraint to make sure all values in range
     input INT[] NOT NULL CHECK (array_length(input, 1) <= 256),
     expected_output INT[] NOT NULL CHECK (array_length(input, 1) <= 256),
     UNIQUE(slug, hardware_spec_id),
