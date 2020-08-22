@@ -7,20 +7,37 @@ use crate::{
     error::{CompileError, SourceErrorWrapper, WithSource},
     models::HardwareSpec,
     util::Span,
-    Compiler,
+    Compiler, ProgramStats,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 struct Context<'a> {
-    hardware_spec: &'a HardwareSpec,
-    labels: &'a HashMap<&'a Label, Span>,
+    hardware_spec: HardwareSpec,
+    labels: HashMap<&'a Label, Span>,
+    stats: ProgramStats,
+}
+
+impl<'a> Context<'a> {
+    /// Add a register reference to the list of all references made in the
+    /// program, for stat tracking purposes. This can be called even if an
+    /// error is present, because in the error case we won't return the stats.
+    fn add_register_ref(&mut self, register_ref: RegisterRef) {
+        self.stats.referenced_registers.insert(register_ref);
+    }
+
+    /// Add a stack reference to the list of all references made in the
+    /// program, for stat tracking purposes. This can be called even if an
+    /// error is present, because in the error case we won't return the stats.
+    fn add_stack_ref(&mut self, stack_ref: StackRef) {
+        self.stats.referenced_stacks.insert(stack_ref);
+    }
 }
 
 trait Validate {
     /// Validate a single object
     fn validate(
         &self,
-        context: &Context,
+        context: &mut Context,
         errors: &mut Vec<(CompileError, Span)>,
     );
 }
@@ -28,7 +45,7 @@ trait Validate {
 impl Validate for SpanNode<Label> {
     fn validate(
         &self,
-        context: &Context,
+        context: &mut Context,
         errors: &mut Vec<(CompileError, Span)>,
     ) {
         if !context.labels.contains_key(&self.value()) {
@@ -42,9 +59,11 @@ impl Validate for SpanNode<RegisterRef> {
     /// hardware.
     fn validate(
         &self,
-        context: &Context,
+        context: &mut Context,
         errors: &mut Vec<(CompileError, Span)>,
     ) {
+        // Track this reference in the stats
+        context.add_register_ref(*self.value());
         match self {
             Node(RegisterRef::StackLength(stack_ref), span)
                 if !is_stack_id_valid(context.hardware_spec, *stack_ref) =>
@@ -67,7 +86,7 @@ impl Validate for SpanNode<ValueSource<Span>> {
     /// registers.
     fn validate(
         &self,
-        context: &Context,
+        context: &mut Context,
         errors: &mut Vec<(CompileError, Span)>,
     ) {
         match self.value() {
@@ -82,9 +101,11 @@ impl Validate for SpanNode<StackRef> {
     /// makes sure it's in bounds.
     fn validate(
         &self,
-        context: &Context,
+        context: &mut Context,
         errors: &mut Vec<(CompileError, Span)>,
     ) {
+        // Track this reference in the stats
+        context.add_stack_ref(*self.value());
         if !is_stack_id_valid(context.hardware_spec, self.value().0) {
             errors.push((CompileError::InvalidStackRef, *self.metadata()))
         }
@@ -94,7 +115,7 @@ impl Validate for SpanNode<StackRef> {
 impl Validate for SpanNode<Operator<Span>> {
     fn validate(
         &self,
-        context: &Context,
+        context: &mut Context,
         errors: &mut Vec<(CompileError, Span)>,
     ) {
         match self.value() {
@@ -135,7 +156,7 @@ impl Validate for SpanNode<Operator<Span>> {
 impl Validate for SpanNode<Jump<Span>> {
     fn validate(
         &self,
-        context: &Context,
+        context: &mut Context,
         errors: &mut Vec<(CompileError, Span)>,
     ) {
         match self.value() {
@@ -151,7 +172,7 @@ impl Validate for SpanNode<Jump<Span>> {
 impl Validate for SpanNode<Statement<Span>> {
     fn validate(
         &self,
-        context: &Context,
+        context: &mut Context,
         errors: &mut Vec<(CompileError, Span)>,
     ) {
         match self.value() {
@@ -167,7 +188,7 @@ impl Validate for SpanNode<Statement<Span>> {
 
 /// Helper method to change if a stack reference is in range. This is used for
 /// mutliple error types so the comparison logic is pulled out here.
-fn is_stack_id_valid(hardware_spec: &HardwareSpec, stack_id: StackId) -> bool {
+fn is_stack_id_valid(hardware_spec: HardwareSpec, stack_id: StackId) -> bool {
     stack_id < hardware_spec.num_stacks
 }
 
@@ -212,22 +233,27 @@ fn collect_labels<'a>(
 
 /// Collects all the validation errors in all the instructions in the body.
 fn validate_body(
-    hardware_spec: &HardwareSpec,
+    hardware_spec: HardwareSpec,
     body: &[SpanNode<Statement<Span>>],
-) -> Vec<(CompileError, Span)> {
+) -> (ProgramStats, Vec<(CompileError, Span)>) {
     let mut errors = Vec::new();
     let labels = collect_labels(&mut errors, body);
-    let context = Context {
+    let mut context = Context {
         hardware_spec,
-        labels: &labels,
+        labels,
+        // This will be updated as we traverse the tree
+        stats: ProgramStats {
+            referenced_registers: HashSet::new(),
+            referenced_stacks: HashSet::new(),
+        },
     };
 
     // Add in errors for each statement
     for stmt in body.iter() {
-        stmt.validate(&context, &mut errors);
+        stmt.validate(&mut context, &mut errors);
     }
 
-    errors
+    (context.stats, errors)
 }
 
 impl Compiler<Program<Span>> {
@@ -235,12 +261,21 @@ impl Compiler<Program<Span>> {
     /// hardware is needed to determine what values and references
     /// are valid. If any errors occur, `Err` will be returned with all the
     /// errors in a collection.
+    ///
+    /// This step also collects static statistics on the program, such as
+    /// which registers were referenced, which stats were referenced, etc. See
+    /// [ProgramStats] for all the stats that are collected.
     pub(crate) fn validate(
         self,
-    ) -> Result<Compiler<Program<Span>>, WithSource<CompileError>> {
-        let errors = validate_body(&self.hardware_spec, &self.ast.body);
+    ) -> Result<Compiler<(Program<Span>, ProgramStats)>, WithSource<CompileError>>
+    {
+        let (stats, errors) = validate_body(self.hardware_spec, &self.ast.body);
         if errors.is_empty() {
-            Ok(self)
+            Ok(Compiler {
+                source: self.source,
+                hardware_spec: self.hardware_spec,
+                ast: (self.ast, stats),
+            })
         } else {
             let errors: Vec<_> = errors
                 .into_iter()

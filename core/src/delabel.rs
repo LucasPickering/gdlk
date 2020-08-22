@@ -1,11 +1,11 @@
 use crate::{
     ast::{
-        compiled::{Instruction, Program as CompiledProgram},
-        source::{LabelDecl, Program as SourceProgram, Statement},
+        compiled::{self, Instruction},
+        source::{self, LabelDecl, Statement},
         Label, Node, SpanNode,
     },
     util::Span,
-    Compiler,
+    Compiler, ProgramStats,
 };
 use std::collections::HashMap;
 
@@ -44,15 +44,15 @@ fn map_statement(
     })
 }
 
-impl Compiler<SourceProgram<Span>> {
+impl Compiler<(source::Program<Span>, ProgramStats)> {
     /// Removes labels from the source, replacing their references with relative
     /// index offsets.
-    pub(crate) fn delabel(self) -> Compiler<CompiledProgram<Span>> {
-        let label_map = map_labels(&self.ast.body);
+    pub(crate) fn delabel(self) -> Compiler<compiled::Program<Span>> {
+        let body = self.ast.0.body;
+        let stats = self.ast.1;
+        let label_map = map_labels(&body);
 
-        let instructions: Vec<Node<Instruction<_>, _>> = self
-            .ast
-            .body
+        let instructions: Vec<Node<Instruction<_>, _>> = body
             .into_iter()
             // Need to filter FIRST so labels don't get tracked in the
             // indexes
@@ -66,7 +66,11 @@ impl Compiler<SourceProgram<Span>> {
         Compiler {
             source: self.source,
             hardware_spec: self.hardware_spec,
-            ast: CompiledProgram { instructions },
+            // Stats won't change at this point, just forward them down
+            ast: compiled::Program {
+                instructions,
+                stats,
+            },
         }
     }
 }
@@ -78,6 +82,7 @@ mod tests {
         ast::{Jump, Operator, RegisterRef},
         models::HardwareSpec,
     };
+    use std::collections::HashSet;
 
     #[test]
     fn test_delabel() {
@@ -132,10 +137,14 @@ mod tests {
             ),
             Node(Statement::Label(Node(LabelDecl("END".into()), span)), span),
         ];
+        let empty_stats = ProgramStats {
+            referenced_registers: HashSet::new(),
+            referenced_stacks: HashSet::new(),
+        };
         let compiler = Compiler {
             source: "".into(),
             hardware_spec: HardwareSpec::default(),
-            ast: SourceProgram { body },
+            ast: (source::Program { body }, empty_stats),
         };
         assert_eq!(
             compiler.delabel().ast.instructions,

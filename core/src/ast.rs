@@ -199,6 +199,7 @@ pub mod source {
 /// All types unique to the compiled AST live here.
 pub mod compiled {
     use super::*;
+    use crate::ProgramStats;
 
     /// An executable instruction. These are the instructions that machines
     /// actually execute.
@@ -220,6 +221,7 @@ pub mod compiled {
     #[derive(Clone, Debug, PartialEq)]
     pub struct Program<T> {
         pub instructions: Vec<Node<Instruction<T>, T>>,
+        pub stats: ProgramStats,
     }
 }
 

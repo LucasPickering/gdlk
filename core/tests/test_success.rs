@@ -2,7 +2,10 @@
 //! these tests should compile successfully, and execute with a successful
 //! outcome.
 
-use gdlk::{ast::LangValue, Compiler, HardwareSpec, ProgramSpec};
+use gdlk::{
+    ast::{LangValue, RegisterRef, StackRef},
+    Compiler, HardwareSpec, ProgramSpec, ProgramStats,
+};
 
 /// Compiles the program for the given hardware, and executes it against the
 /// program spec. Panics if the compile fails or the execution isn't
@@ -389,4 +392,38 @@ fn test_execute_after_termination() {
         "SET RX0 0",
     );
     assert_eq!(machine.execute_next().unwrap(), false);
+}
+
+#[test]
+fn test_stats() {
+    // Test the calculate_stats method. No need to execute this program, we can
+    // calculate the stats just based on the compiled program.
+    let hw_spec = HardwareSpec {
+        num_registers: 3,
+        num_stacks: 3,
+        max_stack_length: 10,
+    };
+    let src = "
+    READ RX0
+    WRITE RX0
+    SET RX0 RZR
+    PUSH RX0 S0
+    PUSH RLI S0
+    PUSH RS1 S0
+    PUSH RX1 S2
+    ";
+    let compiler = Compiler::compile(src.into(), hw_spec).unwrap();
+    let expected_stats = ProgramStats {
+        referenced_registers: vec![
+            RegisterRef::User(0),
+            RegisterRef::Null,
+            RegisterRef::InputLength,
+            RegisterRef::StackLength(1),
+            RegisterRef::User(1),
+        ]
+        .into_iter()
+        .collect(),
+        referenced_stacks: vec![StackRef(0), StackRef(2)].into_iter().collect(),
+    };
+    assert_eq!(&compiler.program().stats, &expected_stats);
 }

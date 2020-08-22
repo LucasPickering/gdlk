@@ -6,6 +6,7 @@
 use crate::ast::wasm::StringArray;
 use crate::ast::{LangValue, RegisterRef, StackRef};
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 #[cfg(feature = "wasm")]
 use wasm_bindgen::{prelude::*, JsCast};
 
@@ -174,6 +175,21 @@ impl Default for ProgramSpec {
             expected_output: vec![],
         }
     }
+}
+
+/// A record of **static** statistics that can be gathered about a program. We
+/// collect these statistics at compile time. They can be used to rank programs,
+/// e.g. finding the minimal number of references need to solve a problem.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ProgramStats {
+    /// All the registers that are referenced at least once by the program.
+    /// This will include registers even if they don't get used at runtime,
+    /// as we can't know at compile time which instructions will execute.
+    pub referenced_registers: HashSet<RegisterRef>,
+    /// All the stacks that are referenced at least once by the program.
+    /// This will include stacks even if they don't get used at runtime,
+    /// as we can't know at compile time which instructions will execute.
+    pub referenced_stacks: HashSet<StackRef>,
 }
 
 #[cfg(test)]
