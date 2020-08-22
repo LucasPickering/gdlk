@@ -13,7 +13,7 @@ use crate::{
 use std::fmt::{self, Display, Formatter};
 
 /// The type of every value in our language.
-pub type LangValue = i16;
+pub type LangValue = i32;
 
 /// A symbol used to identify a certain user register.
 pub type UserRegisterId = usize;

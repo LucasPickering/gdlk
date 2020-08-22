@@ -724,14 +724,14 @@ mod tests {
                         Node(
                             ValueSource::Const(Node(
                                 LangValue::max_value(),
-                                span(1, 9, 1, 14)
+                                span(1, 9, 1, 19)
                             )),
-                            span(1, 9, 1, 14)
+                            span(1, 9, 1, 19)
                         )
                     ),
-                    span(1, 1, 1, 14)
+                    span(1, 1, 1, 19)
                 )),
-                span(1, 1, 1, 14)
+                span(1, 1, 1, 19)
             )]
         );
     }
@@ -748,14 +748,14 @@ mod tests {
                         Node(
                             ValueSource::Const(Node(
                                 LangValue::min_value(),
-                                span(1, 9, 1, 15)
+                                span(1, 9, 1, 20)
                             )),
-                            span(1, 9, 1, 15)
+                            span(1, 9, 1, 20)
                         )
                     ),
-                    span(1, 1, 1, 15)
+                    span(1, 1, 1, 20)
                 )),
-                span(1, 1, 1, 15)
+                span(1, 1, 1, 20)
             )]
         );
     }
