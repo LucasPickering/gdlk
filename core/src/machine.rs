@@ -361,6 +361,11 @@ impl Machine {
         }
     }
 
+    /// Get a reference to the program being executed.
+    pub fn program(&self) -> &Program<Span> {
+        &self.program
+    }
+
     /// Get the current input buffer.
     pub fn input(&self) -> &[LangValue] {
         self.input.as_slice()

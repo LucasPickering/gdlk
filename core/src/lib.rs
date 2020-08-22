@@ -52,7 +52,7 @@ pub use machine::*;
 pub use models::*;
 pub use util::Span;
 
-use ast::compiled::Program;
+use crate::ast::compiled;
 use error::{CompileError, WithSource};
 use std::fmt::Debug;
 
@@ -77,7 +77,8 @@ impl Compiler<()> {
     pub fn compile(
         source: String,
         hardware_spec: HardwareSpec,
-    ) -> Result<Compiler<Program<Span>>, WithSource<CompileError>> {
+    ) -> Result<Compiler<compiled::Program<Span>>, WithSource<CompileError>>
+    {
         Ok(Self {
             source,
             hardware_spec,
@@ -93,9 +94,9 @@ impl Compiler<()> {
     }
 }
 
-impl Compiler<Program<Span>> {
+impl Compiler<compiled::Program<Span>> {
     /// Returns the AST for the compiled program.
-    pub fn program(&self) -> &Program<Span> {
+    pub fn program(&self) -> &compiled::Program<Span> {
         &self.ast
     }
 
