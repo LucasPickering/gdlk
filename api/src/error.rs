@@ -17,7 +17,8 @@ use validator::{ValidationError, ValidationErrors, ValidationErrorsKind};
 
 pub type ResponseResult<T> = Result<T, ResponseError>;
 
-/// TODO
+/// A response error that originated because of an error on the client's part.
+/// This could be invalid input, an invalid request URL, permission denied, etc.
 #[derive(Debug, Error)]
 pub enum ClientError {
     /// User tried to tried to reference a non-existent resource. Be careful
@@ -83,7 +84,9 @@ pub enum ClientError {
     ),
 }
 
-/// TODO
+/// A response error that originated because of an error on the server's part.
+/// This could be a DB error, a network error, etc. These are bad and we want
+/// to log them.
 #[derive(Debug, Error)]
 pub enum ServerError {
     /// Wrapper for R2D2's error type
@@ -118,13 +121,13 @@ pub enum ResponseError {
 }
 
 impl ResponseError {
-    /// TODO
+    /// Convenience function for mapping a [ClientError] into a [ResponseError].
     pub fn from_client_error<T: Into<ClientError>>(source: T) -> Self {
         let e: ClientError = source.into();
         e.into()
     }
 
-    /// TODO
+    /// Convenience function for mapping a [ServerError] into a [ResponseError].
     pub fn from_server_error<T: Into<ServerError>>(source: T) -> Self {
         let e: ServerError = source.into();
         e.into()
