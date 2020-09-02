@@ -6,12 +6,11 @@ use crate::{
         internal::{GenericEdge, NodeType},
         ConnectionPageParams, CopyUserProgramPayloadFields,
         CreateUserProgramPayloadFields, Cursor, DeleteUserProgramPayloadFields,
-        PageInfo, ProgramSpecNode, UpdateUserProgramPayloadFields, UserNode,
-        UserProgramConnectionFields, UserProgramEdgeFields,
-        UserProgramNodeFields,
+        PageInfo, ProgramSpecNode, RequestContext,
+        UpdateUserProgramPayloadFields, UserNode, UserProgramConnectionFields,
+        UserProgramEdgeFields, UserProgramNodeFields,
     },
     util::{self, Valid},
-    views::RequestContext,
 };
 use chrono::{offset::Utc, DateTime};
 use diesel::{dsl, PgConnection, QueryDsl, QueryResult, RunQueryDsl, Table};

@@ -1,7 +1,7 @@
 #![deny(clippy::all)]
 
 use crate::utils::{ContextBuilder, QueryRunner};
-use gdlk_api::models::{Factory, NewHardwareSpec, NewProgramSpec};
+use gdlk_api::models::{Factory, NewHardwareSpec, NewProgramSpec, RoleType};
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
@@ -40,7 +40,7 @@ static QUERY: &str = r#"
 #[test]
 fn test_create_program_spec_success() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[RoleType::SpecCreator]);
     let conn = context_builder.db_conn();
 
     let hw_spec = NewHardwareSpec {
@@ -88,7 +88,7 @@ fn test_create_program_spec_success() {
 #[test]
 fn test_create_program_spec_invalid_hw_spec() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[RoleType::SpecCreator]);
     let runner = QueryRunner::new(context_builder);
 
     let values_list: InputValue = InputValue::list(
@@ -121,7 +121,7 @@ fn test_create_program_spec_invalid_hw_spec() {
 #[test]
 fn test_create_program_spec_duplicate() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[RoleType::SpecCreator]);
     let conn = context_builder.db_conn();
 
     let hw_spec = NewHardwareSpec {
@@ -168,7 +168,7 @@ fn test_create_program_spec_duplicate() {
 #[test]
 fn test_create_program_spec_invalid_values() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[RoleType::SpecCreator]);
     let conn = context_builder.db_conn();
 
     let hw_spec = NewHardwareSpec {
@@ -230,7 +230,6 @@ fn test_create_program_spec_not_logged_in() {
                 "hardwareSpecId" => InputValue::scalar(hw_spec.id.to_string()),
                 "name" => InputValue::scalar(""),
                 "description" => InputValue::scalar("description!"),
-                // TODO use invalid values here once the DB validation is working
                 "input" => values_list.clone(),
                 "expectedOutput" => values_list,
             }
@@ -240,6 +239,45 @@ fn test_create_program_spec_not_logged_in() {
             vec![json!({
                 "locations": [{"line": 9, "column": 9}],
                 "message": "Not logged in",
+                "path": ["createProgramSpec"],
+            })]
+        )
+    );
+}
+
+/// [ERROR] You need permission to do this
+#[test]
+fn test_create_program_spec_permission_denied() {
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in(&[]); // Insufficient permissions
+    let conn = context_builder.db_conn();
+
+    let hw_spec = NewHardwareSpec {
+        name: "HW 1",
+        ..Default::default()
+    }
+    .create(conn);
+    let values_list: InputValue = InputValue::list(
+        [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
+    );
+
+    let runner = QueryRunner::new(context_builder);
+    assert_eq!(
+        runner.query(
+            QUERY,
+            hashmap! {
+                "hardwareSpecId" => InputValue::scalar(hw_spec.id.to_string()),
+                "name" => InputValue::scalar(""),
+                "description" => InputValue::scalar("description!"),
+                "input" => values_list.clone(),
+                "expectedOutput" => values_list,
+            }
+        ),
+        (
+            serde_json::Value::Null,
+            vec![json!({
+                "locations": [{"line": 9, "column": 9}],
+                "message": "Insufficient permissions to perform this action",
                 "path": ["createProgramSpec"],
             })]
         )

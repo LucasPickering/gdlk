@@ -1,7 +1,7 @@
 #![deny(clippy::all)]
 
 use crate::utils::{ContextBuilder, QueryRunner};
-use gdlk_api::models::{Factory, NewHardwareSpec, NewProgramSpec};
+use gdlk_api::models::{Factory, NewHardwareSpec, NewProgramSpec, RoleType};
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
@@ -40,7 +40,7 @@ static QUERY: &str = r#"
 #[test]
 fn test_update_program_spec_partial_modification() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[RoleType::Admin]);
     let conn = context_builder.db_conn();
 
     let hw_spec = NewHardwareSpec {
@@ -89,7 +89,7 @@ fn test_update_program_spec_partial_modification() {
 #[test]
 fn test_update_program_spec_full_modification() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[RoleType::Admin]);
     let conn = context_builder.db_conn();
 
     let hw_spec = NewHardwareSpec {
@@ -143,7 +143,7 @@ fn test_update_program_spec_full_modification() {
 #[test]
 fn test_update_program_spec_invalid_id() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[RoleType::Admin]);
     let runner = QueryRunner::new(context_builder);
 
     assert_eq!(
@@ -168,7 +168,7 @@ fn test_update_program_spec_invalid_id() {
 #[test]
 fn test_update_program_spec_empty_modification() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[RoleType::Admin]);
     let conn = context_builder.db_conn();
 
     let hw_spec = NewHardwareSpec {
@@ -213,7 +213,7 @@ fn test_update_program_spec_empty_modification() {
 #[test]
 fn test_update_program_spec_duplicate() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[RoleType::Admin]);
     let conn = context_builder.db_conn();
 
     let hw_spec = NewHardwareSpec {
@@ -259,7 +259,7 @@ fn test_update_program_spec_duplicate() {
 #[test]
 fn test_update_program_spec_invalid_values() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[RoleType::Admin]);
     let conn = context_builder.db_conn();
 
     let hw_spec = NewHardwareSpec {
@@ -327,8 +327,47 @@ fn test_update_program_spec_not_logged_in() {
         (
             serde_json::Value::Null,
             vec![json!({
-                "locations": [{"line": 9, "column": 9}],
                 "message": "Not logged in",
+                "locations": [{"line": 9, "column": 9}],
+                "path": ["updateProgramSpec"],
+            })]
+        )
+    );
+}
+
+/// [ERROR] You need permission to do this
+#[test]
+fn test_update_program_spec_permission_denied() {
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in(&[]); // Insufficient permissions
+    let conn = context_builder.db_conn();
+
+    let hw_spec = NewHardwareSpec {
+        name: "HW 1",
+        ..Default::default()
+    }
+    .create(conn);
+    let program_spec = NewProgramSpec {
+        name: "Program 2",
+        hardware_spec_id: hw_spec.id,
+        ..Default::default()
+    }
+    .create(conn);
+
+    let runner = QueryRunner::new(context_builder);
+    assert_eq!(
+        runner.query(
+            QUERY,
+            hashmap! {
+                "id" => InputValue::scalar(program_spec.id.to_string()),
+                "name" => InputValue::scalar(""),
+            }
+        ),
+        (
+            serde_json::Value::Null,
+            vec![json!({
+                "message": "Insufficient permissions to perform this action",
+                "locations": [{"line": 9, "column": 9}],
                 "path": ["updateProgramSpec"],
             })]
         )
