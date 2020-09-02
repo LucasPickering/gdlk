@@ -4,13 +4,16 @@
 use crate::{
     error::{ClientError, ResponseResult},
     models,
-    schema::{user_providers, users},
+    schema::{
+        permissions, role_permissions, roles, user_providers, user_roles, users,
+    },
     util::PooledConnection,
 };
 use diesel::{
     NullableExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
     RunQueryDsl,
 };
+use std::collections::HashSet;
 use uuid::Uuid;
 
 /// Information on the logged-in user.
@@ -18,6 +21,8 @@ use uuid::Uuid;
 pub struct AuthorizedUser {
     pub id: Uuid,
     pub username: String,
+    pub permissions: HashSet<models::PermissionType>,
+    pub is_admin: bool,
 }
 
 impl AuthorizedUser {
@@ -27,6 +32,12 @@ impl AuthorizedUser {
             id: self.id,
             username: self.username,
         }
+    }
+
+    /// Check if the user has the requested permission. Admins implicitly have
+    /// all permissions, so this also checks `self.is_admin`.
+    pub fn has_permission(&self, permission: models::PermissionType) -> bool {
+        self.is_admin || self.permissions.contains(&permission)
     }
 }
 
@@ -47,7 +58,8 @@ impl UserContext {
         conn: &PgConnection,
         user_provider_id: Uuid,
     ) -> ResponseResult<Option<Self>> {
-        // TODO after diesel 2.0, merge these two queries into one
+        // TODO after diesel 2.0, merge these two queries into one.
+        // Then we can do array/bool aggs for the permissions/is_admin.
 
         // This is a double option for a reason - the outer option indicates
         // if the user_providers row exists in the DB. The inner option
@@ -79,13 +91,57 @@ impl UserContext {
                 user: None,
             }),
             // User is logged in and initialized, return the full user data
-            Some((Some(user_id), Some(username))) => Some(Self {
-                user_provider_id,
-                user: Some(AuthorizedUser {
-                    id: user_id,
-                    username,
-                }),
-            }),
+            Some((Some(user_id), Some(username))) => {
+                // Fetch all of the user's roles and permissions
+                let permissions_query_result = users::table
+                    .find(user_id)
+                    // yo dawg i heard you like joins
+                    .inner_join(
+                        user_roles::table.left_join(
+                            // LEFT JOIN here so that even if the role has
+                            // no
+                            // permissions, we still get its is_admin value
+                            roles::table.left_join(
+                                role_permissions::table
+                                    .left_join(permissions::table),
+                            ),
+                        ),
+                    )
+                    .select((
+                        permissions::columns::name.nullable(),
+                        roles::columns::is_admin,
+                    ))
+                    .distinct()
+                    // .filter(users::columns::id.eq(user_id))
+                    .get_results::<(Option<String>, bool)>(conn)?;
+
+                // For permissions, just collect em all
+                // For is_admin, do an or-map (true if any are true)
+                let (permissions, is_admin) = permissions_query_result
+                    .into_iter()
+                    .try_fold::<_, _, ResponseResult<_>>(
+                    (HashSet::new(), false),
+                    |(mut permissions, is_admin),
+                     (permission_opt, is_admin_row)| {
+                        if let Some(permission) = permission_opt {
+                            // Parsing here shouldn't ever fail because
+                            // PermissionType covers all DB values
+                            permissions.insert(permission.parse()?);
+                        }
+                        Ok((permissions, is_admin || is_admin_row))
+                    },
+                )?;
+
+                Some(Self {
+                    user_provider_id,
+                    user: Some(AuthorizedUser {
+                        id: user_id,
+                        username,
+                        permissions,
+                        is_admin,
+                    }),
+                })
+            }
             // The user ID and username should always be either both None or
             // both Some, since they can both only be None when the left_join
             // gives a null user. Both columns are NOT NULL so if the join
@@ -113,8 +169,7 @@ impl RequestContext {
         db_conn: PooledConnection,
         user_provider_id: Option<Uuid>,
     ) -> ResponseResult<Self> {
-        // Load user context for the given user_providers ID
-        let user_context: Option<UserContext> = match user_provider_id {
+        let user_context = match user_provider_id {
             None => None,
             Some(upid) => UserContext::load_context(&db_conn, upid)?,
         };
@@ -147,6 +202,7 @@ impl RequestContext {
 mod tests {
     use super::*;
     use crate::{models::Factory, util};
+    use maplit::hashset;
 
     /// Test when the given user provider ID isn't in the DB
     #[test]
@@ -191,6 +247,8 @@ mod tests {
             user_id: Some(user.id),
         }
         .create(conn);
+        user.add_roles_x(conn, &[models::RoleType::SpecCreator])
+            .unwrap();
 
         let ctx = UserContext::load_context(conn, user_provider.id);
         assert_eq!(
@@ -199,7 +257,42 @@ mod tests {
                 user_provider_id: user_provider.id,
                 user: Some(AuthorizedUser {
                     id: user.id,
-                    username: user.username
+                    username: user.username,
+                    permissions: hashset! {models::PermissionType::CreateSpecs},
+                    is_admin: false
+                })
+            })
+        );
+    }
+
+    #[test]
+    fn test_user_load_context_initialized_user_admin() {
+        let pool = util::init_test_db_conn_pool().unwrap();
+        let conn = &pool.get().unwrap();
+
+        let user = models::NewUser { username: "user1" }.create(conn);
+        let user_provider = models::NewUserProvider {
+            sub: "sub",
+            provider_name: "provider",
+            user_id: Some(user.id),
+        }
+        .create(conn);
+        user.add_roles_x(
+            conn,
+            &[models::RoleType::SpecCreator, models::RoleType::Admin],
+        )
+        .unwrap();
+
+        let ctx = UserContext::load_context(conn, user_provider.id);
+        assert_eq!(
+            ctx.unwrap(),
+            Some(UserContext {
+                user_provider_id: user_provider.id,
+                user: Some(AuthorizedUser {
+                    id: user.id,
+                    username: user.username,
+                    permissions: hashset! {models::PermissionType::CreateSpecs},
+                    is_admin: true
                 })
             })
         );

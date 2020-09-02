@@ -25,7 +25,7 @@ static QUERY: &str = r#"
 #[test]
 fn test_delete_user_program_success() {
     let mut context_builder = ContextBuilder::new();
-    let user = context_builder.log_in();
+    let user = context_builder.log_in(&[]);
     let conn = context_builder.db_conn();
 
     let user_program_id = NewUserProgram {
@@ -144,7 +144,7 @@ fn test_delete_user_program_not_logged_in() {
 #[test]
 fn test_delete_user_program_wrong_owner() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[]);
     let conn = context_builder.db_conn();
 
     let owner = NewUser { username: "user2" }.create(conn);

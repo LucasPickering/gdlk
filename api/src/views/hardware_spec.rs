@@ -1,17 +1,16 @@
 use crate::{
-    error::{DbErrorConverter, ResponseResult},
+    error::{ClientError, DbErrorConverter, ResponseResult},
     models,
     schema::hardware_specs,
-    views::View,
+    views::{RequestContext, View},
 };
-use diesel::{OptionalExtension, PgConnection, QueryDsl, RunQueryDsl, Table};
+use diesel::{OptionalExtension, QueryDsl, RunQueryDsl, Table};
 use uuid::Uuid;
 use validator::Validate;
 
 /// Create a new hardware spec
 pub struct CreateHardwareSpecView<'a> {
-    pub conn: &'a PgConnection,
-    pub user_id: Uuid,
+    pub context: &'a RequestContext,
     pub name: &'a str,
     pub num_registers: i32,
     pub num_stacks: i32,
@@ -21,7 +20,16 @@ pub struct CreateHardwareSpecView<'a> {
 impl<'a> View for CreateHardwareSpecView<'a> {
     type Output = models::HardwareSpec;
 
-    fn execute(&self) -> ResponseResult<Self::Output> {
+    fn check_permissions(&self) -> ResponseResult<()> {
+        let user = self.context.user()?;
+        if user.has_permission(models::PermissionType::CreateSpecs) {
+            Ok(())
+        } else {
+            Err(ClientError::PermissionDenied.into())
+        }
+    }
+
+    fn execute_internal(&self) -> ResponseResult<Self::Output> {
         // User a helper type to do the insert
         let new_hardware_spec = models::NewHardwareSpec {
             name: self.name,
@@ -35,7 +43,7 @@ impl<'a> View for CreateHardwareSpecView<'a> {
         let result: Result<models::HardwareSpec, _> = new_hardware_spec
             .insert()
             .returning(hardware_specs::table::all_columns())
-            .get_result(self.conn);
+            .get_result(self.context.db_conn());
 
         DbErrorConverter {
             // HardwareSpec already exists with this name or slug
@@ -48,8 +56,7 @@ impl<'a> View for CreateHardwareSpecView<'a> {
 
 /// Modify an existing hardware spec
 pub struct UpdateHardwareSpecView<'a> {
-    pub conn: &'a PgConnection,
-    pub user_id: Uuid,
+    pub context: &'a RequestContext,
     pub id: Uuid,
     pub name: Option<&'a str>,
     pub num_registers: Option<i32>,
@@ -60,7 +67,16 @@ pub struct UpdateHardwareSpecView<'a> {
 impl<'a> View for UpdateHardwareSpecView<'a> {
     type Output = Option<models::HardwareSpec>;
 
-    fn execute(&self) -> ResponseResult<Self::Output> {
+    fn check_permissions(&self) -> ResponseResult<()> {
+        let user = self.context.user()?;
+        if user.has_permission(models::PermissionType::ModifyAllSpecs) {
+            Ok(())
+        } else {
+            Err(ClientError::PermissionDenied.into())
+        }
+    }
+
+    fn execute_internal(&self) -> ResponseResult<Self::Output> {
         // User a helper type to do the insert
         let modified_hardware_spec = models::ModifiedHardwareSpec {
             id: self.id,
@@ -77,7 +93,7 @@ impl<'a> View for UpdateHardwareSpecView<'a> {
             diesel::update(hardware_specs::table.find(self.id))
                 .set(modified_hardware_spec)
                 .returning(hardware_specs::table::all_columns())
-                .get_result(self.conn)
+                .get_result(self.context.db_conn())
                 .optional();
 
         DbErrorConverter {

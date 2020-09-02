@@ -16,7 +16,13 @@ pub struct InitializeUserView<'a> {
 impl<'a> View for InitializeUserView<'a> {
     type Output = models::User;
 
-    fn execute(&self) -> ResponseResult<Self::Output> {
+    fn check_permissions(&self) -> ResponseResult<()> {
+        // Since we're directly handling the user context in this view, we
+        // handle all the not-logged-in logic directly during execution.
+        Ok(())
+    }
+
+    fn execute_internal(&self) -> ResponseResult<Self::Output> {
         // The user should be logged in, but not had a User object created yet
         match self.context.user_context {
             Some(UserContext {

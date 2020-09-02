@@ -1,7 +1,7 @@
 #![deny(clippy::all)]
 
 use crate::utils::{ContextBuilder, QueryRunner};
-use gdlk_api::models::{Factory, NewHardwareSpec};
+use gdlk_api::models::{Factory, NewHardwareSpec, RoleType};
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
@@ -40,7 +40,7 @@ static QUERY: &str = r#"
 #[test]
 fn test_update_hardware_spec_partial_modification() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[RoleType::Admin]);
     let conn = context_builder.db_conn();
 
     let hw_spec = NewHardwareSpec {
@@ -82,7 +82,7 @@ fn test_update_hardware_spec_partial_modification() {
 #[test]
 fn test_update_hardware_spec_full_modification() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[RoleType::Admin]);
     let conn = context_builder.db_conn();
 
     let hw_spec = NewHardwareSpec {
@@ -126,7 +126,7 @@ fn test_update_hardware_spec_full_modification() {
 #[test]
 fn test_update_hardware_spec_invalid_id() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[RoleType::Admin]);
     let runner = QueryRunner::new(context_builder);
 
     assert_eq!(
@@ -152,7 +152,7 @@ fn test_update_hardware_spec_invalid_id() {
 #[test]
 fn test_update_hardware_spec_empty_modification() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[RoleType::Admin]);
     let conn = context_builder.db_conn();
 
     let hw_spec = NewHardwareSpec {
@@ -184,7 +184,7 @@ fn test_update_hardware_spec_empty_modification() {
 #[test]
 fn test_update_hardware_spec_duplicate() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[RoleType::Admin]);
     let conn = context_builder.db_conn();
 
     // We'll test collisions against this
@@ -223,7 +223,7 @@ fn test_update_hardware_spec_duplicate() {
 #[test]
 fn test_update_hardware_spec_invalid_values() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[RoleType::Admin]);
     let conn = context_builder.db_conn();
 
     let hw_spec = NewHardwareSpec {
@@ -261,7 +261,7 @@ fn test_update_hardware_spec_invalid_values() {
     );
 }
 
-/// [ERROR] Test createHardwareSpec when you aren't logged in
+/// [ERROR] Test updateHardwareSpec when you aren't logged in
 #[test]
 fn test_update_hardware_spec_not_logged_in() {
     let context_builder = ContextBuilder::new();
@@ -289,6 +289,42 @@ fn test_update_hardware_spec_not_logged_in() {
             serde_json::Value::Null,
             vec![json!({
                 "message": "Not logged in",
+                "locations": [{"line": 9, "column": 9}],
+                "path": ["updateHardwareSpec"],
+            })]
+        )
+    );
+}
+
+/// [ERROR] Test updateHardwareSpec when you don't have permission
+#[test]
+fn test_update_hardware_spec_permission_denied() {
+    let mut context_builder = ContextBuilder::new();
+    context_builder.log_in(&[]); // Insufficient permissions
+    let conn = context_builder.db_conn();
+
+    let hw_spec = NewHardwareSpec {
+        name: "HW 2",
+        ..Default::default()
+    }
+    .create(conn);
+
+    let runner = QueryRunner::new(context_builder);
+    assert_eq!(
+        runner.query(
+            QUERY,
+            hashmap! {
+                "id" => InputValue::scalar(hw_spec.id.to_string()),
+                "name" => InputValue::scalar(""),
+                "numRegisters" => InputValue::scalar(-1),
+                "numStacks" => InputValue::scalar(-1),
+                "maxStackLength" => InputValue::scalar(-1),
+            }
+        ),
+        (
+            serde_json::Value::Null,
+            vec![json!({
+                "message": "Insufficient permissions to perform this action",
                 "locations": [{"line": 9, "column": 9}],
                 "path": ["updateHardwareSpec"],
             })]

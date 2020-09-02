@@ -44,8 +44,8 @@ impl ContextBuilder {
     }
 
     #[allow(dead_code)] // Not all test crates use this
-    pub fn log_in(&mut self) -> models::User {
-        let conn = &self.db_conn();
+    pub fn log_in(&mut self, roles: &[models::RoleType]) -> models::User {
+        let conn = self.db_conn();
         let user = models::NewUser { username: "user1" }.create(conn);
 
         // Create a bogus user_provider for this user. We're not trying to test
@@ -56,6 +56,9 @@ impl ContextBuilder {
             user_id: Some(user.id),
         }
         .create(conn);
+
+        // Insert one row into user_roles for each requested row
+        user.add_roles_x(conn, roles).unwrap();
 
         self.user_provider = Some(user_provider);
         self.user = Some(user.clone());

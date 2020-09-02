@@ -42,7 +42,7 @@ static QUERY: &str = r#"
 #[test]
 fn test_update_user_program_success() {
     let mut context_builder = ContextBuilder::new();
-    let user = context_builder.log_in();
+    let user = context_builder.log_in(&[]);
     let conn = context_builder.db_conn();
 
     // Initialize data
@@ -152,7 +152,7 @@ fn test_update_user_program_not_logged_in() {
 #[test]
 fn test_update_user_program_wrong_owner() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[]);
     let conn = context_builder.db_conn();
 
     // Initialize data
@@ -202,7 +202,7 @@ fn test_update_user_program_wrong_owner() {
 #[test]
 fn test_update_user_program_empty_modification() {
     let mut context_builder = ContextBuilder::new();
-    let user = context_builder.log_in();
+    let user = context_builder.log_in(&[]);
     let conn = context_builder.db_conn();
 
     // Initialize data
@@ -249,7 +249,7 @@ fn test_update_user_program_empty_modification() {
 #[test]
 fn test_update_user_program_duplicate() {
     let mut context_builder = ContextBuilder::new();
-    let user = context_builder.log_in();
+    let user = context_builder.log_in(&[]);
     let conn = context_builder.db_conn();
 
     // Initialize data
@@ -306,7 +306,7 @@ fn test_update_user_program_duplicate() {
 #[test]
 fn test_update_user_program_invalid_values() {
     let mut context_builder = ContextBuilder::new();
-    let user = context_builder.log_in();
+    let user = context_builder.log_in(&[]);
     let conn = context_builder.db_conn();
 
     // Initialize data

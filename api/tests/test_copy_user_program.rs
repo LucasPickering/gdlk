@@ -35,7 +35,7 @@ static QUERY: &str = r#"
 #[test]
 fn test_copy_user_program_success() {
     let mut context_builder = ContextBuilder::new();
-    let user = context_builder.log_in();
+    let user = context_builder.log_in(&[]);
     let conn = context_builder.db_conn();
 
     // Initialize data
@@ -93,7 +93,7 @@ fn test_copy_user_program_success() {
 #[test]
 fn test_copy_user_program_invalid_id() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[]);
     let runner = QueryRunner::new(context_builder);
 
     assert_eq!(
@@ -165,7 +165,7 @@ fn test_copy_user_program_not_logged_in() {
 #[test]
 fn test_copy_user_program_wrong_owner() {
     let mut context_builder = ContextBuilder::new();
-    context_builder.log_in();
+    context_builder.log_in(&[]);
     let conn = context_builder.db_conn();
 
     // Initialize data
