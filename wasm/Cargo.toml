@@ -1,14 +1,14 @@
 [package]
-name = "gdlk_wasm"
-version = "0.1.0"
-license = "MIT"
-repository = "https://github.com/LucasPickering/gdlk"
 authors = [
-    "John Reilly Murray <johnreillymurray@gmail.com>",
-    "Lucas Pickering <lucas@lucaspickering.me>",
+  "John Reilly Murray <johnreillymurray@gmail.com>",
+  "Lucas Pickering <lucas@lucaspickering.me>",
 ]
-edition = "2018"
 description = "Webassembly bindings for the GDLK core crate"
+edition = "2018"
+license = "MIT"
+name = "gdlk_wasm"
+repository = "https://github.com/LucasPickering/gdlk"
+version = "0.1.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -16,10 +16,10 @@ crate-type = ["cdylib", "rlib"]
 test = false
 
 [dependencies]
-gdlk = { path = "../core", features = ["wasm"] }
-wasm-bindgen = { version = "0.2.62", features = ["serde-serialize"] }
+gdlk = {path = "../core", features = ["wasm"]}
 serde = "^1.0.59"
 serde_derive = "^1.0.59"
+wasm-bindgen = {version = "0.2.62", features = ["serde-serialize"]}
 
 [dev-dependencies]
 maplit = "^1.0.0"
