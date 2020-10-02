@@ -361,6 +361,11 @@ impl Machine {
         }
     }
 
+    /// Get the source code that this machine is built for.
+    pub fn source_code(&self) -> &str {
+        &self.source
+    }
+
     /// Get a reference to the program being executed.
     pub fn program(&self) -> &Program<Span> {
         &self.program
