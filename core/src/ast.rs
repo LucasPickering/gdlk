@@ -223,6 +223,33 @@ pub mod compiled {
         pub instructions: Vec<Node<Instruction<T>, T>>,
         pub stats: ProgramStats,
     }
+
+    impl<T> Program<T> {
+        /// Get the number of compiled instructions in this program (does not
+        /// include comments, whitespace, etc.).
+        pub fn num_instructions(&self) -> usize {
+            self.instructions.len()
+        }
+
+        /// Get the number of different USER registers (i.e. RXx) referenced by
+        /// this program (not necessarily the number actually accessed).
+        pub fn num_user_registers_referenced(&self) -> usize {
+            self.stats
+                .referenced_registers
+                .iter()
+                .filter(|reg_ref| match reg_ref {
+                    RegisterRef::User(_) => true,
+                    _ => false,
+                })
+                .count()
+        }
+
+        /// Get the number of different stacks referenced by this program (not
+        /// necessarily the number actually accessed).
+        pub fn num_stacks_referenced(&self) -> usize {
+            self.stats.referenced_stacks.len()
+        }
+    }
 }
 
 // Types that are only needed in wasm.
