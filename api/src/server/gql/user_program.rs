@@ -6,9 +6,10 @@ use crate::{
         internal::{GenericEdge, NodeType},
         ConnectionPageParams, CopyUserProgramPayloadFields,
         CreateUserProgramPayloadFields, Cursor, DeleteUserProgramPayloadFields,
-        PageInfo, ProgramSpecNode, RequestContext,
-        UpdateUserProgramPayloadFields, UserNode, UserProgramConnectionFields,
-        UserProgramEdgeFields, UserProgramNodeFields,
+        ExecuteUserProgramPayloadFields, ExecuteUserProgramStatus, PageInfo,
+        ProgramSpecNode, RequestContext, UpdateUserProgramPayloadFields,
+        UserNode, UserProgramConnectionFields, UserProgramEdgeFields,
+        UserProgramNodeFields,
     },
     util::{self, Valid},
 };
@@ -268,5 +269,19 @@ impl DeleteUserProgramPayloadFields for DeleteUserProgramPayload {
         _executor: &juniper::Executor<'_, RequestContext>,
     ) -> Option<juniper::ID> {
         self.deleted_id.map(util::uuid_to_gql_id)
+    }
+}
+
+pub struct ExecuteUserProgramPayload {
+    pub status: Option<ExecuteUserProgramStatus>,
+}
+
+impl ExecuteUserProgramPayloadFields for ExecuteUserProgramPayload {
+    fn field_status(
+        &self,
+        _executor: &juniper::Executor<'_, RequestContext>,
+        _trail: &QueryTrail<'_, ExecuteUserProgramStatus, Walked>,
+    ) -> &Option<ExecuteUserProgramStatus> {
+        &self.status
     }
 }

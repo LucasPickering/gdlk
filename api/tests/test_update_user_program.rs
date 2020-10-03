@@ -1,10 +1,13 @@
 #![deny(clippy::all)]
 
 use crate::utils::{factories::*, ContextBuilder, QueryRunner};
+use diesel::{QueryDsl, RunQueryDsl};
 use diesel_factories::Factory;
+use gdlk_api::schema::user_programs;
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
+use uuid::Uuid;
 
 mod utils;
 
@@ -30,6 +33,26 @@ static QUERY: &str = r#"
                     programSpec {
                         slug
                     }
+                }
+            }
+        }
+    }
+"#;
+
+static QUERY_MIN: &str = r#"
+    mutation UpdateUserProgramMutation(
+        $id: ID!,
+        $fileName: String,
+        $sourceCode: String,
+    ) {
+        updateUserProgram(input: {
+            id: $id,
+            fileName: $fileName,
+            sourceCode: $sourceCode,
+        }) {
+            userProgramEdge {
+                node {
+                    id
                 }
             }
         }
@@ -86,6 +109,101 @@ fn test_update_user_program_success() {
             }),
             vec![]
         )
+    );
+}
+
+/// Test that the `record_id` column is cleared whenever we modify source, but
+/// NOT when other fields are modified.
+#[test]
+fn test_update_user_program_clear_record() {
+    let mut context_builder = ContextBuilder::new();
+    let user = context_builder.log_in(&[]);
+    let runner = QueryRunner::new(context_builder);
+    let conn = runner.db_conn();
+
+    // Initialize data
+    let hardware_spec = HardwareSpecFactory::default().name("hw1").insert(conn);
+    let program_spec = ProgramSpecFactory::default()
+        .name("prog1")
+        .hardware_spec(&hardware_spec)
+        .insert(conn);
+    let record = UserProgramRecordFactory::default()
+        .user(&user)
+        .program_spec(&program_spec)
+        .insert(conn);
+    let user_program = UserProgramFactory::default()
+        .user(&user)
+        .program_spec(&program_spec)
+        .record(Some(&record))
+        .file_name("existing.gdlk")
+        .source_code("READ RX0")
+        .insert(conn);
+
+    assert_eq!(
+        runner.query(
+            QUERY_MIN,
+            hashmap! {
+                "id" => InputValue::scalar(user_program.id.to_string()),
+                "fileName" => InputValue::scalar("new.gdlk"),
+            }
+        ),
+        (
+            json!({
+                "updateUserProgram": {
+                    "userProgramEdge": {
+                        "node": {
+                            "id": (user_program.id.to_string()),
+                        }
+                    }
+                }
+            }),
+            vec![]
+        )
+    );
+
+    // Record is still present because source was not modified
+    // TODO once the record is added to the GQL response, check it there
+    assert_eq!(
+        user_programs::table
+            .find(user_program.id)
+            .select(user_programs::columns::record_id)
+            .get_result::<Option<Uuid>>(conn)
+            .unwrap(),
+        Some(record.id)
+    );
+
+    // Modify source, should wipe out record_id
+    assert_eq!(
+        runner.query(
+            QUERY_MIN,
+            hashmap! {
+                "id" => InputValue::scalar(user_program.id.to_string()),
+                "sourceCode" => InputValue::scalar("WRITE RX0"),
+            }
+        ),
+        (
+            json!({
+                "updateUserProgram": {
+                    "userProgramEdge": {
+                        "node": {
+                            "id": (user_program.id.to_string()),
+                        }
+                    }
+                }
+            }),
+            vec![]
+        )
+    );
+
+    // Record is still present because source was not modified
+    // TODO once the record is added to the GQL response, check it there
+    assert_eq!(
+        user_programs::table
+            .find(user_program.id)
+            .select(user_programs::columns::record_id)
+            .get_result::<Option<Uuid>>(conn)
+            .unwrap(),
+        None
     );
 }
 

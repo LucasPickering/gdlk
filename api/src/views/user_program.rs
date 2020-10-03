@@ -1,10 +1,20 @@
+use std::convert::TryInto;
+
 use crate::{
     error::{DbErrorConverter, ResponseResult},
     models,
-    schema::user_programs,
+    schema::{
+        hardware_specs, program_specs, user_program_records, user_programs,
+    },
     views::{RequestContext, View},
 };
-use diesel::{OptionalExtension, RunQueryDsl, Table};
+use diesel::{
+    ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl, Table,
+};
+use gdlk::{
+    error::{CompileError, RuntimeError, WithSource},
+    Compiler, Machine,
+};
 use uuid::Uuid;
 use validator::Validate;
 
@@ -71,6 +81,10 @@ impl<'a> View for UpdateUserProgramView<'a> {
         let user = self.context.user()?;
         let modified_user_program = models::ModifiedUserProgram {
             id: self.id,
+            record_id: match self.source_code {
+                None => None,
+                Some(_) => Some(None),
+            },
             file_name: self.file_name,
             source_code: self.source_code,
         };
@@ -169,5 +183,143 @@ impl<'a> View for DeleteUserProgramView<'a> {
             .get_result(self.context.db_conn())
             .optional()?,
         )
+    }
+}
+
+/// Execute a user_program and, if successful, store its result in the DB
+pub struct ExecuteUserProgramView<'a> {
+    pub context: &'a RequestContext,
+    /// ID of the user_program to execute
+    pub id: Uuid,
+}
+
+// The `Machine` variants are a lot larger, but in practice `Success` should be
+// be used WAY more than the others (because the UI will only run this request
+// after a successful execution). So it's not worth boxing the machine.
+#[allow(clippy::large_enum_variant)]
+pub enum ExecuteUserProgramOutput {
+    CompileError(WithSource<CompileError>),
+    RuntimeError(WithSource<RuntimeError>),
+    Failure(Machine),
+    Success(Machine),
+}
+
+impl<'a> ExecuteUserProgramView<'a> {
+    /// Save a `user_program_records` row for this execution. This inserts a
+    /// new row into that table, then updates our row in `user_programs` to
+    /// point to that record as its latest execution.
+    fn save_record(
+        &self,
+        program_spec_id: Uuid,
+        machine: &Machine,
+    ) -> ResponseResult<()> {
+        let conn = self.context.db_conn();
+        let user = self.context.user()?;
+        let program = machine.program();
+
+        // Program was successful, store performance stats in the DB
+        let record: models::UserProgramRecord = models::NewUserProgramRecord {
+            user_id: user.id,
+            program_spec_id,
+            source_code: &machine.source_code(),
+            // If any of these go out of range for i32, other shit will have
+            // broken already, so these conversions are "safe"
+            cpu_cycles: machine.cycle_count().try_into().unwrap(),
+            instructions: program.num_instructions().try_into().unwrap(),
+            registers_used: program
+                .num_user_registers_referenced()
+                .try_into()
+                .unwrap(),
+            stacks_used: program.num_stacks_referenced().try_into().unwrap(),
+        }
+        .insert()
+        .returning(user_program_records::all_columns)
+        .get_result(conn)?;
+
+        // The user_program should always point to the record of the last run
+        // Update it accordingly
+        diesel::update(user_programs::table.find(self.id))
+            .set(user_programs::columns::record_id.eq(record.id))
+            .execute(conn)?;
+
+        Ok(())
+    }
+}
+
+impl<'a> View for ExecuteUserProgramView<'a> {
+    type Output = Option<ExecuteUserProgramOutput>;
+
+    fn check_permissions(&self) -> ResponseResult<()> {
+        Ok(())
+    }
+
+    fn execute_internal(&self) -> ResponseResult<Self::Output> {
+        let user = self.context.user()?;
+        let conn = self.context.db_conn();
+
+        let (source_code, hardware_spec, program_spec): (
+            String,
+            models::HardwareSpec,
+            models::ProgramSpec,
+        ) = match user_programs::table
+            .find(self.id)
+            .filter(user_programs::columns::user_id.eq(user.id))
+            .inner_join(program_specs::table.inner_join(hardware_specs::table))
+            .select((
+                user_programs::columns::source_code,
+                hardware_specs::all_columns,
+                program_specs::all_columns,
+            ))
+            .get_result(conn)
+            .optional()?
+        {
+            // If the query returned no result, then the ID is no bueno. That
+            // isn't a failure though, just return an empty response.
+            None => return Ok(None),
+            // query hit a result, continue
+            Some(result) => result,
+        };
+        let program_spec_id = program_spec.id;
+
+        // Compile and execute the program. If we get a GDLK error in either
+        // case, then we want to return that but still consider the API response
+        // a success (i.e. don't return a GQL error, return a "200" response
+        // but with the compile/runtime error)
+
+        let compiler =
+            match Compiler::compile(source_code, hardware_spec.into()) {
+                Ok(compiler) => compiler,
+                // Compile error, return now
+                Err(compile_error) => {
+                    return Ok(Some(ExecuteUserProgramOutput::CompileError(
+                        compile_error,
+                    )))
+                }
+            };
+
+        let mut machine = compiler.allocate(&program_spec.into());
+        let successful = match machine.execute_all() {
+            Ok(successful) => successful,
+            // Runtime error, return now
+            Err(runtime_error) => {
+                return Ok(Some(ExecuteUserProgramOutput::RuntimeError(
+                    runtime_error.clone(),
+                )))
+            }
+        };
+
+        if successful {
+            // Program succeeded, update the DB to store a record of this run
+            self.save_record(program_spec_id, &machine)?;
+        }
+
+        let output = if successful {
+            ExecuteUserProgramOutput::Success(machine)
+        } else {
+            // No errors occurred, but the final state wasn't correct (input
+            // still contained items, or output didn't match expectation)
+            ExecuteUserProgramOutput::Failure(machine)
+        };
+        Ok(Some(output))
     }
 }

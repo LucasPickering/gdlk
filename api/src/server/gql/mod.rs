@@ -8,7 +8,7 @@ use crate::{
     models,
     schema::hardware_specs,
     server::gql::{
-        hardware_spec::*, mutation::*, program_spec::*, user::*,
+        hardware_spec::*, mutation::*, program::*, program_spec::*, user::*,
         user_program::*,
     },
     util::Valid,
@@ -23,6 +23,7 @@ use validator::{Validate, ValidationError, ValidationErrors};
 mod hardware_spec;
 mod internal;
 mod mutation;
+mod program;
 mod program_spec;
 mod user;
 mod user_program;

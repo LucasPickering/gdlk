@@ -583,6 +583,20 @@ type Mutation {
     """
     input: DeleteUserProgramInput!
   ): DeleteUserProgramPayload! @juniper(ownership: "owned")
+
+  """
+  Execute a user program by ID. The source code for the user program will be
+  compiled and executed. If there are any compile OR runtime errors, an error
+  response will be returned. If execution is successful, then the statistics
+  for the program will stored and the user's personal best scores will be
+  updated if appropriate.
+  """
+  executeUserProgram(
+    """
+    All input fields.
+    """
+    input: ExecuteUserProgramInput!
+  ): ExecuteUserProgramPayload! @juniper(ownership: "owned")
 }
 
 """
@@ -849,4 +863,97 @@ type DeleteUserProgramPayload {
   that ID. Will always be populated if the delete occurred.
   """
   deletedId: ID @juniper(infallible: true, ownership: "owned")
+}
+
+"""
+Input for the `executeUserProgram` mutation.
+"""
+input ExecuteUserProgramInput {
+  """
+  The ID of the user program to execute.
+  """
+  id: ID!
+}
+
+# type ProgramError {
+#   # TODO add message + span
+#   todo: Int! @juniper(infallible: true, ownership: "owned")
+# }
+
+# type MachineState {
+#   # TODO add fields
+#   todo: Int! @juniper(infallible: true, ownership: "owned")
+# }
+
+"""
+Program execution failed with one or more compilation errors.
+"""
+type ProgramCompileError {
+  # TODO add errors here
+  """
+  TODO
+  """
+  todo: Int! @juniper(infallible: true, ownership: "owned")
+}
+
+"""
+Program execution failed with a runtime error.
+"""
+type ProgramRuntimeError {
+  # TODO add error here
+  """
+  TODO
+  """
+  todo: Int! @juniper(infallible: true, ownership: "owned")
+}
+
+"""
+Execution output when a program compiles and executes without error, but the
+final state doesn't match the expected state (as defined by the program spec).
+"""
+type ProgramFailureOutput {
+  # TODO add machine
+  """
+  TODO
+  """
+  todo: Int! @juniper(infallible: true, ownership: "owned")
+}
+
+"""
+Execution output when a program executes successfully.
+1. It compiled without error
+2. It executed without error
+3. At the end, the input is empty and the output matches the program spec
+"""
+type ProgramSuccessOutput {
+  # TODO add machine + stats
+  """
+  TODO
+  """
+  todo: Int! @juniper(infallible: true, ownership: "owned")
+}
+
+"""
+The possible output states of a program execution. See individual types for more
+info.
+"""
+union ExecuteUserProgramStatus =
+    ProgramCompileError
+  | ProgramRuntimeError
+  | ProgramFailureOutput
+  | ProgramSuccessOutput
+
+"""
+Output for the `executeUserProgram` mutation.
+"""
+type ExecuteUserProgramPayload {
+  """
+  Output data from the execution. The type of this field indicates the type of
+  outcome, which could be one of:
+  - Compile error
+  - Runtime error
+  - Failed execution (incorrect input/output at termination)
+  - Success
+  """
+  status: ExecuteUserProgramStatus @juniper(infallible: true)
 }

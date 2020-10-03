@@ -97,4 +97,5 @@ pub struct ModifiedUserProgram<'a> {
     #[validate(length(min = 1))]
     pub file_name: Option<&'a str>,
     pub source_code: Option<&'a str>,
+    pub record_id: Option<Option<Uuid>>,
 }

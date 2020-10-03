@@ -5,13 +5,17 @@ use crate::{
         CreateHardwareSpecPayload, CreateProgramSpecInput,
         CreateProgramSpecPayload, CreateUserProgramInput,
         CreateUserProgramPayload, DeleteUserProgramInput,
-        DeleteUserProgramPayload, InitializeUserInput, InitializeUserPayload,
-        MutationFields, UpdateHardwareSpecInput, UpdateHardwareSpecPayload,
-        UpdateProgramSpecInput, UpdateProgramSpecPayload,
-        UpdateUserProgramInput, UpdateUserProgramPayload,
+        DeleteUserProgramPayload, ExecuteUserProgramInput,
+        ExecuteUserProgramPayload, ExecuteUserProgramStatus,
+        InitializeUserInput, InitializeUserPayload, MutationFields,
+        ProgramCompileError, ProgramFailureOutput, ProgramRuntimeError,
+        ProgramSuccessOutput, UpdateHardwareSpecInput,
+        UpdateHardwareSpecPayload, UpdateProgramSpecInput,
+        UpdateProgramSpecPayload, UpdateUserProgramInput,
+        UpdateUserProgramPayload,
     },
     util,
-    views::{self, RequestContext, View},
+    views::{self, ExecuteUserProgramOutput, RequestContext, View},
 };
 use juniper_from_schema::{QueryTrail, Walked};
 
@@ -171,5 +175,41 @@ impl MutationFields for Mutation {
         let deleted_id = view.execute()?;
 
         Ok(DeleteUserProgramPayload { deleted_id })
+    }
+
+    fn field_execute_user_program(
+        &self,
+        executor: &juniper::Executor<'_, RequestContext>,
+        _trail: &QueryTrail<'_, ExecuteUserProgramPayload, Walked>,
+        input: ExecuteUserProgramInput,
+    ) -> ResponseResult<ExecuteUserProgramPayload> {
+        let view = views::ExecuteUserProgramView {
+            context: executor.context(),
+            id: util::gql_id_to_uuid(&input.id),
+        };
+        // Map the status type to our GQL output type
+        let status = view.execute()?.map(|output| match output {
+            ExecuteUserProgramOutput::CompileError(_) => {
+                ExecuteUserProgramStatus::ProgramCompileError(
+                    ProgramCompileError {},
+                )
+            }
+            ExecuteUserProgramOutput::RuntimeError(_) => {
+                ExecuteUserProgramStatus::ProgramRuntimeError(
+                    ProgramRuntimeError {},
+                )
+            }
+            ExecuteUserProgramOutput::Failure(_) => {
+                ExecuteUserProgramStatus::ProgramFailureOutput(
+                    ProgramFailureOutput {},
+                )
+            }
+            ExecuteUserProgramOutput::Success(_) => {
+                ExecuteUserProgramStatus::ProgramSuccessOutput(
+                    ProgramSuccessOutput {},
+                )
+            }
+        });
+        Ok(ExecuteUserProgramPayload { status })
     }
 }
