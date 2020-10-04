@@ -48,7 +48,7 @@ cargo run -p gdlk_cli -- run --hardware hw.json --program prog.json -s prog.gdlk
 In the repo root, run:
 
 ```sh
-cd api && cargo make secrets && cd.. # Only needed on first execution
+cd api && cargo make secrets && cd .. # Only needed on first execution
 # Enter your username and the new token as your password
 docker-compose up
 ```
