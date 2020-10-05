@@ -28,6 +28,7 @@ impl<'a> View for CreateUserProgramView<'a> {
         let new_user_program = models::NewUserProgram {
             user_id: user.id,
             program_spec_id: self.program_spec_id,
+            record_id: None,
             file_name: self.file_name,
             source_code: self.source_code,
         };
@@ -129,6 +130,7 @@ impl<'a> View for CopyUserProgramView<'a> {
                     models::NewUserProgram {
                         user_id: user.id,
                         program_spec_id: user_program.program_spec_id,
+                        record_id: None,
                         // Generate a new file name
                         file_name: &format!("{} copy", &user_program.file_name),
                         source_code: &user_program.source_code,

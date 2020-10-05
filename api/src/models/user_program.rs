@@ -37,6 +37,7 @@ pub struct UserProgram {
     pub source_code: String,
     pub created: DateTime<Utc>,
     pub last_modified: DateTime<Utc>,
+    pub record_id: Option<Uuid>,
 }
 
 impl UserProgram {
@@ -72,6 +73,7 @@ pub struct NewUserProgram<'a> {
     #[validate(length(min = 1))]
     pub file_name: &'a str,
     pub source_code: &'a str,
+    pub record_id: Option<Uuid>,
 }
 
 impl NewUserProgram<'_> {

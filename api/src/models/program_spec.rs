@@ -48,6 +48,12 @@ impl ProgramSpec {
     }
 }
 
+impl From<ProgramSpec> for gdlk::ProgramSpec {
+    fn from(other: ProgramSpec) -> Self {
+        Self::new(other.input, other.expected_output)
+    }
+}
+
 /// A derivative of [ProgramSpec](gdlk::ProgramSpec), meant for DB inserts.
 /// This can be constructed manually and inserted into the DB. These fields
 /// all correspond to [ProgramSpec](ProgramSpec), so look there for

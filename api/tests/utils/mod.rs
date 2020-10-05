@@ -17,6 +17,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 
 /// Convert a serializable value into a JSON value.
+#[allow(dead_code)] // Not all test crates use this
 pub fn to_json<T: Serialize>(input: T) -> serde_json::Value {
     let serialized: String = serde_json::to_string(&input).unwrap();
     serde_json::from_str(&serialized).unwrap()
@@ -67,6 +68,7 @@ impl ContextBuilder {
         user
     }
 
+    #[allow(dead_code)] // Not all test crates use this
     pub fn build(self) -> RequestContext {
         RequestContext::load_context(
             self.db_conn,
@@ -77,12 +79,14 @@ impl ContextBuilder {
 }
 
 /// Helper type for setting up and executing test GraphQL queries
+#[allow(dead_code)] // Not all test crates use this
 pub struct QueryRunner {
     schema: GqlSchema,
     context: RequestContext,
 }
 
 impl QueryRunner {
+    #[allow(dead_code)] // Not all test crates use this
     pub fn new(context_builder: ContextBuilder) -> Self {
         Self {
             schema: create_gql_schema(),
@@ -95,6 +99,7 @@ impl QueryRunner {
         &self.context.db_conn
     }
 
+    #[allow(dead_code)] // Not all test crates use this
     pub fn query<'a>(
         &'a self,
         query: &'a str,
