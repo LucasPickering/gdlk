@@ -1,31 +1,31 @@
 table! {
     hardware_specs (id) {
         id -> Uuid,
-        slug -> Varchar,
         name -> Varchar,
         num_registers -> Int4,
         num_stacks -> Int4,
         max_stack_length -> Int4,
+        slug -> Varchar,
     }
 }
 
 table! {
     permissions (id) {
         id -> Uuid,
-        slug -> Varchar,
         name -> Varchar,
+        slug -> Varchar,
     }
 }
 
 table! {
     program_specs (id) {
         id -> Uuid,
-        slug -> Varchar,
         name -> Varchar,
         description -> Text,
         hardware_spec_id -> Uuid,
         input -> Array<Int4>,
         expected_output -> Array<Int4>,
+        slug -> Varchar,
     }
 }
 
@@ -40,9 +40,9 @@ table! {
 table! {
     roles (id) {
         id -> Uuid,
-        slug -> Varchar,
         name -> Varchar,
         is_admin -> Bool,
+        slug -> Varchar,
     }
 }
 
