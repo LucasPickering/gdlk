@@ -47,6 +47,28 @@ table! {
 }
 
 table! {
+    user_program_pbs (id) {
+        id -> Uuid,
+        user_id -> Uuid,
+        program_spec_id -> Uuid,
+        record_id -> Uuid,
+        stat -> Text,
+    }
+}
+
+table! {
+    user_program_records (id) {
+        id -> Uuid,
+        source_code -> Text,
+        cpu_cycles -> Int4,
+        instructions -> Int4,
+        registers_used -> Int4,
+        stacks_used -> Int4,
+        created -> Timestamptz,
+    }
+}
+
+table! {
     user_programs (id) {
         id -> Uuid,
         user_id -> Uuid,
@@ -55,6 +77,7 @@ table! {
         source_code -> Text,
         created -> Timestamptz,
         last_modified -> Timestamptz,
+        record_id -> Nullable<Uuid>,
     }
 }
 
@@ -85,7 +108,11 @@ table! {
 joinable!(program_specs -> hardware_specs (hardware_spec_id));
 joinable!(role_permissions -> permissions (permission_id));
 joinable!(role_permissions -> roles (role_id));
+joinable!(user_program_pbs -> program_specs (program_spec_id));
+joinable!(user_program_pbs -> user_program_records (record_id));
+joinable!(user_program_pbs -> users (user_id));
 joinable!(user_programs -> program_specs (program_spec_id));
+joinable!(user_programs -> user_program_records (record_id));
 joinable!(user_programs -> users (user_id));
 joinable!(user_providers -> users (user_id));
 joinable!(user_roles -> roles (role_id));
@@ -97,6 +124,8 @@ allow_tables_to_appear_in_same_query!(
     program_specs,
     role_permissions,
     roles,
+    user_program_pbs,
+    user_program_records,
     user_programs,
     user_providers,
     user_roles,

@@ -2,6 +2,7 @@ use crate::schema::hardware_specs;
 use diesel::{
     prelude::*, query_builder::InsertStatement, Identifiable, Queryable,
 };
+use std::convert::TryInto;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -26,6 +27,18 @@ pub struct HardwareSpec {
     pub num_stacks: i32,
     /// Maximum size of each stack
     pub max_stack_length: i32,
+}
+
+impl From<HardwareSpec> for gdlk::HardwareSpec {
+    fn from(other: HardwareSpec) -> Self {
+        gdlk::HardwareSpec {
+            // We force these values to be positive in the DB, so the conversion
+            // is safe
+            num_registers: other.num_registers.try_into().unwrap(),
+            num_stacks: other.num_stacks.try_into().unwrap(),
+            max_stack_length: other.max_stack_length.try_into().unwrap(),
+        }
+    }
 }
 
 /// A derivative of [HardwareSpec](gdlk::HardwareSpec), meant for DB inserts.

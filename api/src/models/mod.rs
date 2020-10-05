@@ -16,6 +16,8 @@ mod role;
 mod role_permission;
 mod user;
 mod user_program;
+mod user_program_pb;
+mod user_program_record;
 mod user_provider;
 mod user_role;
 
@@ -26,5 +28,7 @@ pub use role::*;
 pub use role_permission::*;
 pub use user::*;
 pub use user_program::*;
+pub use user_program_pb::*;
+pub use user_program_record::*;
 pub use user_provider::*;
 pub use user_role::*;
