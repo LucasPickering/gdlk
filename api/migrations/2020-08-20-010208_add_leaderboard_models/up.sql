@@ -19,6 +19,9 @@ CREATE TABLE user_program_pbs (
     stat TEXT NOT NULL CHECK(stat IN (
         'cpu_cycles', 'instructions', 'registers_used', 'stacks_used'
     )),
+    -- This col will duplicate the corresponding column on the record, but it's
+    -- more convenient having it here too
+    stat_value INTEGER NOT NULL CHECK (stat_value >= 0),
     UNIQUE(user_id, program_spec_id, stat)
 );
 

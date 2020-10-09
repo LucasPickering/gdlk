@@ -106,4 +106,5 @@ pub struct UserProgramPbFactory<'a> {
     pub program_spec: Association<'a, ProgramSpec, ProgramSpecFactory<'a>>,
     pub record: Association<'a, UserProgramRecord, UserProgramRecordFactory>,
     pub stat: String,
+    pub stat_value: i32,
 }

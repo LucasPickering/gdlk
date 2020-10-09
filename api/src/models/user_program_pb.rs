@@ -76,6 +76,10 @@ pub struct UserProgramPb {
     /// The name of the statistic that this row is a PB for. Maps to one of
     /// [StatType]. Use [Self::stat_type] to parse this.
     pub stat: String,
+    /// The value of the statistic. This will duplicate the corresponding
+    /// column on the referenced record (e.g. if `stat` is `cpu_cycles`, then
+    /// this will equal `record.cpu_cycles`). Keep it here too for convenience.
+    pub stat_value: i32,
 }
 
 impl UserProgramPb {
@@ -92,6 +96,7 @@ pub struct NewUserProgramPb<'a> {
     pub program_spec_id: Uuid,
     pub record_id: Uuid,
     pub stat: &'a str,
+    pub stat_value: i32,
 }
 
 impl NewUserProgramPb<'_> {
