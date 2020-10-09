@@ -53,6 +53,7 @@ table! {
         program_spec_id -> Uuid,
         record_id -> Uuid,
         stat -> Text,
+        stat_value -> Int4,
     }
 }
 
