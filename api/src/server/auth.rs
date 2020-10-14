@@ -8,8 +8,7 @@ use crate::{
 use actix_identity::Identity;
 use actix_web::{get, http, post, web, HttpResponse};
 use diesel::{
-    Connection, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
-    RunQueryDsl,
+    ExpressionMethods, OptionalExtension, PgConnection, QueryDsl, RunQueryDsl,
 };
 use openidconnect::{
     core::{CoreClient, CoreProviderMetadata, CoreResponseType},
@@ -143,40 +142,36 @@ pub async fn route_login(
     // Not sure when this can be None, hopefully never??
     let sub: &str = user_info.subject().as_str();
 
-    // Insert the sub+provider, or just return the existing one if it's already
-    // in the DB. We need to do this in a transaction to prevent race conditions
-    // if the provider gets deleted in another thread.
-    let user_provider_id: Uuid =
-        conn.transaction::<Uuid, ResponseError, _>(|| {
-            // Insert, if the row already exists, just return None
-            let inserted = NewUserProvider {
+    // In most cases, the user should already hvae a user_provider row. If not,
+    // insert one.
+    // Note: there is a potential race condition here, if this is called twice
+    // simultaneously for a new user. Both could try to insert the row, in which
+    // case the 2nd insert will fail, triggering a 500. It should still leave
+    // the DB in a valid state tho and is extremely unlikely, so not worth the
+    // perf impact of a transaction.
+    let user_provider_id: Uuid = {
+        let existing_id = user_providers::table
+            .select(user_providers::columns::id)
+            .filter(user_providers::columns::sub.eq(sub))
+            .filter(user_providers::columns::provider_name.eq(provider_name))
+            .get_result(conn)
+            .optional()
+            .map_err(ResponseError::from_server_error)?;
+
+        match existing_id {
+            // user_provider doesn't exist, add a new one
+            None => NewUserProvider {
                 sub,
                 provider_name,
                 user_id: None,
             }
             .insert()
-            .on_conflict_do_nothing()
             .returning(user_providers::columns::id)
             .get_result(conn)
-            .optional()?;
-
-            match inserted {
-                // Insert didn't return anything, which means the row is already
-                // in the DB. Just select that row.
-                None => {
-                    let existing_id = user_providers::table
-                        .select(user_providers::columns::id)
-                        .filter(user_providers::columns::sub.eq(sub))
-                        .filter(
-                            user_providers::columns::provider_name
-                                .eq(provider_name),
-                        )
-                        .get_result(conn)?;
-                    Ok(existing_id)
-                }
-                Some(inserted_id) => Ok(inserted_id),
-            }
-        })?;
+            .map_err(ResponseError::from_server_error)?,
+            Some(existing_id) => existing_id,
+        }
+    };
 
     // Add a cookie which can be used to auth requests. We use the UserProvider
     // ID so that this works even if the User object hasn't been created yet.
