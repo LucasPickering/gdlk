@@ -30,6 +30,7 @@ static QUERY: &str = r#"
 #[test]
 fn test_initialize_user_success() {
     let mut context_builder = ContextBuilder::new();
+    context_builder.disable_transaction();
     let conn = context_builder.db_conn();
 
     let user_provider = UserProviderFactory::default().insert(conn);
@@ -86,6 +87,7 @@ fn test_initialize_user_not_logged_in() {
 #[test]
 fn test_initialize_user_duplicate_username() {
     let mut context_builder = ContextBuilder::new();
+    context_builder.disable_transaction();
     let conn = context_builder.db_conn();
 
     UserFactory::default().username("user1").insert(conn);
@@ -115,6 +117,7 @@ fn test_initialize_user_duplicate_username() {
 #[test]
 fn test_initialize_user_invalid_username() {
     let mut context_builder = ContextBuilder::new();
+    context_builder.disable_transaction();
     let conn = context_builder.db_conn();
 
     let user_provider = UserProviderFactory::default().insert(conn);
@@ -171,6 +174,7 @@ fn test_initialize_user_invalid_username() {
 #[test]
 fn test_initialize_user_already_initialized() {
     let mut context_builder = ContextBuilder::new();
+    context_builder.disable_transaction();
     let conn = context_builder.db_conn();
 
     let user = UserFactory::default().username("user1").insert(conn);

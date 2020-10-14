@@ -4,7 +4,7 @@ use crate::{
     schema::{user_providers, users},
     views::{RequestContext, UserContext, View},
 };
-use diesel::{Connection, ExpressionMethods, QueryDsl, RunQueryDsl};
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use validator::Validate;
 
 /// Initialize a new user.
@@ -35,42 +35,49 @@ impl<'a> View for InitializeUserView<'a> {
                 new_user.validate()?;
 
                 // We need to insert the new user row, then update the
-                // user_provider to point at that row. We need a transaction to
-                // prevent race conditions.
-                conn.transaction::<models::User, ResponseError, _>(|| {
-                    let create_user_result: Result<models::User, _> = new_user
-                        .insert()
-                        .returning(users::all_columns)
-                        .get_result(conn);
+                // user_provider to point at that row. We need a REPEATABLE
+                // READ transaction to prevent race conditions. If two
+                // transactions try to modify the same user, the second one will
+                // fail.
+                conn.build_transaction()
+                    .repeatable_read()
+                    .run::<models::User, ResponseError, _>(|| {
+                        let create_user_result: Result<models::User, _> =
+                            new_user
+                                .insert()
+                                .returning(users::all_columns)
+                                .get_result(conn);
 
-                    // Check if the username already exists
-                    let created_user = DbErrorConverter {
-                        unique_violation_to_exists: true,
-                        ..Default::default()
-                    }
-                    .convert(create_user_result)?;
+                        // Check if the username already exists
+                        let created_user = DbErrorConverter {
+                            unique_violation_to_exists: true,
+                            ..Default::default()
+                        }
+                        .convert(create_user_result)?;
 
-                    // We should update exactly 1 row. If not, then either
-                    // the referenced user_provider row is already linked to
-                    // a user, or it doesn't exist. In either case, just
-                    // return a NotFound error.
-                    let updated_rows = diesel::update(
-                        user_providers::table
-                            .find(user_provider_id)
-                            .filter(user_providers::columns::user_id.is_null()),
-                    )
-                    .set(
-                        user_providers::columns::user_id
-                            .eq(Some(created_user.id)),
-                    )
-                    .execute(conn)?;
+                        // We should update exactly 1 row. If not, then either
+                        // the referenced user_provider row is already linked to
+                        // a user, or it doesn't exist. In either case, just
+                        // return a NotFound error.
+                        let updated_rows = diesel::update(
+                            user_providers::table
+                                .find(user_provider_id)
+                                .filter(
+                                    user_providers::columns::user_id.is_null(),
+                                ),
+                        )
+                        .set(
+                            user_providers::columns::user_id
+                                .eq(Some(created_user.id)),
+                        )
+                        .execute(conn)?;
 
-                    if updated_rows == 0 {
-                        Err(ClientError::NotFound { source: None }.into())
-                    } else {
-                        Ok(created_user)
-                    }
-                })
+                        if updated_rows == 0 {
+                            Err(ClientError::NotFound { source: None }.into())
+                        } else {
+                            Ok(created_user)
+                        }
+                    })
             }
             // Get up on outta here
             None => Err(ClientError::Unauthenticated.into()),

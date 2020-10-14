@@ -4,10 +4,13 @@
 pub mod factories;
 
 use crate::utils::factories::*;
-use diesel::PgConnection;
+use diesel::{
+    connection::TransactionManager, Connection, PgConnection, RunQueryDsl,
+};
 use diesel_factories::Factory;
 use gdlk_api::{
     models,
+    schema::{user_providers, users},
     server::{create_gql_schema, GqlSchema},
     util::{self, PooledConnection},
     views::RequestContext,
@@ -41,6 +44,21 @@ impl ContextBuilder {
 
     pub fn db_conn(&self) -> &PgConnection {
         &self.db_conn
+    }
+
+    /// Normally all test connections are initialized within a DB transaction.
+    /// This prevents any changes made by tests from affecting the DB outside
+    /// that test. In some cases though (e.g. if you have transaction logic
+    /// in the code being tested), we don't want the test transaction. In those
+    /// cases, you can use this method to disable the transaction. When you do,
+    /// [QueryRunner] should clean up any data inserted. (WARNING: right now
+    /// it doesn't clean all tables - scroll down for more info)
+    #[allow(dead_code)] // Not all test crates use this
+    pub fn disable_transaction(&self) {
+        self.db_conn
+            .transaction_manager()
+            .commit_transaction(&self.db_conn)
+            .unwrap();
     }
 
     #[allow(dead_code)] // Not all test crates use this
@@ -123,5 +141,23 @@ impl QueryRunner {
 
         // Map the output data to JSON, for easier comparison
         (to_json(data), errors.into_iter().map(to_json).collect())
+    }
+}
+
+impl Drop for QueryRunner {
+    fn drop(&mut self) {
+        // If the test wasn't inside a transaction, then whatever DB changes it
+        // made will still be around - we want to clean those up. Ideally we
+        // truncate all tables here, but that sounds like a lot of work that I
+        // don't wanna do so just sticking with users for now.
+        let conn = self.db_conn();
+        if (conn.transaction_manager() as &dyn TransactionManager<PgConnection>)
+            .get_transaction_depth()
+            == 0
+        {
+            // TODO clean all tables here
+            diesel::delete(user_providers::table).execute(conn).unwrap();
+            diesel::delete(users::table).execute(conn).unwrap();
+        }
     }
 }
