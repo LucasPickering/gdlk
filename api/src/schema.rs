@@ -47,19 +47,10 @@ table! {
 }
 
 table! {
-    user_program_pbs (id) {
+    user_program_records (id) {
         id -> Uuid,
         user_id -> Uuid,
         program_spec_id -> Uuid,
-        record_id -> Uuid,
-        stat -> Text,
-        stat_value -> Int4,
-    }
-}
-
-table! {
-    user_program_records (id) {
-        id -> Uuid,
         source_code -> Text,
         cpu_cycles -> Int4,
         instructions -> Int4,
@@ -109,9 +100,8 @@ table! {
 joinable!(program_specs -> hardware_specs (hardware_spec_id));
 joinable!(role_permissions -> permissions (permission_id));
 joinable!(role_permissions -> roles (role_id));
-joinable!(user_program_pbs -> program_specs (program_spec_id));
-joinable!(user_program_pbs -> user_program_records (record_id));
-joinable!(user_program_pbs -> users (user_id));
+joinable!(user_program_records -> program_specs (program_spec_id));
+joinable!(user_program_records -> users (user_id));
 joinable!(user_programs -> program_specs (program_spec_id));
 joinable!(user_programs -> user_program_records (record_id));
 joinable!(user_programs -> users (user_id));
@@ -125,7 +115,6 @@ allow_tables_to_appear_in_same_query!(
     program_specs,
     role_permissions,
     roles,
-    user_program_pbs,
     user_program_records,
     user_programs,
     user_providers,

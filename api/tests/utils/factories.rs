@@ -75,8 +75,9 @@ pub struct ProgramSpecFactory<'a> {
 pub struct UserProgramFactory<'a> {
     pub user: Association<'a, User, UserFactory>,
     pub program_spec: Association<'a, ProgramSpec, ProgramSpecFactory<'a>>,
-    pub record:
-        Option<Association<'a, UserProgramRecord, UserProgramRecordFactory>>,
+    pub record: Option<
+        Association<'a, UserProgramRecord, UserProgramRecordFactory<'a>>,
+    >,
     pub file_name: String,
     pub source_code: String,
 }
@@ -87,24 +88,12 @@ pub struct UserProgramFactory<'a> {
     table = "gdlk_api::schema::user_program_records",
     id = "Uuid"
 )]
-pub struct UserProgramRecordFactory {
+pub struct UserProgramRecordFactory<'a> {
+    pub user: Association<'a, User, UserFactory>,
+    pub program_spec: Association<'a, ProgramSpec, ProgramSpecFactory<'a>>,
     pub source_code: String,
     pub cpu_cycles: i32,
     pub instructions: i32,
     pub registers_used: i32,
     pub stacks_used: i32,
-}
-
-#[derive(Clone, Default, Factory)]
-#[factory(
-    model = "gdlk_api::models::UserProgramPb",
-    table = "gdlk_api::schema::user_program_pbs",
-    id = "Uuid"
-)]
-pub struct UserProgramPbFactory<'a> {
-    pub user: Association<'a, User, UserFactory>,
-    pub program_spec: Association<'a, ProgramSpec, ProgramSpecFactory<'a>>,
-    pub record: Association<'a, UserProgramRecord, UserProgramRecordFactory>,
-    pub stat: String,
-    pub stat_value: i32,
 }
