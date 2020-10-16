@@ -15,7 +15,6 @@ pub async fn oidc_http_client(
 ) -> Result<openidconnect::HttpResponse, ActixClientError> {
     // There are some unfortunate clones in here because the types we have don't
     // always allow moving the data.
-    // TODO there's probably still room for improvement here
 
     let client = actix_web::client::Client::default();
 
@@ -68,7 +67,6 @@ pub async fn oidc_request_token(
         Some(id_token) => {
             // TODO better nonce handling here
             match id_token.claims(&token_verifier, &Nonce::new("4".into())) {
-                // TODO remove clone
                 Ok(claims) => Ok(claims.clone()),
                 Err(source) => Err(ApiError::from_client_error(source)),
             }

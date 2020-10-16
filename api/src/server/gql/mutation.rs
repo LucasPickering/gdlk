@@ -1,15 +1,15 @@
 use crate::{
     error::ResponseResult,
     server::gql::{
-        CopyUserProgramInput, CopyUserProgramPayload, CreateHardwareSpecInput,
-        CreateHardwareSpecPayload, CreateProgramSpecInput,
-        CreateProgramSpecPayload, CreateUserProgramInput,
-        CreateUserProgramPayload, DeleteUserProgramInput,
-        DeleteUserProgramPayload, ExecuteUserProgramInput,
-        ExecuteUserProgramPayload, ExecuteUserProgramStatus,
-        InitializeUserInput, InitializeUserPayload, MutationFields,
-        ProgramAcceptedOutput, ProgramCompileError, ProgramRejectedOutput,
-        ProgramRuntimeError, UpdateHardwareSpecInput,
+        program::ProgramError, CopyUserProgramInput, CopyUserProgramPayload,
+        CreateHardwareSpecInput, CreateHardwareSpecPayload,
+        CreateProgramSpecInput, CreateProgramSpecPayload,
+        CreateUserProgramInput, CreateUserProgramPayload,
+        DeleteUserProgramInput, DeleteUserProgramPayload,
+        ExecuteUserProgramInput, ExecuteUserProgramPayload,
+        ExecuteUserProgramStatus, InitializeUserInput, InitializeUserPayload,
+        MutationFields, ProgramAcceptedOutput, ProgramCompileError,
+        ProgramRejectedOutput, ProgramRuntimeError, UpdateHardwareSpecInput,
         UpdateHardwareSpecPayload, UpdateProgramSpecInput,
         UpdateProgramSpecPayload, UpdateUserProgramInput,
         UpdateUserProgramPayload,
@@ -189,24 +189,33 @@ impl MutationFields for Mutation {
         };
         // Map the status type to our GQL output type
         let status = view.execute()?.map(|output| match output {
-            ExecuteUserProgramOutput::CompileError(_) => {
+            ExecuteUserProgramOutput::CompileError(error) => {
                 ExecuteUserProgramStatus::ProgramCompileError(
-                    ProgramCompileError {},
+                    ProgramCompileError {
+                        errors: ProgramError::from_source_error(&error),
+                    },
                 )
             }
-            ExecuteUserProgramOutput::RuntimeError(_) => {
+            ExecuteUserProgramOutput::RuntimeError(error) => {
                 ExecuteUserProgramStatus::ProgramRuntimeError(
-                    ProgramRuntimeError {},
+                    ProgramRuntimeError {
+                        error: error.errors().first().unwrap().into(),
+                    },
                 )
             }
-            ExecuteUserProgramOutput::Rejected(_) => {
+            ExecuteUserProgramOutput::Rejected { machine } => {
                 ExecuteUserProgramStatus::ProgramRejectedOutput(
-                    ProgramRejectedOutput {},
+                    ProgramRejectedOutput {
+                        machine_state: machine.into(),
+                    },
                 )
             }
-            ExecuteUserProgramOutput::Accepted(_) => {
+            ExecuteUserProgramOutput::Accepted { machine, record } => {
                 ExecuteUserProgramStatus::ProgramAcceptedOutput(
-                    ProgramAcceptedOutput {},
+                    ProgramAcceptedOutput {
+                        machine_state: machine.into(),
+                        user_program_record: record.into(),
+                    },
                 )
             }
         });

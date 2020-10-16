@@ -205,9 +205,12 @@ pub enum ExecuteUserProgramOutput {
     RuntimeError(WithSource<RuntimeError>),
     /// Program terminated normally, but the final state didn't match the
     /// expectation (which is defined by the program spec)
-    Rejected(Machine),
+    Rejected { machine: Machine },
     /// Program terminated with expected state
-    Accepted(Machine),
+    Accepted {
+        machine: Machine,
+        record: models::UserProgramRecord,
+    },
 }
 
 impl<'a> ExecuteUserProgramView<'a> {
@@ -218,7 +221,7 @@ impl<'a> ExecuteUserProgramView<'a> {
         &self,
         program_spec_id: Uuid,
         machine: &Machine,
-    ) -> ResponseResult<()> {
+    ) -> ResponseResult<models::UserProgramRecord> {
         let conn = self.context.db_conn();
         let user = self.context.user()?;
         let program = machine.program();
@@ -248,7 +251,7 @@ impl<'a> ExecuteUserProgramView<'a> {
             .set(user_programs::columns::record_id.eq(record.id))
             .execute(conn)?;
 
-        Ok(())
+        Ok(record)
     }
 }
 
@@ -314,17 +317,14 @@ impl<'a> View for ExecuteUserProgramView<'a> {
             }
         };
 
-        if successful {
-            // Program succeeded, update the DB to store a record of this run
-            self.save_record(program_spec_id, &machine)?;
-        }
-
         let output = if successful {
-            ExecuteUserProgramOutput::Accepted(machine)
+            // Program succeeded, update the DB to store a record of this run
+            let record = self.save_record(program_spec_id, &machine)?;
+            ExecuteUserProgramOutput::Accepted { machine, record }
         } else {
             // No errors occurred, but the final state wasn't correct (input
             // still contained items, or output didn't match expectation)
-            ExecuteUserProgramOutput::Rejected(machine)
+            ExecuteUserProgramOutput::Rejected { machine }
         };
         Ok(Some(output))
     }

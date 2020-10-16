@@ -14,6 +14,29 @@ static QUERY: &str = r#"
         executeUserProgram(input: { id: $id }) {
             status {
                 __typename
+                ... on ProgramCompileError {
+                    errors {
+                        message
+                    }
+                }
+                ... on ProgramRuntimeError {
+                    error {
+                        message
+                    }
+                }
+                ... on ProgramRejectedOutput {
+                    machine {
+                        cpuCycles
+                    }
+                }
+                ... on ProgramAcceptedOutput {
+                    record {
+                        cpuCycles
+                        instructions
+                        registersUsed
+                        stacksUsed
+                    }
+                }
             }
         }
     }
@@ -69,25 +92,17 @@ fn test_execute_user_program_stats() {
                 "executeUserProgram": {
                     "status": {
                         "__typename": "ProgramAcceptedOutput",
-                        // TODO check stats here once API is fleshed out
+                        "record": {
+                            "cpuCycles": 3,
+                            "instructions": 5,
+                            "registersUsed": 2,
+                            "stacksUsed": 1,
+                        }
                     }
                 }
             }),
             vec![]
         )
-    );
-
-    // For now, check the PBs because we have a func for it. Once the API is
-    // done, we can get the stats directly from the response above
-    assert_eq!(
-        models::UserProgramRecord::load_pbs_x(conn, user.id, program_spec.id)
-            .unwrap(),
-        Some(models::UserProgramRecordStats {
-            cpu_cycles: 3,
-            instructions: 5,
-            registers_used: 2,
-            stacks_used: 1,
-        })
     );
 }
 
@@ -139,6 +154,12 @@ fn test_execute_user_program_pb_update() {
                 "executeUserProgram": {
                     "status": {
                         "__typename": "ProgramAcceptedOutput",
+                        "record": {
+                            "cpuCycles": 2,
+                            "instructions": 2,
+                            "registersUsed": 1,
+                            "stacksUsed": 0,
+                        }
                     }
                 }
             }),
@@ -146,7 +167,7 @@ fn test_execute_user_program_pb_update() {
         )
     );
 
-    // Check that PBs are correct
+    // Check initial PBs
     assert_eq!(
         models::UserProgramRecord::load_pbs_x(conn, user.id, program_spec.id)
             .unwrap(),
@@ -171,6 +192,13 @@ fn test_execute_user_program_pb_update() {
                 "executeUserProgram": {
                     "status": {
                         "__typename": "ProgramAcceptedOutput",
+                        "record": {
+                            "cpuCycles": 3,
+                            "instructions": 3,
+                            "registersUsed": 0,
+                            "stacksUsed": 0,
+                        }
+
                     }
                 }
             }),
@@ -208,7 +236,7 @@ fn test_execute_user_program_compile_error() {
         .user(&user)
         .program_spec(&program_spec)
         .file_name("solution.gdlk")
-        .source_code("READ RX0\nWRITE RX2")
+        .source_code("READ RX2\nWRITE RX2")
         .insert(conn);
 
     assert_eq!(
@@ -222,7 +250,11 @@ fn test_execute_user_program_compile_error() {
             json!({
                 "executeUserProgram": {
                     "status": {
-                        "__typename": "ProgramCompileError"
+                        "__typename": "ProgramCompileError",
+                        "errors": [
+                            {"message": "Validation error at 1:6: Invalid reference to register `RX2`"},
+                            {"message": "Validation error at 2:7: Invalid reference to register `RX2`"},
+                        ]
                     }
                 }
             }),
@@ -265,7 +297,10 @@ fn test_execute_user_program_runtime_error() {
             json!({
                 "executeUserProgram": {
                     "status": {
-                        "__typename": "ProgramRuntimeError"
+                        "__typename": "ProgramRuntimeError",
+                        "error": {
+                            "message": "Runtime error at 2:1: Read attempted while input is empty"
+                        }
                     }
                 }
             }),
@@ -309,7 +344,10 @@ fn test_execute_user_program_incorrect_output() {
             json!({
                 "executeUserProgram": {
                     "status": {
-                        "__typename": "ProgramRejectedOutput"
+                        "__typename": "ProgramRejectedOutput",
+                        "machine": {
+                            "cpuCycles": 2
+                        }
                     }
                 }
             }),

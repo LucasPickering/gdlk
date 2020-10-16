@@ -1,13 +1,10 @@
 #![deny(clippy::all)]
 
 use crate::utils::{factories::*, ContextBuilder, QueryRunner};
-use diesel::{QueryDsl, RunQueryDsl};
 use diesel_factories::Factory;
-use gdlk_api::schema::user_programs;
 use juniper::InputValue;
 use maplit::hashmap;
 use serde_json::json;
-use uuid::Uuid;
 
 mod utils;
 
@@ -53,6 +50,9 @@ static QUERY_MIN: &str = r#"
             userProgramEdge {
                 node {
                     id
+                    record {
+                        id
+                    }
                 }
             }
         }
@@ -153,23 +153,15 @@ fn test_update_user_program_clear_record() {
                     "userProgramEdge": {
                         "node": {
                             "id": (user_program.id.to_string()),
+                            "record": {
+                                "id": (record.id.to_string())
+                            }
                         }
                     }
                 }
             }),
             vec![]
         )
-    );
-
-    // Record is still present because source was not modified
-    // TODO once the record is added to the GQL response, check it there
-    assert_eq!(
-        user_programs::table
-            .find(user_program.id)
-            .select(user_programs::columns::record_id)
-            .get_result::<Option<Uuid>>(conn)
-            .unwrap(),
-        Some(record.id)
     );
 
     // Modify source, should wipe out record_id
@@ -187,23 +179,13 @@ fn test_update_user_program_clear_record() {
                     "userProgramEdge": {
                         "node": {
                             "id": (user_program.id.to_string()),
+                            "record": serde_json::Value::Null
                         }
                     }
                 }
             }),
             vec![]
         )
-    );
-
-    // Record is still present because source was not modified
-    // TODO once the record is added to the GQL response, check it there
-    assert_eq!(
-        user_programs::table
-            .find(user_program.id)
-            .select(user_programs::columns::record_id)
-            .get_result::<Option<Uuid>>(conn)
-            .unwrap(),
-        None
     );
 }
 

@@ -3,13 +3,26 @@
 //! API. Utility types/functions live in `internal`. Specific models live in
 //! their own files.
 
+// juniper_from_schema creates enums that violate this, nothing we can do about
+// that
+#![allow(clippy::large_enum_variant)]
+
+mod hardware_spec;
+mod internal;
+mod mutation;
+mod program;
+mod program_spec;
+mod user;
+mod user_program;
+mod user_program_record;
+
 use crate::{
     error::{ApiError, IntDecodeError, ResponseResult},
     models,
     schema::hardware_specs,
     server::gql::{
         hardware_spec::*, mutation::*, program::*, program_spec::*, user::*,
-        user_program::*,
+        user_program::*, user_program_record::*,
     },
     util::Valid,
     views::RequestContext,
@@ -19,14 +32,6 @@ use juniper_from_schema::graphql_schema_from_file;
 use serde::{Serialize, Serializer};
 use std::convert::TryInto;
 use validator::{Validate, ValidationError, ValidationErrors};
-
-mod hardware_spec;
-mod internal;
-mod mutation;
-mod program;
-mod program_spec;
-mod user;
-mod user_program;
 
 graphql_schema_from_file!(
     "schema.graphql",

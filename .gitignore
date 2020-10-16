@@ -1,5 +1,6 @@
 .vscode/
 pkg/
+.DS_Store
 **/node_modules/
 **/build/
 **/target/
