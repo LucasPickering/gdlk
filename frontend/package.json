@@ -46,7 +46,7 @@
     "eslint-plugin-react-hooks": "^2.5.1",
     "gdlk_wasm": "file:../wasm/pkg",
     "graphql": "^15.1.0",
-    "graphql-schema-linter": "^0.4.0",
+    "graphql-schema-linter": "^1.0.1",
     "http-proxy-middleware": "^1.0.4",
     "lodash-es": "^4.17.15",
     "nodemon": "^2.0.4",
@@ -85,20 +85,6 @@
   "graphql-schema-linter": {
     "schemaPaths": [
       "../api/schema.graphql"
-    ],
-    "rules": [
-      "arguments-have-descriptions",
-      "defined-types-are-used",
-      "deprecations-have-a-reason",
-      "descriptions-are-capitalized",
-      "enum-values-all-caps",
-      "enum-values-have-descriptions",
-      "fields-are-camel-cased",
-      "fields-have-descriptions",
-      "input-object-values-have-descriptions",
-      "relay-connection-types-spec",
-      "relay-connection-arguments-spec",
-      "types-are-capitalized"
     ]
   }
 }

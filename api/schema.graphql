@@ -1,7 +1,10 @@
+# lint-disable input-object-fields-sorted-alphabetically
+# lint-disable type-fields-sorted-alphabetically
+
 directive @juniper(
   ownership: String = "borrowed"
   infallible: Boolean = false
-  with_time_zone: Boolean = true
+  with_time_zone: Boolean = true # lint-disable-line input-object-values-are-camel-cased
 ) on FIELD_DEFINITION
 
 """
@@ -12,12 +15,8 @@ mutated.
 """
 scalar Cursor
 
-# We can't put a description here because of juniper limitations so we have to
-# disable the types-have-descriptions lint rule. After
-# https://github.com/cjoudrey/graphql-schema-linter/issues/18 we can add a
-# disable just to this type
-scalar DateTimeUtc
-
+# We can't put a description here because of juniper limitations.
+scalar DateTimeUtc # lint-disable-line types-have-descriptions
 schema {
   query: Query
   mutation: Mutation
