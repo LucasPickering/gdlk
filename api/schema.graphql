@@ -407,36 +407,37 @@ type UserProgramNode implements Node {
   UUID for this node.
   """
   id: ID! @juniper(infallible: true, ownership: "owned")
-
   """
   Name for this source file. This is unique among the user-program spec pair.
   """
   fileName: String! @juniper(infallible: true)
-
   """
   The program source code.
   """
   sourceCode: String! @juniper(infallible: true)
-
   """
   The date/time when this object was created.
   """
   created: DateTimeUtc! @juniper(infallible: true)
-
   """
   The date/time when this object was last modified.
   """
   lastModified: DateTimeUtc! @juniper(infallible: true)
-
   """
   The user who owns this program code.
   """
   user: UserNode! @juniper(ownership: "owned")
-
   """
   The program spec for which this code was written.
   """
   programSpec: ProgramSpecNode! @juniper(ownership: "owned")
+  """
+  A statistical record of the last execution of this program. Will be null if
+  the program hasn't been executed since the source was last modified. This is
+  populated whenever the program is executed with a successful termination, and
+  cleared whenever the source code is modified.
+  """
+  record: UserProgramRecordNode @juniper(ownership: "owned")
 }
 
 """
@@ -469,6 +470,48 @@ type UserProgramConnection implements ConnectionInterface {
   The queried user programs.
   """
   edges: [UserProgramEdge!]! @juniper(ownership: "owned")
+}
+
+"""
+A record of a single execution of a program. Holds metadata about the execution,
+include performance stats.
+"""
+type UserProgramRecordNode implements Node {
+  """
+  UUID for this node.
+  """
+  id: ID! @juniper(infallible: true, ownership: "owned")
+  """
+  The number of steps the program took before terminating.
+  """
+  cpuCycles: Int! @juniper(infallible: true, ownership: "owned")
+  """
+  The number of instructions in the compiled program. Unlike with CPU cycles,
+  for this stat, every instruction is counted only once, regardless of how many
+  times it's executed, even if it's never executed at all. This does not include
+  labels, only executable steps.
+  """
+  instructions: Int! @juniper(infallible: true, ownership: "owned")
+  """
+  The number of unique user registers (e.g. RX0, RX1, etc.) REFERENCED by the
+  program. If a register is only referenced by dead code, it will still be
+  counted for this statistic; a register **does not** actually need to be
+  accessed at runtime in order to count. A register that is referenced in
+  multiple places will only count once.
+  """
+  registersUsed: Int! @juniper(infallible: true, ownership: "owned")
+  """
+  The number of unique stacks (e.g. S0, S1, etc.) REFERENCED by the
+  program. If a stack is only referenced by dead code, it will still be
+  counted for this statistic; a stack **does not** actually need to be
+  accessed at runtime in order to count. A stack that is referenced in
+  multiple places will only count once.
+  """
+  stacksUsed: Int! @juniper(infallible: true, ownership: "owned")
+  """
+  The date/time when the program execution completed.
+  """
+  created: DateTimeUtc! @juniper(infallible: true)
 }
 
 # +-----------------------------+
@@ -875,36 +918,51 @@ input ExecuteUserProgramInput {
   id: ID!
 }
 
-# type ProgramError {
-#   # TODO add message + span
-#   todo: Int! @juniper(infallible: true, ownership: "owned")
-# }
+"""
+An error in a program that can be mapped to a particular chunk of source code.
+Could be a compile error or a runtime error.
+"""
+type ProgramError {
+  """
+  The error as a formatted string.
+  """
+  message: String! @juniper(infallible: true)
+  # If we end up processing this data on the UI, we may want to add more fields
+  # here like span
+}
 
-# type MachineState {
-#   # TODO add fields
-#   todo: Int! @juniper(infallible: true, ownership: "owned")
-# }
+"""
+Machines are used to execute GDLK code. Each program executions occurs within
+the context of a single machine. A MachineState gives a snapshot of an
+executing machine at a particular moment.
+"""
+type MachineState {
+  """
+  The number of instructions that have been executed so far. This is non-unique,
+  meaning if an instruction is executed twice, it will take up 2 cycles.
+  """
+  cpuCycles: Int! @juniper(infallible: true, ownership: "owned")
+  # We may want to add more fields here, punting on that for now
+}
 
 """
 Program execution failed with one or more compilation errors.
 """
 type ProgramCompileError {
-  # TODO add errors here
   """
-  TODO
+  The error(s) that caused compilation to fail.
   """
-  todo: Int! @juniper(infallible: true, ownership: "owned")
+  errors: [ProgramError!]! @juniper(infallible: true)
 }
 
 """
 Program execution failed with a runtime error.
 """
 type ProgramRuntimeError {
-  # TODO add error here
   """
-  TODO
+  The error that caused the program to fail.
   """
-  todo: Int! @juniper(infallible: true, ownership: "owned")
+  error: ProgramError! @juniper(infallible: true)
 }
 
 """
@@ -912,11 +970,10 @@ Execution output when a program compiles and executes without error, but the
 final state doesn't match the expected state (as defined by the program spec).
 """
 type ProgramRejectedOutput {
-  # TODO add machine
   """
-  TODO
+  The machine state at the time of program termination.
   """
-  todo: Int! @juniper(infallible: true, ownership: "owned")
+  machine: MachineState! @juniper(infallible: true)
 }
 
 """
@@ -926,11 +983,15 @@ Execution output when a program executes successfully.
 3. At the end, the input is empty and the output matches the program spec
 """
 type ProgramAcceptedOutput {
-  # TODO add machine + stats
   """
-  TODO
+  The machine state at the time of program termination.
   """
-  todo: Int! @juniper(infallible: true, ownership: "owned")
+  machine: MachineState! @juniper(infallible: true)
+  """
+  The statisical record of this program execution. Stores metadata about the
+  execution.
+  """
+  record: UserProgramRecordNode! @juniper(infallible: true)
 }
 
 """

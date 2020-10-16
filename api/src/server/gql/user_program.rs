@@ -4,6 +4,7 @@ use crate::{
     schema::user_programs,
     server::gql::{
         internal::{GenericEdge, NodeType},
+        user_program_record::UserProgramRecordNode,
         ConnectionPageParams, CopyUserProgramPayloadFields,
         CreateUserProgramPayloadFields, Cursor, DeleteUserProgramPayloadFields,
         ExecuteUserProgramPayloadFields, ExecuteUserProgramStatus, PageInfo,
@@ -99,6 +100,24 @@ impl UserProgramNodeFields for UserProgramNode {
             self.user_program.program_spec_id,
         )?
         .into())
+    }
+
+    fn field_record(
+        &self,
+        executor: &juniper::Executor<'_, RequestContext>,
+        _trail: &QueryTrail<'_, UserProgramRecordNode, Walked>,
+    ) -> ResponseResult<Option<UserProgramRecordNode>> {
+        let node_opt = match self.user_program.record_id {
+            None => None,
+            Some(record_id) => Some(
+                UserProgramRecordNode::find(
+                    executor.context().db_conn(),
+                    record_id,
+                )?
+                .into(),
+            ),
+        };
+        Ok(node_opt)
     }
 }
 
