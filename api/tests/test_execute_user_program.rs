@@ -68,7 +68,7 @@ fn test_execute_user_program_stats() {
             json!({
                 "executeUserProgram": {
                     "status": {
-                        "__typename": "ProgramSuccessOutput",
+                        "__typename": "ProgramAcceptedOutput",
                         // TODO check stats here once API is fleshed out
                     }
                 }
@@ -138,7 +138,7 @@ fn test_execute_user_program_pb_update() {
             json!({
                 "executeUserProgram": {
                     "status": {
-                        "__typename": "ProgramSuccessOutput",
+                        "__typename": "ProgramAcceptedOutput",
                     }
                 }
             }),
@@ -170,7 +170,7 @@ fn test_execute_user_program_pb_update() {
             json!({
                 "executeUserProgram": {
                     "status": {
-                        "__typename": "ProgramSuccessOutput",
+                        "__typename": "ProgramAcceptedOutput",
                     }
                 }
             }),
@@ -309,7 +309,7 @@ fn test_execute_user_program_incorrect_output() {
             json!({
                 "executeUserProgram": {
                     "status": {
-                        "__typename": "ProgramFailureOutput"
+                        "__typename": "ProgramRejectedOutput"
                     }
                 }
             }),
