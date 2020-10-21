@@ -1,6 +1,6 @@
 use crate::{
     config::{OpenIdConfig, ProviderConfig},
-    error::ResponseError,
+    error::ApiError,
     models::NewUserProvider,
     schema::user_providers,
     util::{self, Pool},
@@ -131,7 +131,7 @@ pub async fn route_login(
     let provider_name: &str = &params.0;
     let oidc_client = client_map.get_client(provider_name)?;
     let conn =
-        &pool.get().map_err(ResponseError::from_server_error)? as &PgConnection;
+        &pool.get().map_err(ApiError::from_server_error)? as &PgConnection;
 
     // Parse the state param and validate the CSRF token in there
     let auth_state = AuthState::deserialize(query.state.as_deref())?;
@@ -156,7 +156,7 @@ pub async fn route_login(
             .filter(user_providers::columns::provider_name.eq(provider_name))
             .get_result(conn)
             .optional()
-            .map_err(ResponseError::from_server_error)?;
+            .map_err(ApiError::from_server_error)?;
 
         match existing_id {
             // user_provider doesn't exist, add a new one
@@ -168,7 +168,7 @@ pub async fn route_login(
             .insert()
             .returning(user_providers::columns::id)
             .get_result(conn)
-            .map_err(ResponseError::from_server_error)?,
+            .map_err(ApiError::from_server_error)?,
             Some(existing_id) => existing_id,
         }
     };

@@ -1,5 +1,5 @@
 use crate::{
-    error::{ResponseError, ResponseResult, ServerError},
+    error::{ApiError, ResponseResult, ServerError},
     schema::roles,
 };
 use diesel::{Identifiable, Queryable};
@@ -35,7 +35,7 @@ impl RoleType {
 }
 
 impl FromStr for RoleType {
-    type Err = ResponseError;
+    type Err = ApiError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         for (role_type, name) in NAME_MAPPING {

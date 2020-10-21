@@ -1,5 +1,5 @@
 use crate::{
-    error::{ClientError, ResponseError, ResponseResult},
+    error::{ApiError, ClientError, ResponseResult},
     models,
     schema::users,
     server::gql::{
@@ -97,7 +97,7 @@ impl AuthStatusFields for AuthStatus {
         match executor.context().user() {
             Ok(user) => Ok(Some(user.clone().into_model().into())),
             // User isn't authed or hasn't finished setup
-            Err(ResponseError::Client {
+            Err(ApiError::Client {
                 source: ClientError::Unauthenticated,
                 ..
             }) => Ok(None),

@@ -15,7 +15,7 @@ use std::{
 use thiserror::Error;
 use validator::{ValidationError, ValidationErrors, ValidationErrorsKind};
 
-pub type ResponseResult<T> = Result<T, ResponseError>;
+pub type ResponseResult<T> = Result<T, ApiError>;
 
 /// A response error that originated because of an error on the client's part.
 /// This could be invalid input, an invalid request URL, permission denied, etc.
@@ -127,7 +127,7 @@ pub enum ServerError {
 /// An error that can occur while handling an HTTP request. These errors should
 /// all at least somewhat meaningful to the user.
 #[derive(Debug, Error)]
-pub enum ResponseError {
+pub enum ApiError {
     #[error("{source}")]
     Client {
         source: ClientError,
@@ -140,14 +140,14 @@ pub enum ResponseError {
     },
 }
 
-impl ResponseError {
-    /// Convenience function for mapping a [ClientError] into a [ResponseError].
+impl ApiError {
+    /// Convenience function for mapping a [ClientError] into a [ApiError].
     pub fn from_client_error<T: Into<ClientError>>(source: T) -> Self {
         let e: ClientError = source.into();
         e.into()
     }
 
-    /// Convenience function for mapping a [ServerError] into a [ResponseError].
+    /// Convenience function for mapping a [ServerError] into a [ApiError].
     pub fn from_server_error<T: Into<ServerError>>(source: T) -> Self {
         let e: ServerError = source.into();
         e.into()
@@ -157,8 +157,8 @@ impl ResponseError {
     /// level, while client errors use `debug`.
     pub fn log(&self) {
         let log_level = match self {
-            ResponseError::Client { .. } => Level::Debug,
-            ResponseError::Server { .. } => Level::Error,
+            ApiError::Client { .. } => Level::Debug,
+            ApiError::Server { .. } => Level::Error,
         };
 
         // Print both the Display and the Debug version, for completeness
@@ -166,7 +166,7 @@ impl ResponseError {
             log_level,
             "Response Error: {}\n{:#?}\n{}",
             self,
-            // ResponseError's type enforces that source and backtrace are
+            // ApiError's type enforces that source and backtrace are
             // always present
             self.source().unwrap(),
             self.backtrace().expect("No backtrace available :(")
@@ -174,9 +174,9 @@ impl ResponseError {
     }
 }
 
-// These two implementations are the only way that `ResponseError`s should be
+// These two implementations are the only way that `ApiError`s should be
 // created, to ensure they get the backtrace.
-impl From<ClientError> for ResponseError {
+impl From<ClientError> for ApiError {
     fn from(source: ClientError) -> Self {
         Self::Client {
             source,
@@ -184,7 +184,7 @@ impl From<ClientError> for ResponseError {
         }
     }
 }
-impl From<ServerError> for ResponseError {
+impl From<ServerError> for ApiError {
     fn from(source: ServerError) -> Self {
         Self::Server {
             source,
@@ -196,13 +196,13 @@ impl From<ServerError> for ResponseError {
 // Implementations for some COMMON and UNAMBIGUOUS error conversions. If an
 // error type could concievably be both a client and a server error, then we
 // shouldn't implement these conversions, to prevent accidental mis-conversions.
-impl From<ValidationErrors> for ResponseError {
+impl From<ValidationErrors> for ApiError {
     fn from(source: ValidationErrors) -> Self {
         let e: ClientError = source.into();
         e.into()
     }
 }
-impl From<diesel::result::Error> for ResponseError {
+impl From<diesel::result::Error> for ApiError {
     fn from(source: diesel::result::Error) -> Self {
         let e: ServerError = source.into();
         e.into()
@@ -210,14 +210,14 @@ impl From<diesel::result::Error> for ResponseError {
 }
 
 // Juniper error
-impl IntoFieldError for ResponseError {
+impl IntoFieldError for ApiError {
     fn into_field_error(self) -> FieldError {
         // Temporary method to log errors
         // TODO https://github.com/LucasPickering/gdlk/issues/125
         self.log();
 
         match self {
-            ResponseError::Client {
+            ApiError::Client {
                 source: ClientError::ValidationErrors(errors),
                 ..
             } => validation_to_field_error(errors),
@@ -227,7 +227,7 @@ impl IntoFieldError for ResponseError {
 }
 
 // Actix error
-impl actix_web::ResponseError for ResponseError {
+impl actix_web::ResponseError for ApiError {
     fn error_response(&self) -> HttpResponse {
         // Temporary method to log errors
         // TODO https://github.com/LucasPickering/gdlk/issues/125
@@ -357,29 +357,29 @@ pub enum IntDecodeError {
 /// free to refactor it later.
 #[derive(Copy, Clone, Debug, Default)]
 pub struct DbErrorConverter {
-    /// Convert DB foreign key violation to [ResponseError::NotFound]? Useful
+    /// Convert DB foreign key violation to [ApiError::NotFound]? Useful
     /// when inserting or modifying foreign keys. Read the description for
-    /// [ResponseError::NotFound] for more info on when this should and
+    /// [ApiError::NotFound] for more info on when this should and
     /// shouldn't be used.
     pub fk_violation_to_not_found: bool,
 
-    /// Convert DB unique violations to [ResponseError::AlreadyExists]? Useful
+    /// Convert DB unique violations to [ApiError::AlreadyExists]? Useful
     /// for insert statements, or updates where all or part of a unique
     /// field can be changed.
     pub unique_violation_to_exists: bool,
 
     /// Convert [diesel::result::Error::QueryBuilderError] to
-    /// [ResponseError::NoUpdate].
+    /// [ApiError::NoUpdate].
     pub query_builder_to_no_update: bool,
 }
 
 impl DbErrorConverter {
     /// If the result is an error, convert it from a Diesel error to a
-    /// [ResponseError]. If the result is `Ok`, just return it.
+    /// [ApiError]. If the result is `Ok`, just return it.
     pub fn convert<T: Debug>(
         self,
         result: Result<T, diesel::result::Error>,
-    ) -> Result<T, ResponseError> {
+    ) -> Result<T, ApiError> {
         result.map_err(|error| {
             match error {
                 // FK is invalid
@@ -411,7 +411,7 @@ impl DbErrorConverter {
 
                 // Add more conversions here
 
-                // Fall back to the built in converion from ResponseError
+                // Fall back to the built in converion from ApiError
                 _ => error.into(),
             }
         })
@@ -462,8 +462,7 @@ mod tests {
                 },
             ],
         };
-        let server_error: ResponseError =
-            test_struct.validate().unwrap_err().into();
+        let server_error: ApiError = test_struct.validate().unwrap_err().into();
         assert_eq!(
             // Juniper's object type has issues with equality checks, so it's
             // easier to convert to JSON, then compare
