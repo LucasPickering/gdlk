@@ -8,8 +8,8 @@ use crate::{
         DeleteUserProgramPayload, ExecuteUserProgramInput,
         ExecuteUserProgramPayload, ExecuteUserProgramStatus,
         InitializeUserInput, InitializeUserPayload, MutationFields,
-        ProgramCompileError, ProgramFailureOutput, ProgramRuntimeError,
-        ProgramSuccessOutput, UpdateHardwareSpecInput,
+        ProgramAcceptedOutput, ProgramCompileError, ProgramRejectedOutput,
+        ProgramRuntimeError, UpdateHardwareSpecInput,
         UpdateHardwareSpecPayload, UpdateProgramSpecInput,
         UpdateProgramSpecPayload, UpdateUserProgramInput,
         UpdateUserProgramPayload,
@@ -199,14 +199,14 @@ impl MutationFields for Mutation {
                     ProgramRuntimeError {},
                 )
             }
-            ExecuteUserProgramOutput::Failure(_) => {
-                ExecuteUserProgramStatus::ProgramFailureOutput(
-                    ProgramFailureOutput {},
+            ExecuteUserProgramOutput::Rejected(_) => {
+                ExecuteUserProgramStatus::ProgramRejectedOutput(
+                    ProgramRejectedOutput {},
                 )
             }
-            ExecuteUserProgramOutput::Success(_) => {
-                ExecuteUserProgramStatus::ProgramSuccessOutput(
-                    ProgramSuccessOutput {},
+            ExecuteUserProgramOutput::Accepted(_) => {
+                ExecuteUserProgramStatus::ProgramAcceptedOutput(
+                    ProgramAcceptedOutput {},
                 )
             }
         });

@@ -193,15 +193,21 @@ pub struct ExecuteUserProgramView<'a> {
     pub id: Uuid,
 }
 
-// The `Machine` variants are a lot larger, but in practice `Success` should be
+/// The possible outcomes of a user_program execution.
+// The `Machine` variants are a lot larger, but in practice `Accepted` should be
 // be used WAY more than the others (because the UI will only run this request
 // after a successful execution). So it's not worth boxing the machine.
 #[allow(clippy::large_enum_variant)]
 pub enum ExecuteUserProgramOutput {
+    /// Something went wrong during compilation
     CompileError(WithSource<CompileError>),
+    /// Something went wrong during execution
     RuntimeError(WithSource<RuntimeError>),
-    Failure(Machine),
-    Success(Machine),
+    /// Program terminated normally, but the final state didn't match the
+    /// expectation (which is defined by the program spec)
+    Rejected(Machine),
+    /// Program terminated with expected state
+    Accepted(Machine),
 }
 
 impl<'a> ExecuteUserProgramView<'a> {
@@ -314,11 +320,11 @@ impl<'a> View for ExecuteUserProgramView<'a> {
         }
 
         let output = if successful {
-            ExecuteUserProgramOutput::Success(machine)
+            ExecuteUserProgramOutput::Accepted(machine)
         } else {
             // No errors occurred, but the final state wasn't correct (input
             // still contained items, or output didn't match expectation)
-            ExecuteUserProgramOutput::Failure(machine)
+            ExecuteUserProgramOutput::Rejected(machine)
         };
         Ok(Some(output))
     }

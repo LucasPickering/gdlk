@@ -911,7 +911,7 @@ type ProgramRuntimeError {
 Execution output when a program compiles and executes without error, but the
 final state doesn't match the expected state (as defined by the program spec).
 """
-type ProgramFailureOutput {
+type ProgramRejectedOutput {
   # TODO add machine
   """
   TODO
@@ -925,7 +925,7 @@ Execution output when a program executes successfully.
 2. It executed without error
 3. At the end, the input is empty and the output matches the program spec
 """
-type ProgramSuccessOutput {
+type ProgramAcceptedOutput {
   # TODO add machine + stats
   """
   TODO
@@ -940,8 +940,8 @@ info.
 union ExecuteUserProgramStatus =
     ProgramCompileError
   | ProgramRuntimeError
-  | ProgramFailureOutput
-  | ProgramSuccessOutput
+  | ProgramRejectedOutput
+  | ProgramAcceptedOutput
 
 """
 Output for the `executeUserProgram` mutation.
@@ -952,7 +952,7 @@ type ExecuteUserProgramPayload {
   outcome, which could be one of:
   - Compile error
   - Runtime error
-  - Failed execution (incorrect input/output at termination)
+  - Rejected execution (incorrect input/output at termination)
   - Success
   """
   status: ExecuteUserProgramStatus @juniper(infallible: true)

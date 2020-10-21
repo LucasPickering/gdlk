@@ -3,8 +3,8 @@
 
 use crate::{
     server::gql::{
-        ProgramCompileErrorFields, ProgramFailureOutputFields,
-        ProgramRuntimeErrorFields, ProgramSuccessOutputFields,
+        ProgramAcceptedOutputFields, ProgramCompileErrorFields,
+        ProgramRejectedOutputFields, ProgramRuntimeErrorFields,
     },
     views::RequestContext,
 };
@@ -60,9 +60,9 @@ impl ProgramRuntimeErrorFields for ProgramRuntimeError {
 }
 
 #[derive(Clone, Debug)]
-pub struct ProgramFailureOutput {}
+pub struct ProgramRejectedOutput {}
 
-impl ProgramFailureOutputFields for ProgramFailureOutput {
+impl ProgramRejectedOutputFields for ProgramRejectedOutput {
     fn field_todo(
         &self,
         _executor: &juniper::Executor<'_, RequestContext>,
@@ -72,9 +72,9 @@ impl ProgramFailureOutputFields for ProgramFailureOutput {
 }
 
 #[derive(Clone, Debug)]
-pub struct ProgramSuccessOutput {}
+pub struct ProgramAcceptedOutput {}
 
-impl ProgramSuccessOutputFields for ProgramSuccessOutput {
+impl ProgramAcceptedOutputFields for ProgramAcceptedOutput {
     fn field_todo(
         &self,
         _executor: &juniper::Executor<'_, RequestContext>,
