@@ -1,5 +1,5 @@
 use crate::{
-    error::{ClientError, DbErrorConverter, ResponseError, ResponseResult},
+    error::{ApiError, ClientError, DbErrorConverter, ResponseResult},
     models,
     schema::{user_providers, users},
     views::{RequestContext, UserContext, View},
@@ -41,7 +41,7 @@ impl<'a> View for InitializeUserView<'a> {
                 // fail.
                 conn.build_transaction()
                     .repeatable_read()
-                    .run::<models::User, ResponseError, _>(|| {
+                    .run::<models::User, ApiError, _>(|| {
                         let create_user_result: Result<models::User, _> =
                             new_user
                                 .insert()

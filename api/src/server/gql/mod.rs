@@ -4,7 +4,7 @@
 //! their own files.
 
 use crate::{
-    error::{IntDecodeError, ResponseError, ResponseResult},
+    error::{ApiError, IntDecodeError, ResponseResult},
     models,
     schema::hardware_specs,
     server::gql::{
@@ -31,7 +31,7 @@ mod user_program;
 graphql_schema_from_file!(
     "schema.graphql",
     context_type: RequestContext,
-    error_type: ResponseError
+    error_type: ApiError
 );
 
 // To make our context usable by Juniper, we have to implement a marker trait.

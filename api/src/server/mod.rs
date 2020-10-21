@@ -6,7 +6,7 @@ mod gql;
 pub use crate::server::gql::{create_gql_schema, GqlSchema};
 use crate::{
     config::GdlkConfig,
-    error::ResponseError,
+    error::ApiError,
     server::auth::{logout_route, route_authorize, route_login},
     util::{self, Pool},
     views::RequestContext,
@@ -37,7 +37,7 @@ async fn route_graphql(
     // Auth cookie holds a user provider ID - if populated, parse it
     let user_provider_id = identity.identity().map(|id| util::parse_uuid(&id));
     let context = RequestContext::load_context(
-        pool.get().map_err(ResponseError::from_server_error)?,
+        pool.get().map_err(ApiError::from_server_error)?,
         user_provider_id,
     )?;
     let response = web::block(move || {

@@ -1,5 +1,5 @@
 use crate::{
-    error::{ResponseError, ServerError},
+    error::{ApiError, ServerError},
     schema::permissions,
 };
 use diesel::{Identifiable, Queryable};
@@ -46,7 +46,7 @@ impl PermissionType {
 }
 
 impl FromStr for PermissionType {
-    type Err = ResponseError;
+    type Err = ApiError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         for (permission_type, name) in NAME_MAPPING {

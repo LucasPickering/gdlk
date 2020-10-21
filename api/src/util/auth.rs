@@ -1,5 +1,5 @@
 use crate::error::{
-    ActixClientError, ClientError, ResponseError, ResponseResult, ServerError,
+    ActixClientError, ApiError, ClientError, ResponseResult, ServerError,
 };
 use openidconnect::{
     core::{CoreClient, CoreIdTokenClaims},
@@ -56,7 +56,7 @@ pub async fn oidc_request_token(
         .exchange_code(AuthorizationCode::new(code.into()))
         .request_async(oidc_http_client)
         .await
-        .map_err(ResponseError::from_client_error)?;
+        .map_err(ApiError::from_client_error)?;
 
     // Verify the response token and get the claims out of it
     let token_verifier = oidc_client.id_token_verifier();
@@ -70,7 +70,7 @@ pub async fn oidc_request_token(
             match id_token.claims(&token_verifier, &Nonce::new("4".into())) {
                 // TODO remove clone
                 Ok(claims) => Ok(claims.clone()),
-                Err(source) => Err(ResponseError::from_client_error(source)),
+                Err(source) => Err(ApiError::from_client_error(source)),
             }
         }
     }
@@ -115,7 +115,7 @@ impl AuthState {
             None => Err(ClientError::CsrfError.into()),
             Some(json_str) => {
                 let state: Self = serde_json::from_str(json_str)
-                    .map_err(ResponseError::from_client_error)?;
+                    .map_err(ApiError::from_client_error)?;
                 // TODO make this secure
                 if "3" == state.csrf_token.secret() {
                     Ok(state)
