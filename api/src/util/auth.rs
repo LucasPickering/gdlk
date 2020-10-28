@@ -90,6 +90,7 @@ impl AuthState {
         Self {
             next,
             // TODO make this secure
+            // https://github.com/LucasPickering/gdlk/issues/160
             csrf_token: CsrfToken::new("3".into()),
         }
     }
