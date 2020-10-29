@@ -237,10 +237,7 @@ pub mod compiled {
             self.stats
                 .referenced_registers
                 .iter()
-                .filter(|reg_ref| match reg_ref {
-                    RegisterRef::User(_) => true,
-                    _ => false,
-                })
+                .filter(|reg_ref| matches!(reg_ref, RegisterRef::User(_)))
                 .count()
         }
 

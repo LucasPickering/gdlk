@@ -112,7 +112,7 @@ mod tests {
             .iter()
             .map(|(permission_type, _)| permission_type.to_str())
             .collect();
-        serialized_names.sort();
+        serialized_names.sort_unstable();
 
         // Make sure the list of serialized names matches all the names we
         // pulled from the DB. This makes sure we don't have any extraneous
