@@ -56,7 +56,9 @@ impl Compiler<(source::Program<Span>, ProgramStats)> {
             .into_iter()
             // Need to filter FIRST so labels don't get tracked in the
             // indexes
-            .filter(|stmt_node| matches!(stmt_node, Node(Statement::Label(_), _)))
+            .filter(|stmt_node| {
+                !matches!(stmt_node, Node(Statement::Label(_), _))
+            })
             .enumerate()
             .map(|(i, stmt_node)| map_statement(&label_map, i, stmt_node))
             .collect();
