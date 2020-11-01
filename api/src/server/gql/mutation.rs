@@ -1,5 +1,5 @@
 use crate::{
-    error::ResponseResult,
+    error::ApiResult,
     server::gql::{
         program::ProgramError, CopyUserProgramInput, CopyUserProgramPayload,
         CreateHardwareSpecInput, CreateHardwareSpecPayload,
@@ -28,7 +28,7 @@ impl MutationFields for Mutation {
         executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, InitializeUserPayload, Walked>,
         input: InitializeUserInput,
-    ) -> ResponseResult<InitializeUserPayload> {
+    ) -> ApiResult<InitializeUserPayload> {
         let view = views::InitializeUserView {
             context: executor.context(),
             username: &input.username,
@@ -42,7 +42,7 @@ impl MutationFields for Mutation {
         executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, CreateHardwareSpecPayload, Walked>,
         input: CreateHardwareSpecInput,
-    ) -> ResponseResult<CreateHardwareSpecPayload> {
+    ) -> ApiResult<CreateHardwareSpecPayload> {
         let view = views::CreateHardwareSpecView {
             context: executor.context(),
             name: &input.name,
@@ -60,7 +60,7 @@ impl MutationFields for Mutation {
         executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, UpdateHardwareSpecPayload, Walked>,
         input: UpdateHardwareSpecInput,
-    ) -> ResponseResult<UpdateHardwareSpecPayload> {
+    ) -> ApiResult<UpdateHardwareSpecPayload> {
         let view = views::UpdateHardwareSpecView {
             context: executor.context(),
             id: util::gql_id_to_uuid(&input.id),
@@ -79,7 +79,7 @@ impl MutationFields for Mutation {
         executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, CreateProgramSpecPayload, Walked>,
         input: CreateProgramSpecInput,
-    ) -> ResponseResult<CreateProgramSpecPayload> {
+    ) -> ApiResult<CreateProgramSpecPayload> {
         let view = views::CreateProgramSpecView {
             context: executor.context(),
             hardware_spec_id: util::gql_id_to_uuid(&input.hardware_spec_id),
@@ -98,7 +98,7 @@ impl MutationFields for Mutation {
         executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, UpdateProgramSpecPayload, Walked>,
         input: UpdateProgramSpecInput,
-    ) -> ResponseResult<UpdateProgramSpecPayload> {
+    ) -> ApiResult<UpdateProgramSpecPayload> {
         let view = views::UpdateProgramSpecView {
             context: executor.context(),
             id: util::gql_id_to_uuid(&input.id),
@@ -117,7 +117,7 @@ impl MutationFields for Mutation {
         executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, CreateUserProgramPayload, Walked>,
         input: CreateUserProgramInput,
-    ) -> ResponseResult<CreateUserProgramPayload> {
+    ) -> ApiResult<CreateUserProgramPayload> {
         let view = views::CreateUserProgramView {
             context: executor.context(),
             program_spec_id: util::gql_id_to_uuid(&input.program_spec_id),
@@ -135,7 +135,7 @@ impl MutationFields for Mutation {
         executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, UpdateUserProgramPayload, Walked>,
         input: UpdateUserProgramInput,
-    ) -> ResponseResult<UpdateUserProgramPayload> {
+    ) -> ApiResult<UpdateUserProgramPayload> {
         let view = views::UpdateUserProgramView {
             context: executor.context(),
             id: util::gql_id_to_uuid(&input.id),
@@ -152,7 +152,7 @@ impl MutationFields for Mutation {
         executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, CopyUserProgramPayload, Walked>,
         input: CopyUserProgramInput,
-    ) -> ResponseResult<CopyUserProgramPayload> {
+    ) -> ApiResult<CopyUserProgramPayload> {
         let view = views::CopyUserProgramView {
             context: executor.context(),
             id: util::gql_id_to_uuid(&input.id),
@@ -167,7 +167,7 @@ impl MutationFields for Mutation {
         executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, DeleteUserProgramPayload, Walked>,
         input: DeleteUserProgramInput,
-    ) -> ResponseResult<DeleteUserProgramPayload> {
+    ) -> ApiResult<DeleteUserProgramPayload> {
         let view = views::DeleteUserProgramView {
             context: executor.context(),
             id: util::gql_id_to_uuid(&input.id),
@@ -182,7 +182,7 @@ impl MutationFields for Mutation {
         executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, ExecuteUserProgramPayload, Walked>,
         input: ExecuteUserProgramInput,
-    ) -> ResponseResult<ExecuteUserProgramPayload> {
+    ) -> ApiResult<ExecuteUserProgramPayload> {
         let view = views::ExecuteUserProgramView {
             context: executor.context(),
             id: util::gql_id_to_uuid(&input.id),

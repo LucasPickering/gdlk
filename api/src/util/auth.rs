@@ -1,5 +1,5 @@
 use crate::error::{
-    ActixClientError, ApiError, ClientError, ResponseResult, ServerError,
+    ActixClientError, ApiError, ApiResult, ClientError, ServerError,
 };
 use openidconnect::{
     core::{CoreClient, CoreIdTokenClaims},
@@ -49,7 +49,7 @@ pub async fn oidc_http_client(
 pub async fn oidc_request_token(
     oidc_client: &CoreClient,
     code: &str,
-) -> ResponseResult<CoreIdTokenClaims> {
+) -> ApiResult<CoreIdTokenClaims> {
     // Exchange the temp code for a token
     let token_response = oidc_client
         .exchange_code(AuthorizationCode::new(code.into()))
@@ -108,7 +108,7 @@ impl AuthState {
 
     /// Deserialize input from the user into auth state. This will also
     /// validate the CSRF token in the param.
-    pub fn deserialize(input: Option<&str>) -> ResponseResult<Self> {
+    pub fn deserialize(input: Option<&str>) -> ApiResult<Self> {
         match input {
             None => Err(ClientError::CsrfError.into()),
             Some(json_str) => {

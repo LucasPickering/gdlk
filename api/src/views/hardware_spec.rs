@@ -1,5 +1,5 @@
 use crate::{
-    error::{ClientError, DbErrorConverter, ResponseResult},
+    error::{ApiResult, ClientError, DbErrorConverter},
     models,
     schema::hardware_specs,
     views::{RequestContext, View},
@@ -20,7 +20,7 @@ pub struct CreateHardwareSpecView<'a> {
 impl<'a> View for CreateHardwareSpecView<'a> {
     type Output = models::HardwareSpec;
 
-    fn check_permissions(&self) -> ResponseResult<()> {
+    fn check_permissions(&self) -> ApiResult<()> {
         let user = self.context.user()?;
         if user.has_permission(models::PermissionType::CreateSpecs) {
             Ok(())
@@ -29,7 +29,7 @@ impl<'a> View for CreateHardwareSpecView<'a> {
         }
     }
 
-    fn execute_internal(&self) -> ResponseResult<Self::Output> {
+    fn execute_internal(&self) -> ApiResult<Self::Output> {
         // User a helper type to do the insert
         let new_hardware_spec = models::NewHardwareSpec {
             name: self.name,
@@ -67,7 +67,7 @@ pub struct UpdateHardwareSpecView<'a> {
 impl<'a> View for UpdateHardwareSpecView<'a> {
     type Output = Option<models::HardwareSpec>;
 
-    fn check_permissions(&self) -> ResponseResult<()> {
+    fn check_permissions(&self) -> ApiResult<()> {
         let user = self.context.user()?;
         if user.has_permission(models::PermissionType::ModifyAllSpecs) {
             Ok(())
@@ -76,7 +76,7 @@ impl<'a> View for UpdateHardwareSpecView<'a> {
         }
     }
 
-    fn execute_internal(&self) -> ResponseResult<Self::Output> {
+    fn execute_internal(&self) -> ApiResult<Self::Output> {
         // User a helper type to do the insert
         let modified_hardware_spec = models::ModifiedHardwareSpec {
             id: self.id,

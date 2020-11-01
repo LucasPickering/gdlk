@@ -1,6 +1,6 @@
 use std::cmp;
 
-use crate::{error::ResponseResult, schema::user_program_records};
+use crate::{error::ApiResult, schema::user_program_records};
 use chrono::{DateTime, Utc};
 use diesel::{
     dsl, expression::bound::Bound, query_builder::InsertStatement, sql_types,
@@ -89,7 +89,7 @@ impl UserProgramRecord {
         conn: &PgConnection,
         user_id: Uuid,
         program_spec_id: Uuid,
-    ) -> ResponseResult<Option<UserProgramRecordStats>> {
+    ) -> ApiResult<Option<UserProgramRecordStats>> {
         // TODO switch to a GROUP BY after https://github.com/diesel-rs/diesel/issues/210
 
         // Load all records for this user+program_spec

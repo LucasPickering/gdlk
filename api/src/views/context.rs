@@ -2,7 +2,7 @@
 //! top-level struct is [RequestContext].
 
 use crate::{
-    error::{ClientError, ResponseResult},
+    error::{ApiResult, ClientError},
     models,
     schema::{
         permissions, role_permissions, roles, user_providers, user_roles, users,
@@ -57,7 +57,7 @@ impl UserContext {
     fn load_context(
         conn: &PgConnection,
         user_provider_id: Uuid,
-    ) -> ResponseResult<Option<Self>> {
+    ) -> ApiResult<Option<Self>> {
         // TODO after diesel 2.0, merge these two queries into one.
         // Then we can do array/bool aggs for the permissions/is_admin.
 
@@ -119,7 +119,7 @@ impl UserContext {
                 // For is_admin, do an or-map (true if any are true)
                 let (permissions, is_admin) = permissions_query_result
                     .into_iter()
-                    .try_fold::<_, _, ResponseResult<_>>(
+                    .try_fold::<_, _, ApiResult<_>>(
                     (HashSet::new(), false),
                     |(mut permissions, is_admin),
                      (permission_opt, is_admin_row)| {
@@ -168,7 +168,7 @@ impl RequestContext {
     pub fn load_context(
         db_conn: PooledConnection,
         user_provider_id: Option<Uuid>,
-    ) -> ResponseResult<Self> {
+    ) -> ApiResult<Self> {
         let user_context = match user_provider_id {
             None => None,
             Some(upid) => UserContext::load_context(&db_conn, upid)?,
@@ -188,7 +188,7 @@ impl RequestContext {
     /// or they ARE authenticated but haven't finished initializing their user
     /// yet (to the point where a row in the `users` table has been created),
     /// then return an error.
-    pub fn user(&self) -> ResponseResult<&AuthorizedUser> {
+    pub fn user(&self) -> ApiResult<&AuthorizedUser> {
         match &self.user_context {
             Some(UserContext {
                 user: Some(user), ..

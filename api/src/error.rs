@@ -15,7 +15,7 @@ use std::{
 use thiserror::Error;
 use validator::{ValidationError, ValidationErrors, ValidationErrorsKind};
 
-pub type ResponseResult<T> = Result<T, ApiError>;
+pub type ApiResult<T> = Result<T, ApiError>;
 
 /// A response error that originated because of an error on the client's part.
 /// This could be invalid input, an invalid request URL, permission denied, etc.

@@ -8,7 +8,7 @@ mod program_spec;
 mod user;
 mod user_program;
 
-use crate::error::ResponseResult;
+use crate::error::ApiResult;
 pub use context::*;
 pub use hardware_spec::*;
 pub use program_spec::*;
@@ -22,11 +22,11 @@ pub use user_program::*;
 pub trait View {
     type Output;
 
-    fn check_permissions(&self) -> ResponseResult<()>;
+    fn check_permissions(&self) -> ApiResult<()>;
 
-    fn execute_internal(&self) -> ResponseResult<Self::Output>;
+    fn execute_internal(&self) -> ApiResult<Self::Output>;
 
-    fn execute(&self) -> ResponseResult<Self::Output> {
+    fn execute(&self) -> ApiResult<Self::Output> {
         self.check_permissions()?;
         self.execute_internal()
     }

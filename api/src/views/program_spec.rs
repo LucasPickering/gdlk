@@ -1,5 +1,5 @@
 use crate::{
-    error::{ClientError, DbErrorConverter, ResponseResult},
+    error::{ApiResult, ClientError, DbErrorConverter},
     models,
     schema::program_specs,
     views::{RequestContext, View},
@@ -21,7 +21,7 @@ pub struct CreateProgramSpecView<'a> {
 impl<'a> View for CreateProgramSpecView<'a> {
     type Output = models::ProgramSpec;
 
-    fn check_permissions(&self) -> ResponseResult<()> {
+    fn check_permissions(&self) -> ApiResult<()> {
         let user = self.context.user()?;
         if user.has_permission(models::PermissionType::CreateSpecs) {
             Ok(())
@@ -30,7 +30,7 @@ impl<'a> View for CreateProgramSpecView<'a> {
         }
     }
 
-    fn execute_internal(&self) -> ResponseResult<Self::Output> {
+    fn execute_internal(&self) -> ApiResult<Self::Output> {
         // User a helper type to do the insert
         let new_program_spec = models::NewProgramSpec {
             hardware_spec_id: self.hardware_spec_id,
@@ -71,7 +71,7 @@ pub struct UpdateProgramSpecView<'a> {
 impl<'a> View for UpdateProgramSpecView<'a> {
     type Output = Option<models::ProgramSpec>;
 
-    fn check_permissions(&self) -> ResponseResult<()> {
+    fn check_permissions(&self) -> ApiResult<()> {
         let user = self.context.user()?;
         if user.has_permission(models::PermissionType::ModifyAllSpecs) {
             Ok(())
@@ -80,7 +80,7 @@ impl<'a> View for UpdateProgramSpecView<'a> {
         }
     }
 
-    fn execute_internal(&self) -> ResponseResult<Self::Output> {
+    fn execute_internal(&self) -> ApiResult<Self::Output> {
         // Use a helper type to do the insert
         let modified_program_spec = models::ModifiedProgramSpec {
             id: self.id,

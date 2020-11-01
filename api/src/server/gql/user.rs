@@ -1,5 +1,5 @@
 use crate::{
-    error::{ApiError, ClientError, ResponseResult},
+    error::{ApiError, ApiResult, ClientError},
     models,
     schema::users,
     server::gql::{
@@ -91,7 +91,7 @@ impl AuthStatusFields for AuthStatus {
         &self,
         executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, UserNode, Walked>,
-    ) -> ResponseResult<Option<UserNode>> {
+    ) -> ApiResult<Option<UserNode>> {
         // We have all the user data we need in the request context, no need
         // to do another query
         match executor.context().user() {
