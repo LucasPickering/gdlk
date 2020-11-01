@@ -36,42 +36,42 @@ impl NodeType for UserProgramRecordNode {
 impl UserProgramRecordNodeFields for UserProgramRecordNode {
     fn field_id(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> ID {
         util::uuid_to_gql_id(self.user_program_record.id)
     }
 
     fn field_cpu_cycles(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> i32 {
         self.user_program_record.cpu_cycles
     }
 
     fn field_instructions(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> i32 {
         self.user_program_record.instructions
     }
 
     fn field_registers_used(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> i32 {
         self.user_program_record.registers_used
     }
 
     fn field_stacks_used(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> i32 {
         self.user_program_record.stacks_used
     }
 
     fn field_created(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> &DateTime<Utc> {
         &self.user_program_record.created
     }

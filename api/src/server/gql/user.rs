@@ -36,14 +36,14 @@ impl NodeType for UserNode {
 impl UserNodeFields for UserNode {
     fn field_id(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> ID {
         util::uuid_to_gql_id(self.user.id)
     }
 
     fn field_username(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> &String {
         &self.user.username
     }
@@ -54,7 +54,7 @@ pub type UserEdge = GenericEdge<UserNode>;
 impl UserEdgeFields for UserEdge {
     fn field_node(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, UserNode, Walked>,
     ) -> &UserNode {
         self.node()
@@ -62,7 +62,7 @@ impl UserEdgeFields for UserEdge {
 
     fn field_cursor(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> &Cursor {
         self.cursor()
     }
@@ -75,21 +75,21 @@ pub struct AuthStatus();
 impl AuthStatusFields for AuthStatus {
     fn field_authenticated(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> bool {
         executor.context().user_context.is_some()
     }
 
     fn field_user_created(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> bool {
         executor.context().user().is_ok()
     }
 
     fn field_user(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, UserNode, Walked>,
     ) -> ApiResult<Option<UserNode>> {
         // We have all the user data we need in the request context, no need
@@ -114,7 +114,7 @@ pub struct InitializeUserPayload {
 impl InitializeUserPayloadFields for InitializeUserPayload {
     fn field_user_edge(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, UserEdge, Walked>,
     ) -> UserEdge {
         GenericEdge::from_db_row(self.user.clone(), 0)

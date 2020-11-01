@@ -6,7 +6,6 @@ mod gql;
 pub use crate::server::gql::{create_gql_schema, GqlSchema};
 use crate::{
     config::GdlkConfig,
-    error::ApiError,
     server::auth::{logout_route, route_authorize, route_login},
     util::{self, IdentityState, Pool},
     views::RequestContext,
@@ -17,12 +16,12 @@ use actix_web::{
 };
 use chrono::Duration;
 use juniper::http::{graphiql::graphiql_source, GraphQLRequest};
-use std::{io, sync::Arc};
+use std::io;
 use uuid::Uuid;
 
 #[get("/api/graphiql")]
 async fn route_graphiql() -> HttpResponse {
-    let html = graphiql_source("/api/graphql");
+    let html = graphiql_source("/api/graphql", None);
     HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
         .body(html)
@@ -30,35 +29,31 @@ async fn route_graphiql() -> HttpResponse {
 
 #[post("/api/graphql")]
 async fn route_graphql(
-    pool: web::Data<Pool>,
     identity: Identity,
-    gql_schema: web::Data<Arc<GqlSchema>>,
-    data: web::Json<GraphQLRequest>,
+    pool: web::Data<Pool>,
+    gql_schema: web::Data<GqlSchema>,
+    gql_request: web::Json<GraphQLRequest>,
 ) -> Result<HttpResponse, actix_web::Error> {
     // Auth cookie holds a user provider ID - if present, the user is logged in
     let identity_state = IdentityState::from_identity(&identity);
     let user_provider_id: Option<Uuid> = identity_state
         .map(|id_state| id_state.user_provider_id())
         .flatten();
-    let context = RequestContext::load_context(
-        pool.get().map_err(ApiError::from_server_error)?,
-        user_provider_id,
-    )?;
-    let response = web::block(move || {
-        let res = data.execute(&gql_schema, &context);
-        Ok::<_, serde_json::error::Error>(serde_json::to_string(&res)?)
-    })
-    .await?;
+
+    let context =
+        RequestContext::load_context(pool.into_inner(), user_provider_id)?;
+    let response = gql_request.execute(&gql_schema, &context).await;
+
     Ok(HttpResponse::Ok()
         .content_type("application/json")
-        .body(response))
+        .body(serde_json::to_string(&response)?))
 }
 
 #[actix_rt::main]
 pub async fn run_server(config: GdlkConfig) -> io::Result<()> {
     // Initialize env shit
     let pool = util::init_db_conn_pool(&config.database_url).unwrap();
-    let gql_schema = Arc::new(create_gql_schema());
+    let gql_schema = web::Data::new(create_gql_schema());
     let client_map =
         web::Data::new(auth::build_client_map(&config.open_id).await);
     let secret_key: Vec<u8> = base64::decode(&config.secret_key).unwrap();
@@ -68,7 +63,7 @@ pub async fn run_server(config: GdlkConfig) -> io::Result<()> {
         App::new()
             // Need to clone these because init occurs once per thread
             .data(pool.clone())
-            .data(gql_schema.clone())
+            .app_data(gql_schema.clone())
             .app_data(client_map.clone())
             // enable logger
             .wrap(middleware::Logger::default())

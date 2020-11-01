@@ -28,7 +28,7 @@ impl<'a> View for InitializeUserView<'a> {
             Some(UserContext {
                 user_provider_id, ..
             }) => {
-                let conn = self.context.db_conn();
+                let conn = self.context.db_conn()?;
                 let new_user = models::NewUser {
                     username: &self.username,
                 };
@@ -46,7 +46,7 @@ impl<'a> View for InitializeUserView<'a> {
                             new_user
                                 .insert()
                                 .returning(users::all_columns)
-                                .get_result(conn);
+                                .get_result(&conn);
 
                         // Check if the username already exists
                         let created_user = DbErrorConverter {
@@ -70,7 +70,7 @@ impl<'a> View for InitializeUserView<'a> {
                             user_providers::columns::user_id
                                 .eq(Some(created_user.id)),
                         )
-                        .execute(conn)?;
+                        .execute(&conn)?;
 
                         if updated_rows == 0 {
                             Err(ClientError::NotFound { source: None }.into())

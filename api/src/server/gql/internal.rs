@@ -89,13 +89,13 @@ pub fn get_by_id_from_all_types(
     context: &RequestContext,
     id: &juniper::ID,
 ) -> ApiResult<Option<Node>> {
-    let conn = context.db_conn();
+    let conn = context.db_conn()?;
     let uuid_id = util::gql_id_to_uuid(id);
 
     // Do one query per node type to fine the node with this ID
     // This isn't the most efficient solution but ¯\_(ツ)_/¯
     for f in ALL_NODES_GET_BY_ID {
-        if let Some(node) = f(conn, uuid_id)? {
+        if let Some(node) = f(&conn, uuid_id)? {
             return Ok(Some(node));
         }
     }

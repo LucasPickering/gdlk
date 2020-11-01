@@ -1,6 +1,6 @@
 #![deny(clippy::all)]
 
-use crate::utils::{factories::*, ContextBuilder, QueryRunner};
+use crate::utils::{factories::*, QueryRunner};
 use diesel::{dsl, QueryDsl, RunQueryDsl};
 use diesel_factories::Factory;
 use gdlk_api::schema::users;
@@ -27,23 +27,24 @@ static QUERY: &str = r#"
 "#;
 
 /// Initialize a user successfully
-#[test]
-fn test_initialize_user_success() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.disable_transaction();
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_initialize_user_success() {
+    let mut runner = QueryRunner::new();
+    runner.disable_transaction();
 
-    let user_provider = UserProviderFactory::default().insert(conn);
-    context_builder.set_user_provider(user_provider);
+    let user_provider = runner
+        .run_with_conn(|conn| UserProviderFactory::default().insert(&conn));
+    runner.set_user_provider(user_provider);
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "username" => InputValue::scalar("user1"),
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    "username" => InputValue::scalar("user1"),
+                }
+            )
+            .await,
         (
             json!({
                 "initializeUser": {
@@ -60,18 +61,19 @@ fn test_initialize_user_success() {
 }
 
 /// Try to initialize a user while not logged in.
-#[test]
-fn test_initialize_user_not_logged_in() {
-    let context_builder = ContextBuilder::new();
-    let runner = QueryRunner::new(context_builder);
+#[actix_rt::test]
+async fn test_initialize_user_not_logged_in() {
+    let runner = QueryRunner::new();
 
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "username" => InputValue::scalar("user1"),
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    "username" => InputValue::scalar("user1"),
+                }
+            )
+            .await,
         (
             serde_json::Value::Null,
             vec![json!({
@@ -84,24 +86,26 @@ fn test_initialize_user_not_logged_in() {
 }
 
 /// Setting a username that's already taken should return an error.
-#[test]
-fn test_initialize_user_duplicate_username() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.disable_transaction();
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_initialize_user_duplicate_username() {
+    let mut runner = QueryRunner::new();
+    runner.disable_transaction();
 
-    UserFactory::default().username("user1").insert(conn);
-    let user_provider = UserProviderFactory::default().insert(conn);
-    context_builder.set_user_provider(user_provider);
+    let user_provider = runner.run_with_conn(|conn| {
+        UserFactory::default().username("user1").insert(&conn);
+        UserProviderFactory::default().insert(&conn)
+    });
+    runner.set_user_provider(user_provider);
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "username" => InputValue::scalar("user1"), // Already taken
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    "username" => InputValue::scalar("user1"), // Already taken
+                }
+            )
+            .await,
         (
             serde_json::Value::Null,
             vec![json!({
@@ -114,23 +118,24 @@ fn test_initialize_user_duplicate_username() {
 }
 
 /// Setting a username that doesn't pass validation should return an error
-#[test]
-fn test_initialize_user_invalid_username() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.disable_transaction();
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_initialize_user_invalid_username() {
+    let mut runner = QueryRunner::new();
+    runner.disable_transaction();
 
-    let user_provider = UserProviderFactory::default().insert(conn);
-    context_builder.set_user_provider(user_provider);
+    let user_provider = runner
+        .run_with_conn(|conn| UserProviderFactory::default().insert(&conn));
+    runner.set_user_provider(user_provider);
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "username" => InputValue::scalar(""), // Invalid username
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    "username" => InputValue::scalar(""), // Invalid username
+                }
+            )
+            .await,
         (
             serde_json::Value::Null,
             vec![json!({
@@ -146,13 +151,15 @@ fn test_initialize_user_invalid_username() {
         )
     );
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                // Length limit is 20 chars
-                "username" => InputValue::scalar("012345678901234567890"),
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    // Length limit is 20 chars
+                    "username" => InputValue::scalar("012345678901234567890"),
+                }
+            )
+            .await,
         (
             serde_json::Value::Null,
             vec![json!({
@@ -171,26 +178,28 @@ fn test_initialize_user_invalid_username() {
 
 /// Trying to initialize a user that's already been initialized should return
 /// an error.
-#[test]
-fn test_initialize_user_already_initialized() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.disable_transaction();
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_initialize_user_already_initialized() {
+    let mut runner = QueryRunner::new();
+    runner.disable_transaction();
 
-    let user = UserFactory::default().username("user1").insert(conn);
-    let user_provider = UserProviderFactory::default()
-        .user(Some(&user))
-        .insert(conn);
-    context_builder.set_user_provider(user_provider);
+    let user_provider = runner.run_with_conn(|conn| {
+        let user = UserFactory::default().username("user1").insert(&conn);
+        UserProviderFactory::default()
+            .user(Some(&user))
+            .insert(&conn)
+    });
+    runner.set_user_provider(user_provider);
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "username" => InputValue::scalar("user2"),
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    "username" => InputValue::scalar("user2"),
+                }
+            )
+            .await,
         (
             serde_json::Value::Null,
             vec![json!({
@@ -205,11 +214,13 @@ fn test_initialize_user_already_initialized() {
 
     // Make sure there's still only one user in the DB, to ensure that the
     // user creation got rolled back
-    assert_eq!(
-        users::table
-            .select(dsl::count_star())
-            .get_result::<i64>(runner.db_conn())
-            .unwrap(),
-        1
-    );
+    runner.run_with_conn(|conn| {
+        assert_eq!(
+            users::table
+                .select(dsl::count_star())
+                .get_result::<i64>(conn)
+                .unwrap(),
+            1
+        );
+    });
 }

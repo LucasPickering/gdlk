@@ -28,6 +28,7 @@ use crate::{
     views::RequestContext,
 };
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
+use juniper::EmptySubscription;
 use juniper_from_schema::graphql_schema_from_file;
 use serde::{Serialize, Serializer};
 use std::convert::TryInto;
@@ -42,10 +43,15 @@ graphql_schema_from_file!(
 // To make our context usable by Juniper, we have to implement a marker trait.
 impl juniper::Context for RequestContext {}
 
-pub type GqlSchema = juniper::RootNode<'static, Query, Mutation>;
+pub type GqlSchema = juniper::RootNode<
+    'static,
+    Query,
+    Mutation,
+    EmptySubscription<RequestContext>,
+>;
 
 pub fn create_gql_schema() -> GqlSchema {
-    GqlSchema::new(Query, Mutation)
+    GqlSchema::new(Query, Mutation, EmptySubscription::new())
 }
 
 /// The top-level query object.
@@ -55,7 +61,7 @@ impl QueryFields for Query {
     /// Get a node of any type by UUID.
     fn field_node(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, Node, Walked>,
         id: juniper::ID,
     ) -> ApiResult<Option<Node>> {
@@ -64,19 +70,19 @@ impl QueryFields for Query {
 
     fn field_user(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, UserNode, Walked>,
         username: String,
     ) -> ApiResult<Option<UserNode>> {
         Ok(models::User::filter_by_username(&username)
-            .get_result::<models::User>(executor.context().db_conn())
+            .get_result::<models::User>(&executor.context().db_conn()?)
             .optional()?
             .map(UserNode::from))
     }
 
     fn field_auth_status(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, AuthStatus, Walked>,
     ) -> AuthStatus {
         AuthStatus()
@@ -84,20 +90,20 @@ impl QueryFields for Query {
 
     fn field_hardware_spec(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, HardwareSpecNode, Walked>,
         slug: String,
     ) -> ApiResult<Option<HardwareSpecNode>> {
         Ok(hardware_specs::table
             .filter(hardware_specs::dsl::slug.eq(&slug))
-            .get_result::<models::HardwareSpec>(executor.context().db_conn())
+            .get_result::<models::HardwareSpec>(&executor.context().db_conn()?)
             .optional()?
             .map(HardwareSpecNode::from))
     }
 
     fn field_hardware_specs(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, HardwareSpecConnection, Walked>,
         first: Option<i32>,
         after: Option<Cursor>,
@@ -240,28 +246,28 @@ impl PageInfo {
 impl PageInfoFields for PageInfo {
     fn field_start_cursor(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> &Option<Cursor> {
         &self.start_cursor
     }
 
     fn field_end_cursor(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> &Option<Cursor> {
         &self.end_cursor
     }
 
     fn field_has_previous_page(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> bool {
         self.has_previous_page
     }
 
     fn field_has_next_page(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> bool {
         self.has_next_page
     }

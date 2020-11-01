@@ -25,7 +25,7 @@ pub struct Mutation;
 impl MutationFields for Mutation {
     fn field_initialize_user(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, InitializeUserPayload, Walked>,
         input: InitializeUserInput,
     ) -> ApiResult<InitializeUserPayload> {
@@ -39,7 +39,7 @@ impl MutationFields for Mutation {
 
     fn field_create_hardware_spec(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, CreateHardwareSpecPayload, Walked>,
         input: CreateHardwareSpecInput,
     ) -> ApiResult<CreateHardwareSpecPayload> {
@@ -57,7 +57,7 @@ impl MutationFields for Mutation {
 
     fn field_update_hardware_spec(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, UpdateHardwareSpecPayload, Walked>,
         input: UpdateHardwareSpecInput,
     ) -> ApiResult<UpdateHardwareSpecPayload> {
@@ -76,7 +76,7 @@ impl MutationFields for Mutation {
 
     fn field_create_program_spec(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, CreateProgramSpecPayload, Walked>,
         input: CreateProgramSpecInput,
     ) -> ApiResult<CreateProgramSpecPayload> {
@@ -95,7 +95,7 @@ impl MutationFields for Mutation {
 
     fn field_update_program_spec(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, UpdateProgramSpecPayload, Walked>,
         input: UpdateProgramSpecInput,
     ) -> ApiResult<UpdateProgramSpecPayload> {
@@ -114,7 +114,7 @@ impl MutationFields for Mutation {
 
     fn field_create_user_program(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, CreateUserProgramPayload, Walked>,
         input: CreateUserProgramInput,
     ) -> ApiResult<CreateUserProgramPayload> {
@@ -132,7 +132,7 @@ impl MutationFields for Mutation {
 
     fn field_update_user_program(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, UpdateUserProgramPayload, Walked>,
         input: UpdateUserProgramInput,
     ) -> ApiResult<UpdateUserProgramPayload> {
@@ -149,7 +149,7 @@ impl MutationFields for Mutation {
 
     fn field_copy_user_program(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, CopyUserProgramPayload, Walked>,
         input: CopyUserProgramInput,
     ) -> ApiResult<CopyUserProgramPayload> {
@@ -164,7 +164,7 @@ impl MutationFields for Mutation {
 
     fn field_delete_user_program(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, DeleteUserProgramPayload, Walked>,
         input: DeleteUserProgramInput,
     ) -> ApiResult<DeleteUserProgramPayload> {
@@ -179,7 +179,7 @@ impl MutationFields for Mutation {
 
     fn field_execute_user_program(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, ExecuteUserProgramPayload, Walked>,
         input: ExecuteUserProgramInput,
     ) -> ApiResult<ExecuteUserProgramPayload> {

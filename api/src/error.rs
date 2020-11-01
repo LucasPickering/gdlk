@@ -112,7 +112,7 @@ pub enum ServerError {
         /// Should be a boxed reference to the column that the value was in.
         /// `Debug` is the best type constraint we can put on this, but this
         /// should always be something like `roles::columns::name`.
-        column: Box<dyn Debug>,
+        column: Box<dyn Debug + Send>,
         /// The invalid value.
         value: String,
     },

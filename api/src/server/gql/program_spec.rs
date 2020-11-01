@@ -46,35 +46,35 @@ impl NodeType for ProgramSpecNode {
 impl ProgramSpecNodeFields for ProgramSpecNode {
     fn field_id(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> ID {
         util::uuid_to_gql_id(self.program_spec.id)
     }
 
     fn field_slug(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> &String {
         &self.program_spec.slug
     }
 
     fn field_name(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> &String {
         &self.program_spec.name
     }
 
     fn field_description(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> &String {
         &self.program_spec.description
     }
 
     fn field_input(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> Vec<i32> {
         self.program_spec
             .input
@@ -86,7 +86,7 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
 
     fn field_expected_output(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> Vec<i32> {
         self.program_spec
             .expected_output
@@ -98,11 +98,11 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
 
     fn field_hardware_spec(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, HardwareSpecNode, Walked>,
     ) -> ApiResult<HardwareSpecNode> {
         Ok(HardwareSpecNode::find(
-            &executor.context().db_conn(),
+            &executor.context().db_conn()? as &PgConnection,
             self.program_spec.hardware_spec_id,
         )?
         .into())
@@ -110,7 +110,7 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
 
     fn field_user_program(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, UserProgramNode, Walked>,
         file_name: String,
     ) -> ApiResult<Option<UserProgramNode>> {
@@ -123,14 +123,14 @@ impl ProgramSpecNodeFields for ProgramSpecNode {
         )
         .filter(user_programs::dsl::file_name.eq(&file_name))
         .select(user_programs::table::all_columns())
-        .get_result::<models::UserProgram>(context.db_conn())
+        .get_result::<models::UserProgram>(&context.db_conn()?)
         .optional()?
         .map(UserProgramNode::from))
     }
 
     fn field_user_programs(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, UserProgramConnection, Walked>,
         first: Option<i32>,
         after: Option<Cursor>,
@@ -145,7 +145,7 @@ pub type ProgramSpecEdge = GenericEdge<ProgramSpecNode>;
 impl ProgramSpecEdgeFields for ProgramSpecEdge {
     fn field_node(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, ProgramSpecNode, Walked>,
     ) -> &ProgramSpecNode {
         self.node()
@@ -153,7 +153,7 @@ impl ProgramSpecEdgeFields for ProgramSpecEdge {
 
     fn field_cursor(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> &Cursor {
         self.cursor()
     }
@@ -183,7 +183,7 @@ impl ProgramSpecConnection {
                 self.hardware_spec_id,
             ))
             .select(dsl::count_star())
-            .get_result::<i64>(context.db_conn())
+            .get_result::<i64>(&context.db_conn()?)
         {
             // Convert i64 to i32 - if this fails, we're in a rough spot
             Ok(count) => Ok(count.try_into().unwrap()),
@@ -211,7 +211,7 @@ impl ProgramSpecConnection {
         }
 
         let rows: Vec<models::ProgramSpec> =
-            query.get_results(context.db_conn())?;
+            query.get_results(&context.db_conn()?)?;
 
         Ok(ProgramSpecEdge::from_db_rows(rows, offset))
     }
@@ -220,14 +220,14 @@ impl ProgramSpecConnection {
 impl ProgramSpecConnectionFields for ProgramSpecConnection {
     fn field_total_count(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> ApiResult<i32> {
         self.get_total_count(executor.context())
     }
 
     fn field_page_info(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, PageInfo, Walked>,
     ) -> ApiResult<PageInfo> {
         Ok(PageInfo::from_page_params(
@@ -238,7 +238,7 @@ impl ProgramSpecConnectionFields for ProgramSpecConnection {
 
     fn field_edges(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, ProgramSpecEdge, Walked>,
     ) -> ApiResult<Vec<ProgramSpecEdge>> {
         self.get_edges(executor.context())
@@ -251,7 +251,7 @@ pub struct CreateProgramSpecPayload {
 impl CreateProgramSpecPayloadFields for CreateProgramSpecPayload {
     fn field_program_spec_edge(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, ProgramSpecEdge, Walked>,
     ) -> ProgramSpecEdge {
         GenericEdge::from_db_row(self.program_spec.clone(), 0)
@@ -265,7 +265,7 @@ pub struct UpdateProgramSpecPayload {
 impl UpdateProgramSpecPayloadFields for UpdateProgramSpecPayload {
     fn field_program_spec_edge(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, ProgramSpecEdge, Walked>,
     ) -> Option<ProgramSpecEdge> {
         self.program_spec

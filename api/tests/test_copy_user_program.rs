@@ -1,6 +1,6 @@
 #![deny(clippy::all)]
 
-use crate::utils::{factories::*, ContextBuilder, QueryRunner};
+use crate::utils::{factories::*, QueryRunner};
 use diesel_factories::Factory;
 use juniper::InputValue;
 use maplit::hashmap;
@@ -30,33 +30,36 @@ static QUERY: &str = r#"
 "#;
 
 /// Successful copy
-#[test]
-fn test_copy_user_program_success() {
-    let mut context_builder = ContextBuilder::new();
-    let user = context_builder.log_in(&[]);
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_copy_user_program_success() {
+    let mut runner = QueryRunner::new();
+    let user = runner.log_in(&[]);
 
-    // Initialize data
-    let hardware_spec = HardwareSpecFactory::default().name("hw1").insert(conn);
-    let program_spec = ProgramSpecFactory::default()
-        .name("prog1")
-        .hardware_spec(&hardware_spec)
-        .insert(conn);
-    let user_program = UserProgramFactory::default()
-        .user(&user)
-        .program_spec(&program_spec)
-        .file_name("existing.gdlk")
-        .source_code("READ RX0")
-        .insert(conn);
+    let user_program = runner.run_with_conn(|conn| {
+        // Initialize data
+        let hardware_spec =
+            HardwareSpecFactory::default().name("hw1").insert(&conn);
+        let program_spec = ProgramSpecFactory::default()
+            .name("prog1")
+            .hardware_spec(&hardware_spec)
+            .insert(&conn);
+        UserProgramFactory::default()
+            .user(&user)
+            .program_spec(&program_spec)
+            .file_name("existing.gdlk")
+            .source_code("READ RX0")
+            .insert(&conn)
+    });
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "id" => InputValue::scalar(user_program.id.to_string()),
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    "id" => InputValue::scalar(user_program.id.to_string()),
+                }
+            )
+            .await,
         (
             json!({
                 "copyUserProgram": {
@@ -80,19 +83,20 @@ fn test_copy_user_program_success() {
 }
 
 /// Trying to copy a user_program that doesn't exist should return null.
-#[test]
-fn test_copy_user_program_invalid_id() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.log_in(&[]);
-    let runner = QueryRunner::new(context_builder);
+#[actix_rt::test]
+async fn test_copy_user_program_invalid_id() {
+    let mut runner = QueryRunner::new();
+    runner.log_in(&[]);
 
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "id" => InputValue::scalar("bogus"),
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    "id" => InputValue::scalar("bogus"),
+                }
+            )
+            .await,
         (
             json!({
                 "copyUserProgram": {
@@ -105,33 +109,36 @@ fn test_copy_user_program_invalid_id() {
 }
 
 /// Copying while not logged in returns an error.
-#[test]
-fn test_copy_user_program_not_logged_in() {
-    let context_builder = ContextBuilder::new();
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_copy_user_program_not_logged_in() {
+    let runner = QueryRunner::new();
 
-    // Initialize data
-    let user = UserFactory::default().username("user1").insert(conn);
-    let hardware_spec = HardwareSpecFactory::default().name("hw1").insert(conn);
-    let program_spec = ProgramSpecFactory::default()
-        .name("prog1")
-        .hardware_spec(&hardware_spec)
-        .insert(conn);
-    let user_program = UserProgramFactory::default()
-        .user(&user)
-        .program_spec(&program_spec)
-        .file_name("existing.gdlk")
-        .source_code("READ RX0")
-        .insert(conn);
+    let user_program = runner.run_with_conn(|conn| {
+        // Initialize data
+        let user = UserFactory::default().username("user1").insert(&conn);
+        let hardware_spec =
+            HardwareSpecFactory::default().name("hw1").insert(&conn);
+        let program_spec = ProgramSpecFactory::default()
+            .name("prog1")
+            .hardware_spec(&hardware_spec)
+            .insert(&conn);
+        UserProgramFactory::default()
+            .user(&user)
+            .program_spec(&program_spec)
+            .file_name("existing.gdlk")
+            .source_code("READ RX0")
+            .insert(&conn)
+    });
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "id" => InputValue::scalar(user_program.id.to_string()),
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    "id" => InputValue::scalar(user_program.id.to_string()),
+                }
+            )
+            .await,
         (
             serde_json::Value::Null,
             vec![json!({
@@ -144,34 +151,37 @@ fn test_copy_user_program_not_logged_in() {
 }
 
 /// You can't copy user_programs that don't belong to you.
-#[test]
-fn test_copy_user_program_wrong_owner() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.log_in(&[]);
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_copy_user_program_wrong_owner() {
+    let mut runner = QueryRunner::new();
+    runner.log_in(&[]);
 
-    // Initialize data
-    let other_user = UserFactory::default().username("user2").insert(conn);
-    let hardware_spec = HardwareSpecFactory::default().name("hw1").insert(conn);
-    let program_spec = ProgramSpecFactory::default()
-        .name("prog1")
-        .hardware_spec(&hardware_spec)
-        .insert(conn);
-    let user_program = UserProgramFactory::default()
-        .user(&other_user)
-        .program_spec(&program_spec)
-        .file_name("existing.gdlk")
-        .source_code("READ RX0")
-        .insert(conn);
+    let user_program = runner.run_with_conn(|conn| {
+        // Initialize data
+        let other_user = UserFactory::default().username("user2").insert(&conn);
+        let hardware_spec =
+            HardwareSpecFactory::default().name("hw1").insert(&conn);
+        let program_spec = ProgramSpecFactory::default()
+            .name("prog1")
+            .hardware_spec(&hardware_spec)
+            .insert(&conn);
+        UserProgramFactory::default()
+            .user(&other_user)
+            .program_spec(&program_spec)
+            .file_name("existing.gdlk")
+            .source_code("READ RX0")
+            .insert(&conn)
+    });
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "id" => InputValue::scalar(user_program.id.to_string()),
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    "id" => InputValue::scalar(user_program.id.to_string()),
+                }
+            )
+            .await,
         (
             json!({
                 "copyUserProgram": {

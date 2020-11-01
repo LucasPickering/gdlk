@@ -45,46 +45,46 @@ impl NodeType for UserProgramNode {
 impl UserProgramNodeFields for UserProgramNode {
     fn field_id(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> ID {
         util::uuid_to_gql_id(self.user_program.id)
     }
 
     fn field_file_name(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> &String {
         &self.user_program.file_name
     }
 
     fn field_source_code(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> &String {
         &self.user_program.source_code
     }
 
     fn field_created(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> &DateTime<Utc> {
         &self.user_program.created
     }
 
     fn field_last_modified(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> &DateTime<Utc> {
         &self.user_program.last_modified
     }
 
     fn field_user(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, UserNode, Walked>,
     ) -> ApiResult<UserNode> {
         Ok(UserNode::find(
-            executor.context().db_conn(),
+            &executor.context().db_conn()? as &PgConnection,
             self.user_program.user_id,
         )?
         .into())
@@ -92,11 +92,11 @@ impl UserProgramNodeFields for UserProgramNode {
 
     fn field_program_spec(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, ProgramSpecNode, Walked>,
     ) -> ApiResult<ProgramSpecNode> {
         Ok(ProgramSpecNode::find(
-            executor.context().db_conn(),
+            &executor.context().db_conn()? as &PgConnection,
             self.user_program.program_spec_id,
         )?
         .into())
@@ -104,14 +104,14 @@ impl UserProgramNodeFields for UserProgramNode {
 
     fn field_record(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, UserProgramRecordNode, Walked>,
     ) -> ApiResult<Option<UserProgramRecordNode>> {
         let node_opt = match self.user_program.record_id {
             None => None,
             Some(record_id) => Some(
                 UserProgramRecordNode::find(
-                    executor.context().db_conn(),
+                    &executor.context().db_conn()? as &PgConnection,
                     record_id,
                 )?
                 .into(),
@@ -126,7 +126,7 @@ pub type UserProgramEdge = GenericEdge<UserProgramNode>;
 impl UserProgramEdgeFields for UserProgramEdge {
     fn field_node(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, UserProgramNode, Walked>,
     ) -> &UserProgramNode {
         self.node()
@@ -134,7 +134,7 @@ impl UserProgramEdgeFields for UserProgramEdge {
 
     fn field_cursor(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> &Cursor {
         self.cursor()
     }
@@ -167,7 +167,7 @@ impl UserProgramConnection {
             self.program_spec_id,
         )
         .select(dsl::count_star())
-        .get_result::<i64>(context.db_conn())
+        .get_result::<i64>(&context.db_conn()?)
         {
             // Convert i64 to i32 - if this fails, we're in a rough spot
             Ok(count) => Ok(count.try_into().unwrap()),
@@ -196,7 +196,7 @@ impl UserProgramConnection {
         }
 
         let rows: Vec<models::UserProgram> =
-            query.get_results(context.db_conn())?;
+            query.get_results(&context.db_conn()?)?;
 
         Ok(UserProgramEdge::from_db_rows(rows, offset))
     }
@@ -205,14 +205,14 @@ impl UserProgramConnection {
 impl UserProgramConnectionFields for UserProgramConnection {
     fn field_total_count(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> ApiResult<i32> {
         self.get_total_count(executor.context())
     }
 
     fn field_page_info(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, PageInfo, Walked>,
     ) -> ApiResult<PageInfo> {
         Ok(PageInfo::from_page_params(
@@ -223,7 +223,7 @@ impl UserProgramConnectionFields for UserProgramConnection {
 
     fn field_edges(
         &self,
-        executor: &juniper::Executor<'_, RequestContext>,
+        executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, UserProgramEdge, Walked>,
     ) -> ApiResult<Vec<UserProgramEdge>> {
         self.get_edges(executor.context())
@@ -237,7 +237,7 @@ pub struct CreateUserProgramPayload {
 impl CreateUserProgramPayloadFields for CreateUserProgramPayload {
     fn field_user_program_edge(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, UserProgramEdge, Walked>,
     ) -> UserProgramEdge {
         GenericEdge::from_db_row(self.user_program.clone(), 0)
@@ -251,7 +251,7 @@ pub struct UpdateUserProgramPayload {
 impl UpdateUserProgramPayloadFields for UpdateUserProgramPayload {
     fn field_user_program_edge(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, UserProgramEdge, Walked>,
     ) -> Option<UserProgramEdge> {
         self.user_program
@@ -269,7 +269,7 @@ pub struct CopyUserProgramPayload {
 impl CopyUserProgramPayloadFields for CopyUserProgramPayload {
     fn field_user_program_edge(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, UserProgramEdge, Walked>,
     ) -> Option<UserProgramEdge> {
         self.user_program
@@ -285,7 +285,7 @@ pub struct DeleteUserProgramPayload {
 impl DeleteUserProgramPayloadFields for DeleteUserProgramPayload {
     fn field_deleted_id(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> Option<juniper::ID> {
         self.deleted_id.map(util::uuid_to_gql_id)
     }
@@ -298,7 +298,7 @@ pub struct ExecuteUserProgramPayload {
 impl ExecuteUserProgramPayloadFields for ExecuteUserProgramPayload {
     fn field_status(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, ExecuteUserProgramStatus, Walked>,
     ) -> &Option<ExecuteUserProgramStatus> {
         &self.status
