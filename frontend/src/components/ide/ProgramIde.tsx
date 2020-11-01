@@ -9,6 +9,7 @@ import { IdeContextType, IdeContext } from 'state/ide';
 import IoInfo from './IoInfo';
 import StackInfo from './StackInfo';
 import IdeControls from './IdeControls';
+import AutoSaveHandler from './AutoSaveHandler';
 import ProgramStatus from './ProgramStatus';
 import useDebouncedValue from 'hooks/useDebouncedValue';
 import { assertIsDefined } from 'util/guards';
@@ -134,13 +135,11 @@ const ProgramIde: React.FC<{
         <RegistersInfo className={localClasses.registersInfo} />
         <IoInfo className={localClasses.ioInfo} />
         <ProgramStatus className={localClasses.programStatus} />
-        <IdeControls
-          className={localClasses.controls}
-          userProgram={userProgram}
-        />
+        <IdeControls className={localClasses.controls} />
         <StackInfo className={localClasses.stackInfo} />
         <CodeEditor className={localClasses.editor} />
 
+        <AutoSaveHandler userProgram={userProgram} />
         {/* Prompt on exit for unsaved changes */}
         <PromptOnExit
           when={sourceCode !== userProgram.sourceCode}
@@ -186,7 +185,7 @@ export default createFragmentContainer(ProgramIdeWrapper, {
           id
           sourceCode
           lastModified
-          ...IdeControls_userProgram
+          ...AutoSaveHandler_userProgram
         }
       }
     }
