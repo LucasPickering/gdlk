@@ -5,39 +5,21 @@ import React, {
   useEffect,
   useRef,
 } from 'react';
-import graphql from 'babel-plugin-relay/macro';
-import { makeStyles, Snackbar } from '@material-ui/core';
+import { makeStyles } from '@material-ui/core';
 import {
   Pause as IconPause,
   PlayArrow as IconPlayArrow,
   Refresh as IconRefresh,
   NavigateNext as IconNavigateNext,
-  Save as IconSave,
   SkipNext as IconSkipNext,
 } from '@material-ui/icons';
-import { Alert, ToggleButton, ToggleButtonGroup } from '@material-ui/lab';
+import { ToggleButton, ToggleButtonGroup } from '@material-ui/lab';
 import { IdeContext } from 'state/ide';
-import { useMutation } from 'relay-hooks';
-import { IdeControls_Mutation } from './__generated__/IdeControls_Mutation.graphql';
-import { createFragmentContainer, RelayProp } from 'react-relay';
-import { IdeControls_userProgram } from './__generated__/IdeControls_userProgram.graphql';
 import clsx from 'clsx';
 import IconButton from 'components/common/IconButton';
 
 const DEFAULT_STEP_INTERVAL = 1000; // ms between steps at 1x speed
 const STEP_SPEED_OPTIONS: number[] = [2, 20];
-
-const saveUserProgramMutation = graphql`
-  mutation IdeControls_Mutation($id: ID!, $sourceCode: String!) {
-    updateUserProgram(input: { id: $id, sourceCode: $sourceCode }) {
-      userProgramEdge {
-        node {
-          sourceCode
-        }
-      }
-    }
-  }
-`;
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   controls: {
@@ -63,18 +45,12 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
  */
 const IdeControls: React.FC<{
   className?: string;
-  userProgram: IdeControls_userProgram;
-  relay: RelayProp;
-}> = ({ className, userProgram }) => {
+}> = ({ className }) => {
   const localClasses = useLocalStyles();
-  const { compiledState, sourceCode, execute, reset } = useContext(IdeContext);
-  const [mutate, { loading: saveLoading }] = useMutation<IdeControls_Mutation>(
-    saveUserProgramMutation
-  );
+  const { compiledState, execute, reset } = useContext(IdeContext);
   // We use this a few times so let's store it here
   const executeNext = useCallback(() => execute(false), [execute]);
 
-  const [saveState, setSaveState] = useState<'success' | 'error' | undefined>();
   const [stepping, setStepping] = useState<boolean>(false);
   const [stepSpeed, setStepSpeed] = useState<number>(STEP_SPEED_OPTIONS[0]);
   const intervalIdRef = useRef<number | undefined>();
@@ -105,25 +81,6 @@ const IdeControls: React.FC<{
   return (
     <div className={clsx(localClasses.controls, className)}>
       <div className={localClasses.buttons}>
-        <IconButton
-          title="Save"
-          // Disabled if there aren't any unsaved changes
-          disabled={userProgram.sourceCode === sourceCode || saveLoading}
-          onClick={() => {
-            setSaveState(undefined);
-            mutate({
-              variables: {
-                id: userProgram.id,
-                sourceCode,
-              },
-              onCompleted: () => setSaveState('success'),
-              onError: () => setSaveState('error'),
-            });
-          }}
-        >
-          <IconSave />
-        </IconButton>
-
         <IconButton
           title="Execute Next Instruction"
           disabled={!machineState || machineState.terminated || stepping}
@@ -183,31 +140,8 @@ const IdeControls: React.FC<{
           </ToggleButton>
         ))}
       </ToggleButtonGroup>
-
-      {/* Save success notification */}
-      <Snackbar
-        open={saveState === 'success'}
-        onClose={() => setSaveState(undefined)}
-      >
-        <Alert severity="success">Solution saved</Alert>
-      </Snackbar>
-
-      {/* Save error notification */}
-      <Snackbar
-        open={saveState === 'error'}
-        onClose={() => setSaveState(undefined)}
-      >
-        <Alert severity="error">Error saving program</Alert>
-      </Snackbar>
     </div>
   );
 };
 
-export default createFragmentContainer(IdeControls, {
-  userProgram: graphql`
-    fragment IdeControls_userProgram on UserProgramNode {
-      id
-      sourceCode
-    }
-  `,
-});
+export default IdeControls;
