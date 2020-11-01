@@ -17,7 +17,7 @@ mod user_program;
 mod user_program_record;
 
 use crate::{
-    error::{ApiError, IntDecodeError, ResponseResult},
+    error::{ApiError, ApiResult, IntDecodeError},
     models,
     schema::hardware_specs,
     server::gql::{
@@ -58,7 +58,7 @@ impl QueryFields for Query {
         executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, Node, Walked>,
         id: juniper::ID,
-    ) -> ResponseResult<Option<Node>> {
+    ) -> ApiResult<Option<Node>> {
         internal::get_by_id_from_all_types(&executor.context(), &id)
     }
 
@@ -67,7 +67,7 @@ impl QueryFields for Query {
         executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, UserNode, Walked>,
         username: String,
-    ) -> ResponseResult<Option<UserNode>> {
+    ) -> ApiResult<Option<UserNode>> {
         Ok(models::User::filter_by_username(&username)
             .get_result::<models::User>(executor.context().db_conn())
             .optional()?
@@ -87,7 +87,7 @@ impl QueryFields for Query {
         executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, HardwareSpecNode, Walked>,
         slug: String,
-    ) -> ResponseResult<Option<HardwareSpecNode>> {
+    ) -> ApiResult<Option<HardwareSpecNode>> {
         Ok(hardware_specs::table
             .filter(hardware_specs::dsl::slug.eq(&slug))
             .get_result::<models::HardwareSpec>(executor.context().db_conn())
@@ -101,7 +101,7 @@ impl QueryFields for Query {
         _trail: &QueryTrail<'_, HardwareSpecConnection, Walked>,
         first: Option<i32>,
         after: Option<Cursor>,
-    ) -> ResponseResult<HardwareSpecConnection> {
+    ) -> ApiResult<HardwareSpecConnection> {
         HardwareSpecConnection::new(first, after)
     }
 }

@@ -1,5 +1,5 @@
 use crate::{
-    error::ResponseResult,
+    error::ApiResult,
     server::gql::{
         hardware_spec::HardwareSpecNode, program_spec::ProgramSpecNode,
         user::UserNode, user_program::UserProgramNode, Cursor, Node,
@@ -15,7 +15,7 @@ use uuid::Uuid;
 const ALL_NODES_GET_BY_ID: &[&dyn Fn(
     &PgConnection,
     Uuid,
-) -> ResponseResult<Option<Node>>] = &[
+) -> ApiResult<Option<Node>>] = &[
     &HardwareSpecNode::get_by_id,
     &ProgramSpecNode::get_by_id,
     &UserNode::get_by_id,
@@ -34,10 +34,7 @@ pub trait NodeType: Sized + Into<Node> {
     /// A wrapper around [Self::find] that converts the result into an
     /// `Option<Node>`, so that it has a uniform output type with all other
     /// node types.
-    fn get_by_id(
-        conn: &PgConnection,
-        id: Uuid,
-    ) -> ResponseResult<Option<Node>> {
+    fn get_by_id(conn: &PgConnection, id: Uuid) -> ApiResult<Option<Node>> {
         Ok(Self::find(conn, id)
             .optional()?
             // Self::Model -> Self -> Node
@@ -91,7 +88,7 @@ impl<N: NodeType> GenericEdge<N> {
 pub fn get_by_id_from_all_types(
     context: &RequestContext,
     id: &juniper::ID,
-) -> ResponseResult<Option<Node>> {
+) -> ApiResult<Option<Node>> {
     let conn = context.db_conn();
     let uuid_id = util::gql_id_to_uuid(id);
 

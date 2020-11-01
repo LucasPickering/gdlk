@@ -1,5 +1,5 @@
 use crate::{
-    error::{ApiError, ResponseResult, ServerError},
+    error::{ApiError, ApiResult, ServerError},
     schema::roles,
 };
 use diesel::{Identifiable, Queryable};
@@ -63,7 +63,7 @@ pub struct Role {
 }
 
 impl Role {
-    pub fn role_type(&self) -> ResponseResult<RoleType> {
+    pub fn role_type(&self) -> ApiResult<RoleType> {
         self.name.parse()
     }
 }

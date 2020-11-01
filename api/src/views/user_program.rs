@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
 use crate::{
-    error::{DbErrorConverter, ResponseResult},
+    error::{ApiResult, DbErrorConverter},
     models,
     schema::{
         hardware_specs, program_specs, user_program_records, user_programs,
@@ -29,11 +29,11 @@ pub struct CreateUserProgramView<'a> {
 impl<'a> View for CreateUserProgramView<'a> {
     type Output = models::UserProgram;
 
-    fn check_permissions(&self) -> ResponseResult<()> {
+    fn check_permissions(&self) -> ApiResult<()> {
         Ok(())
     }
 
-    fn execute_internal(&self) -> ResponseResult<Self::Output> {
+    fn execute_internal(&self) -> ApiResult<Self::Output> {
         let user = self.context.user()?;
         let new_user_program = models::NewUserProgram {
             user_id: user.id,
@@ -73,11 +73,11 @@ pub struct UpdateUserProgramView<'a> {
 impl<'a> View for UpdateUserProgramView<'a> {
     type Output = Option<models::UserProgram>;
 
-    fn check_permissions(&self) -> ResponseResult<()> {
+    fn check_permissions(&self) -> ApiResult<()> {
         Ok(())
     }
 
-    fn execute_internal(&self) -> ResponseResult<Self::Output> {
+    fn execute_internal(&self) -> ApiResult<Self::Output> {
         let user = self.context.user()?;
         let modified_user_program = models::ModifiedUserProgram {
             id: self.id,
@@ -122,11 +122,11 @@ pub struct CopyUserProgramView<'a> {
 impl<'a> View for CopyUserProgramView<'a> {
     type Output = Option<models::UserProgram>;
 
-    fn check_permissions(&self) -> ResponseResult<()> {
+    fn check_permissions(&self) -> ApiResult<()> {
         Ok(())
     }
 
-    fn execute_internal(&self) -> ResponseResult<Self::Output> {
+    fn execute_internal(&self) -> ApiResult<Self::Output> {
         let conn = self.context.db_conn();
         let user = self.context.user()?;
 
@@ -167,11 +167,11 @@ pub struct DeleteUserProgramView<'a> {
 impl<'a> View for DeleteUserProgramView<'a> {
     type Output = Option<Uuid>;
 
-    fn check_permissions(&self) -> ResponseResult<()> {
+    fn check_permissions(&self) -> ApiResult<()> {
         Ok(())
     }
 
-    fn execute_internal(&self) -> ResponseResult<Self::Output> {
+    fn execute_internal(&self) -> ApiResult<Self::Output> {
         let user = self.context.user()?;
 
         // User has to own the program to delete it
@@ -221,7 +221,7 @@ impl<'a> ExecuteUserProgramView<'a> {
         &self,
         program_spec_id: Uuid,
         machine: &Machine,
-    ) -> ResponseResult<models::UserProgramRecord> {
+    ) -> ApiResult<models::UserProgramRecord> {
         let conn = self.context.db_conn();
         let user = self.context.user()?;
         let program = machine.program();
@@ -258,11 +258,11 @@ impl<'a> ExecuteUserProgramView<'a> {
 impl<'a> View for ExecuteUserProgramView<'a> {
     type Output = Option<ExecuteUserProgramOutput>;
 
-    fn check_permissions(&self) -> ResponseResult<()> {
+    fn check_permissions(&self) -> ApiResult<()> {
         Ok(())
     }
 
-    fn execute_internal(&self) -> ResponseResult<Self::Output> {
+    fn execute_internal(&self) -> ApiResult<Self::Output> {
         let user = self.context.user()?;
         let conn = self.context.db_conn();
 

@@ -1,5 +1,5 @@
 use crate::{
-    error::{ApiError, ClientError, DbErrorConverter, ResponseResult},
+    error::{ApiError, ApiResult, ClientError, DbErrorConverter},
     models,
     schema::{user_providers, users},
     views::{RequestContext, UserContext, View},
@@ -16,13 +16,13 @@ pub struct InitializeUserView<'a> {
 impl<'a> View for InitializeUserView<'a> {
     type Output = models::User;
 
-    fn check_permissions(&self) -> ResponseResult<()> {
+    fn check_permissions(&self) -> ApiResult<()> {
         // Since we're directly handling the user context in this view, we
         // handle all the not-logged-in logic directly during execution.
         Ok(())
     }
 
-    fn execute_internal(&self) -> ResponseResult<Self::Output> {
+    fn execute_internal(&self) -> ApiResult<Self::Output> {
         // The user should be logged in, but not had a User object created yet
         match self.context.user_context {
             Some(UserContext {

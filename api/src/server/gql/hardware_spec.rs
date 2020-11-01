@@ -1,5 +1,5 @@
 use crate::{
-    error::ResponseResult,
+    error::ApiResult,
     models,
     schema::{hardware_specs, program_specs},
     server::gql::{
@@ -90,7 +90,7 @@ impl HardwareSpecNodeFields for HardwareSpecNode {
         executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, ProgramSpecNode, Walked>,
         slug: String,
-    ) -> ResponseResult<Option<ProgramSpecNode>> {
+    ) -> ApiResult<Option<ProgramSpecNode>> {
         // Get program spec by hardware spec + slug
         Ok(
             models::ProgramSpec::filter_by_hardware_spec(self.hardware_spec.id)
@@ -107,7 +107,7 @@ impl HardwareSpecNodeFields for HardwareSpecNode {
         _trail: &QueryTrail<'_, ProgramSpecConnection, Walked>,
         first: Option<i32>,
         after: Option<Cursor>,
-    ) -> ResponseResult<ProgramSpecConnection> {
+    ) -> ApiResult<ProgramSpecConnection> {
         ProgramSpecConnection::new(self.hardware_spec.id, first, after)
     }
 }
@@ -137,16 +137,13 @@ pub struct HardwareSpecConnection {
 }
 
 impl HardwareSpecConnection {
-    pub fn new(
-        first: Option<i32>,
-        after: Option<Cursor>,
-    ) -> ResponseResult<Self> {
+    pub fn new(first: Option<i32>, after: Option<Cursor>) -> ApiResult<Self> {
         Ok(Self {
             page_params: ConnectionPageParams::new(first, after)?,
         })
     }
 
-    fn get_total_count(&self, context: &RequestContext) -> ResponseResult<i32> {
+    fn get_total_count(&self, context: &RequestContext) -> ApiResult<i32> {
         match hardware_specs::table
             .select(dsl::count_star())
             .get_result::<i64>(context.db_conn())
@@ -160,7 +157,7 @@ impl HardwareSpecConnection {
     fn get_edges(
         &self,
         context: &RequestContext,
-    ) -> ResponseResult<Vec<HardwareSpecEdge>> {
+    ) -> ApiResult<Vec<HardwareSpecEdge>> {
         let offset = self.page_params.offset();
 
         // Load data from the query
@@ -182,7 +179,7 @@ impl HardwareSpecConnectionFields for HardwareSpecConnection {
     fn field_total_count(
         &self,
         executor: &juniper::Executor<'_, RequestContext>,
-    ) -> ResponseResult<i32> {
+    ) -> ApiResult<i32> {
         self.get_total_count(executor.context())
     }
 
@@ -190,7 +187,7 @@ impl HardwareSpecConnectionFields for HardwareSpecConnection {
         &self,
         executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, PageInfo, Walked>,
-    ) -> ResponseResult<PageInfo> {
+    ) -> ApiResult<PageInfo> {
         Ok(PageInfo::from_page_params(
             &self.page_params,
             self.get_total_count(executor.context())?,
@@ -201,7 +198,7 @@ impl HardwareSpecConnectionFields for HardwareSpecConnection {
         &self,
         executor: &juniper::Executor<'_, RequestContext>,
         _trail: &QueryTrail<'_, HardwareSpecEdge, Walked>,
-    ) -> ResponseResult<Vec<HardwareSpecEdge>> {
+    ) -> ApiResult<Vec<HardwareSpecEdge>> {
         self.get_edges(executor.context())
     }
 }
