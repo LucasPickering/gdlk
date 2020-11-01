@@ -1,6 +1,6 @@
 #![deny(clippy::all)]
 
-use crate::utils::{factories::*, ContextBuilder, QueryRunner};
+use crate::utils::{factories::*, QueryRunner};
 use diesel_factories::Factory;
 use juniper::InputValue;
 use maplit::hashmap;
@@ -8,12 +8,14 @@ use serde_json::json;
 
 mod utils;
 
-#[test]
-fn test_field_user() {
-    let context_builder = ContextBuilder::new();
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_field_user() {
+    let runner = QueryRunner::new();
 
-    let user = UserFactory::default().username("user1").insert(conn);
+    let user = runner.run_with_conn(|conn| {
+        UserFactory::default().username("user1").insert(&conn)
+    });
+
     let query = r#"
         query UserQuery($username: String!) {
             user(username: $username) {
@@ -23,13 +25,14 @@ fn test_field_user() {
         }
     "#;
 
-    let runner = QueryRunner::new(context_builder);
     // Known user
     assert_eq!(
-        runner.query(
-            query,
-            hashmap! { "username" => InputValue::scalar("user1") }
-        ),
+        runner
+            .query(
+                query,
+                hashmap! { "username" => InputValue::scalar("user1") }
+            )
+            .await,
         (
             json!({
                 "user": {
@@ -43,10 +46,12 @@ fn test_field_user() {
 
     // Unknown user
     assert_eq!(
-        runner.query(
-            query,
-            hashmap! { "username" => InputValue::scalar("unknown_user") }
-        ),
+        runner
+            .query(
+                query,
+                hashmap! { "username" => InputValue::scalar("unknown_user") }
+            )
+            .await,
         (json!({ "user": serde_json::Value::Null }), vec![])
     );
 }

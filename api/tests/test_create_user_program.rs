@@ -1,6 +1,6 @@
 #![deny(clippy::all)]
 
-use crate::utils::{factories::*, ContextBuilder, QueryRunner};
+use crate::utils::{factories::*, QueryRunner};
 use diesel_factories::Factory;
 use juniper::InputValue;
 use maplit::hashmap;
@@ -36,19 +36,19 @@ static QUERY: &str = r#"
 "#;
 
 /// Test creating a user program successfully
-#[test]
-fn test_create_user_program_success() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.log_in(&[]);
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_create_user_program_success() {
+    let mut runner = QueryRunner::new();
+    runner.log_in(&[]);
 
-    let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(conn);
-    let program_spec = ProgramSpecFactory::default()
-        .name("prog1")
-        .hardware_spec(&hw_spec)
-        .insert(conn);
+    let program_spec = runner.run_with_conn(|conn| {
+        let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(&conn);
+        ProgramSpecFactory::default()
+            .name("prog1")
+            .hardware_spec(&hw_spec)
+            .insert(&conn)
+    });
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -57,7 +57,7 @@ fn test_create_user_program_success() {
                 "fileName" => InputValue::scalar("new.gdlk"),
                 "sourceCode" => InputValue::scalar("READ RX0"),
             }
-        ),
+        ).await,
         (
             json!({
                 "createUserProgram": {
@@ -81,25 +81,26 @@ fn test_create_user_program_success() {
 }
 
 /// Test that two users can create the a user_program with the same name
-#[test]
-fn test_create_user_program_repeat_name() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.log_in(&[]);
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_create_user_program_repeat_name() {
+    let mut runner = QueryRunner::new();
+    runner.log_in(&[]);
 
-    let other_user = UserFactory::default().username("other").insert(conn);
-    let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(conn);
-    let program_spec = ProgramSpecFactory::default()
-        .name("prog1")
-        .hardware_spec(&hw_spec)
-        .insert(conn);
-    UserProgramFactory::default()
-        .user(&other_user)
-        .program_spec(&program_spec)
-        .file_name("new.gdlk")
-        .insert(conn);
+    let program_spec = runner.run_with_conn(|conn| {
+        let other_user = UserFactory::default().username("other").insert(&conn);
+        let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(&conn);
+        let program_spec = ProgramSpecFactory::default()
+            .name("prog1")
+            .hardware_spec(&hw_spec)
+            .insert(&conn);
+        UserProgramFactory::default()
+            .user(&other_user)
+            .program_spec(&program_spec)
+            .file_name("new.gdlk")
+            .insert(&conn);
+        program_spec
+    });
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -107,7 +108,7 @@ fn test_create_user_program_repeat_name() {
                 "programSpecId" => InputValue::scalar(program_spec.id.to_string()),
                 "fileName" => InputValue::scalar("new.gdlk"),
             }
-        ),
+        ).await,
         (
             json!({
                 "createUserProgram": {
@@ -131,27 +132,28 @@ fn test_create_user_program_repeat_name() {
 }
 
 /// [ERROR] File name is already taken
-#[test]
-fn test_create_user_program_duplicate() {
-    let mut context_builder = ContextBuilder::new();
-    let user = context_builder.log_in(&[]);
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_create_user_program_duplicate() {
+    let mut runner = QueryRunner::new();
+    let user = runner.log_in(&[]);
 
-    let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(conn);
-    let program_spec = ProgramSpecFactory::default()
-        .name("prog1")
-        .hardware_spec(&hw_spec)
-        .insert(conn);
+    let program_spec = runner.run_with_conn(|conn| {
+        let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(&conn);
+        let program_spec = ProgramSpecFactory::default()
+            .name("prog1")
+            .hardware_spec(&hw_spec)
+            .insert(&conn);
 
-    // We'll test collisions against this
-    UserProgramFactory::default()
-        .user(&user)
-        .program_spec(&program_spec)
-        .file_name("existing.gdlk")
-        .source_code("READ RX0")
-        .insert(conn);
+        // We'll test collisions against this
+        UserProgramFactory::default()
+            .user(&user)
+            .program_spec(&program_spec)
+            .file_name("existing.gdlk")
+            .source_code("READ RX0")
+            .insert(&conn);
+        program_spec
+    });
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -159,7 +161,7 @@ fn test_create_user_program_duplicate() {
                 "programSpecId" => InputValue::scalar(program_spec.id.to_string()),
                 "fileName" => InputValue::scalar("existing.gdlk"),
             }
-        ),
+        ).await,
         (
             serde_json::Value::Null,
             vec![json!({
@@ -172,21 +174,22 @@ fn test_create_user_program_duplicate() {
 }
 
 /// [ERROR] References an invalid program spec
-#[test]
-fn test_create_user_program_invalid_program_spec() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.log_in(&[]);
+#[actix_rt::test]
+async fn test_create_user_program_invalid_program_spec() {
+    let mut runner = QueryRunner::new();
+    runner.log_in(&[]);
 
-    let runner = QueryRunner::new(context_builder);
     // Error - Unknown user+program spec combo
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "programSpecId" => InputValue::scalar("garbage"),
-                "fileName" => InputValue::scalar("new.gdlk"),
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    "programSpecId" => InputValue::scalar("garbage"),
+                    "fileName" => InputValue::scalar("new.gdlk"),
+                }
+            )
+            .await,
         (
             serde_json::Value::Null,
             vec![json!({
@@ -199,19 +202,19 @@ fn test_create_user_program_invalid_program_spec() {
 }
 
 /// [ERROR] Values given are invalid
-#[test]
-fn test_create_user_program_invalid_values() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.log_in(&[]);
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_create_user_program_invalid_values() {
+    let mut runner = QueryRunner::new();
+    runner.log_in(&[]);
 
-    let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(conn);
-    let program_spec = ProgramSpecFactory::default()
-        .name("prog1")
-        .hardware_spec(&hw_spec)
-        .insert(conn);
+    let program_spec = runner.run_with_conn(|conn| {
+        let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(&conn);
+        ProgramSpecFactory::default()
+            .name("prog1")
+            .hardware_spec(&hw_spec)
+            .insert(&conn)
+    });
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -219,7 +222,7 @@ fn test_create_user_program_invalid_values() {
                 "programSpecId" => InputValue::scalar(program_spec.id.to_string()),
                 "fileName" => InputValue::scalar(""),
             }
-        ),
+        ).await,
         (
             serde_json::Value::Null,
             vec![json!({

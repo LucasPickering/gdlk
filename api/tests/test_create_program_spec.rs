@@ -1,6 +1,6 @@
 #![deny(clippy::all)]
 
-use crate::utils::{factories::*, ContextBuilder, QueryRunner};
+use crate::utils::{factories::*, QueryRunner};
 use diesel_factories::Factory;
 use gdlk_api::models::RoleType;
 use juniper::InputValue;
@@ -38,19 +38,19 @@ static QUERY: &str = r#"
 "#;
 
 /// Create a program spec successfully
-#[test]
-fn test_create_program_spec_success() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.log_in(&[RoleType::SpecCreator]);
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_create_program_spec_success() {
+    let mut runner = QueryRunner::new();
+    runner.log_in(&[RoleType::SpecCreator]);
 
-    let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(conn);
+    let hw_spec = runner.run_with_conn(|conn| {
+        HardwareSpecFactory::default().name("HW 1").insert(&conn)
+    });
 
     let values_list: InputValue = InputValue::list(
         [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
     );
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -61,7 +61,7 @@ fn test_create_program_spec_success() {
                 "input" => values_list.clone(),
                 "expectedOutput" => values_list,
             }
-        ),
+        ).await,
         (
             json!({
                 "createProgramSpec": {
@@ -82,27 +82,28 @@ fn test_create_program_spec_success() {
 }
 
 /// [ERROR] References an invalid hardware spec
-#[test]
-fn test_create_program_spec_invalid_hw_spec() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.log_in(&[RoleType::SpecCreator]);
-    let runner = QueryRunner::new(context_builder);
+#[actix_rt::test]
+async fn test_create_program_spec_invalid_hw_spec() {
+    let mut runner = QueryRunner::new();
+    runner.log_in(&[RoleType::SpecCreator]);
 
     let values_list: InputValue = InputValue::list(
         [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
     );
 
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "hardwareSpecId" => InputValue::scalar("bad"),
-                "name" => InputValue::scalar("Program 3"),
-                "description" => InputValue::scalar("description!"),
-                "input" => values_list.clone(),
-                "expectedOutput" => values_list,
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    "hardwareSpecId" => InputValue::scalar("bad"),
+                    "name" => InputValue::scalar("Program 3"),
+                    "description" => InputValue::scalar("description!"),
+                    "input" => values_list.clone(),
+                    "expectedOutput" => values_list,
+                }
+            )
+            .await,
         (
             serde_json::Value::Null,
             vec![json!({
@@ -115,24 +116,25 @@ fn test_create_program_spec_invalid_hw_spec() {
 }
 
 /// [ERROR] Program spec name is already taken
-#[test]
-fn test_create_program_spec_duplicate() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.log_in(&[RoleType::SpecCreator]);
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_create_program_spec_duplicate() {
+    let mut runner = QueryRunner::new();
+    runner.log_in(&[RoleType::SpecCreator]);
 
-    let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(conn);
-    // We'll test collisions against this
-    ProgramSpecFactory::default()
-        .name("program 1")
-        .hardware_spec(&hw_spec)
-        .insert(conn);
+    let hw_spec = runner.run_with_conn(|conn| {
+        let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(&conn);
+        // We'll test collisions against this
+        ProgramSpecFactory::default()
+            .name("program 1")
+            .hardware_spec(&hw_spec)
+            .insert(&conn);
+        hw_spec
+    });
 
     let values_list: InputValue = InputValue::list(
         [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
     );
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -143,7 +145,7 @@ fn test_create_program_spec_duplicate() {
                 "input" => values_list.clone(),
                 "expectedOutput" => values_list,
             }
-        ),
+        ).await,
         (
             serde_json::Value::Null,
             vec![json!({
@@ -156,18 +158,18 @@ fn test_create_program_spec_duplicate() {
 }
 
 /// [ERROR] Values given are invalid
-#[test]
-fn test_create_program_spec_invalid_values() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.log_in(&[RoleType::SpecCreator]);
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_create_program_spec_invalid_values() {
+    let mut runner = QueryRunner::new();
+    runner.log_in(&[RoleType::SpecCreator]);
 
-    let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(conn);
+    let hw_spec = runner.run_with_conn(|conn| {
+        HardwareSpecFactory::default().name("HW 1").insert(&conn)
+    });
     let values_list: InputValue = InputValue::list(
         [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
     );
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -179,7 +181,7 @@ fn test_create_program_spec_invalid_values() {
                 "input" => values_list.clone(),
                 "expectedOutput" => values_list,
             }
-        ),
+        ).await,
         (
             serde_json::Value::Null,
             vec![json!({
@@ -195,17 +197,17 @@ fn test_create_program_spec_invalid_values() {
 }
 
 /// [ERROR] You have to be logged in to do this
-#[test]
-fn test_create_program_spec_not_logged_in() {
-    let context_builder = ContextBuilder::new();
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_create_program_spec_not_logged_in() {
+    let runner = QueryRunner::new();
 
-    let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(conn);
+    let hw_spec = runner.run_with_conn(|conn| {
+        HardwareSpecFactory::default().name("HW 1").insert(&conn)
+    });
     let values_list: InputValue = InputValue::list(
         [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
     );
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -216,7 +218,7 @@ fn test_create_program_spec_not_logged_in() {
                 "input" => values_list.clone(),
                 "expectedOutput" => values_list,
             }
-        ),
+        ).await,
         (
             serde_json::Value::Null,
             vec![json!({
@@ -229,18 +231,18 @@ fn test_create_program_spec_not_logged_in() {
 }
 
 /// [ERROR] You need permission to do this
-#[test]
-fn test_create_program_spec_permission_denied() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.log_in(&[]); // Insufficient permissions
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_create_program_spec_permission_denied() {
+    let mut runner = QueryRunner::new();
+    runner.log_in(&[]); // Insufficient permissions
 
-    let hw_spec = HardwareSpecFactory::default().name("HW 1").insert(conn);
+    let hw_spec = runner.run_with_conn(|conn| {
+        HardwareSpecFactory::default().name("HW 1").insert(&conn)
+    });
     let values_list: InputValue = InputValue::list(
         [1, 2, 3].iter().map(|v| InputValue::scalar(*v)).collect(),
     );
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
         runner.query(
             QUERY,
@@ -251,7 +253,7 @@ fn test_create_program_spec_permission_denied() {
                 "input" => values_list.clone(),
                 "expectedOutput" => values_list,
             }
-        ),
+        ).await,
         (
             serde_json::Value::Null,
             vec![json!({

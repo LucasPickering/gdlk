@@ -26,8 +26,11 @@ RUN POSTGRES_DB=${db_name} \
 # make sure the sensitive data never touches this image, otherwise it will get
 # captured in one of the layers.
 FROM postgres:12-alpine
+
+ARG db_name=gdlk
 ENV POSTGRES_DB=${db_name}
 ENV POSTGRES_USER=root
 ENV POSTGRES_PASSWORD=root
+
 # The pg image will automatically load the file from this dir on first startup
 COPY --from=builder /app/sanitized.sql /docker-entrypoint-initdb.d/

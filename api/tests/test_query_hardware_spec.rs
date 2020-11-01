@@ -1,6 +1,6 @@
 #![deny(clippy::all)]
 
-use crate::utils::{factories::*, ContextBuilder, QueryRunner};
+use crate::utils::{factories::*, QueryRunner};
 use diesel_factories::Factory;
 use juniper::InputValue;
 use maplit::hashmap;
@@ -8,16 +8,20 @@ use serde_json::json;
 
 mod utils;
 
-#[test]
-fn test_field_hardware_spec() {
-    let context_builder = ContextBuilder::new();
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_field_hardware_spec() {
+    let runner = QueryRunner::new();
 
-    let hardware_spec = HardwareSpecFactory::default().name("hw1").insert(conn);
-    ProgramSpecFactory::default()
-        .name("prog1")
-        .hardware_spec(&hardware_spec)
-        .insert(conn);
+    let hardware_spec = runner.run_with_conn(|conn| {
+        let hardware_spec =
+            HardwareSpecFactory::default().name("hw1").insert(&conn);
+        ProgramSpecFactory::default()
+            .name("prog1")
+            .hardware_spec(&hardware_spec)
+            .insert(&conn);
+        hardware_spec
+    });
+
     let query = r#"
         query HardwareSpecQuery($slug: String!) {
             hardwareSpec(slug: $slug) {
@@ -29,17 +33,17 @@ fn test_field_hardware_spec() {
             }
         }
     "#;
-
-    let runner = QueryRunner::new(context_builder);
     // Known hardware spec
     assert_eq!(
-        runner.query(
-            query,
-            hashmap! {
-                "slug" => InputValue::scalar("hw1"),
-                "programSpecSlug" => InputValue::scalar("prog1"),
-            }
-        ),
+        runner
+            .query(
+                query,
+                hashmap! {
+                    "slug" => InputValue::scalar("hw1"),
+                    "programSpecSlug" => InputValue::scalar("prog1"),
+                }
+            )
+            .await,
         (
             json!({
                 "hardwareSpec": {
@@ -56,22 +60,26 @@ fn test_field_hardware_spec() {
 
     // Unknown hardware spec
     assert_eq!(
-        runner.query(
-            query,
-            hashmap! { "slug" => InputValue::scalar("unknown_hw_spec") }
-        ),
+        runner
+            .query(
+                query,
+                hashmap! { "slug" => InputValue::scalar("unknown_hw_spec") }
+            )
+            .await,
         (json!({ "hardwareSpec": serde_json::Value::Null }), vec![])
     );
 }
 
-#[test]
-fn test_field_hardware_specs() {
-    let context_builder = ContextBuilder::new();
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_field_hardware_specs() {
+    let runner = QueryRunner::new();
 
-    HardwareSpecFactory::default().name("hw1").insert(conn);
-    HardwareSpecFactory::default().name("hw2").insert(conn);
-    HardwareSpecFactory::default().name("hw3").insert(conn);
+    runner.run_with_conn(|conn| {
+        HardwareSpecFactory::default().name("hw1").insert(&conn);
+        HardwareSpecFactory::default().name("hw2").insert(&conn);
+        HardwareSpecFactory::default().name("hw3").insert(&conn);
+    });
+
     let query = r#"
         query HardwareSpecsQuery($first: Int, $after: Cursor) {
             hardwareSpecs(first: $first, after: $after) {
@@ -92,10 +100,9 @@ fn test_field_hardware_specs() {
         }
     "#;
 
-    let runner = QueryRunner::new(context_builder);
     // Query all nodes
     assert_eq!(
-        runner.query(query, hashmap! {}),
+        runner.query(query, hashmap! {}).await,
         (
             json!({
                 "hardwareSpecs": {
@@ -134,13 +141,15 @@ fn test_field_hardware_specs() {
 
     // Query just one node
     assert_eq!(
-        runner.query(
-            query,
-            hashmap! {
-                "first" => InputValue::scalar(1),
-                "after" => InputValue::scalar("AAAAAA=="),
-            }
-        ),
+        runner
+            .query(
+                query,
+                hashmap! {
+                    "first" => InputValue::scalar(1),
+                    "after" => InputValue::scalar("AAAAAA=="),
+                }
+            )
+            .await,
         (
             json!({
                 "hardwareSpecs": {
@@ -166,32 +175,34 @@ fn test_field_hardware_specs() {
     );
 }
 
-#[test]
-fn test_field_hardware_spec_program_spec() {
-    let context_builder = ContextBuilder::new();
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_field_hardware_spec_program_spec() {
+    let runner = QueryRunner::new();
 
-    // let hardware_spec_fac=HardwareSpecFactory::default().name("hw1")
-    let hardware_spec = HardwareSpecFactory::default().name("hw1").insert(conn);
-    ProgramSpecFactory::default()
-        .name("prog1")
-        .hardware_spec(&hardware_spec)
-        .insert(conn);
-    ProgramSpecFactory::default()
-        .name("prog2")
-        .hardware_spec(&hardware_spec)
-        .insert(conn);
-    ProgramSpecFactory::default()
-        .name("prog3")
-        .hardware_spec(&hardware_spec)
-        .insert(conn);
+    runner.run_with_conn(|conn| {
+        // let hardware_spec_fac=HardwareSpecFactory::default().name("hw1")
+        let hardware_spec =
+            HardwareSpecFactory::default().name("hw1").insert(&conn);
+        ProgramSpecFactory::default()
+            .name("prog1")
+            .hardware_spec(&hardware_spec)
+            .insert(&conn);
+        ProgramSpecFactory::default()
+            .name("prog2")
+            .hardware_spec(&hardware_spec)
+            .insert(&conn);
+        ProgramSpecFactory::default()
+            .name("prog3")
+            .hardware_spec(&hardware_spec)
+            .insert(&conn);
 
-    let hardware_spec2 =
-        HardwareSpecFactory::default().name("hw2").insert(conn);
-    ProgramSpecFactory::default()
-        .name("prog1")
-        .hardware_spec(&hardware_spec2)
-        .insert(conn);
+        let hardware_spec2 =
+            HardwareSpecFactory::default().name("hw2").insert(&conn);
+        ProgramSpecFactory::default()
+            .name("prog1")
+            .hardware_spec(&hardware_spec2)
+            .insert(&conn)
+    });
 
     let query = r#"
         query HardwareSpecQuery(
@@ -215,16 +226,17 @@ fn test_field_hardware_spec_program_spec() {
         }
     "#;
 
-    let runner = QueryRunner::new(context_builder);
     // Known program spec
     assert_eq!(
-        runner.query(
-            query,
-            hashmap! {
-                "slug" => InputValue::scalar("hw1"),
-                "progSlug" => InputValue::scalar("prog1"),
-            }
-        ),
+        runner
+            .query(
+                query,
+                hashmap! {
+                    "slug" => InputValue::scalar("hw1"),
+                    "progSlug" => InputValue::scalar("prog1"),
+                }
+            )
+            .await,
         (
             json!({
                 "hardwareSpec": {
@@ -259,14 +271,16 @@ fn test_field_hardware_spec_program_spec() {
 
     // Unknown program spec
     assert_eq!(
-        runner.query(
-            query,
-            hashmap! {
-                "slug" => InputValue::scalar("hw1"),
-                "progSlug" => InputValue::scalar("unknown_prog"),
-                "progFirst" => InputValue::scalar(0),
-            }
-        ),
+        runner
+            .query(
+                query,
+                hashmap! {
+                    "slug" => InputValue::scalar("hw1"),
+                    "progSlug" => InputValue::scalar("unknown_prog"),
+                    "progFirst" => InputValue::scalar(0),
+                }
+            )
+            .await,
         (
             json!({
                 "hardwareSpec": {

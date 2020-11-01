@@ -42,7 +42,7 @@ impl ProgramError {
 impl ProgramErrorFields for ProgramError {
     fn field_message(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> &String {
         &self.message
     }
@@ -63,7 +63,7 @@ impl From<Machine> for MachineState {
 impl MachineStateFields for MachineState {
     fn field_cpu_cycles(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
     ) -> i32 {
         // CPU cycles are capped at 1 million so easily in i32 range
         self.machine.cycle_count().try_into().unwrap()
@@ -79,7 +79,7 @@ pub struct ProgramCompileError {
 impl ProgramCompileErrorFields for ProgramCompileError {
     fn field_errors(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, ProgramError, Walked>,
     ) -> &Vec<ProgramError> {
         &self.errors
@@ -95,7 +95,7 @@ pub struct ProgramRuntimeError {
 impl ProgramRuntimeErrorFields for ProgramRuntimeError {
     fn field_error(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, ProgramError, Walked>,
     ) -> &ProgramError {
         &self.error
@@ -111,7 +111,7 @@ pub struct ProgramRejectedOutput {
 impl ProgramRejectedOutputFields for ProgramRejectedOutput {
     fn field_machine(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, MachineState, Walked>,
     ) -> &MachineState {
         &self.machine_state
@@ -128,7 +128,7 @@ pub struct ProgramAcceptedOutput {
 impl ProgramAcceptedOutputFields for ProgramAcceptedOutput {
     fn field_machine(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, MachineState, Walked>,
     ) -> &MachineState {
         &self.machine_state
@@ -136,7 +136,7 @@ impl ProgramAcceptedOutputFields for ProgramAcceptedOutput {
 
     fn field_record(
         &self,
-        _executor: &juniper::Executor<'_, RequestContext>,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
         _trail: &QueryTrail<'_, UserProgramRecordNode, Walked>,
     ) -> &UserProgramRecordNode {
         &self.user_program_record

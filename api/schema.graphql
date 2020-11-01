@@ -2,10 +2,13 @@
 # lint-disable type-fields-sorted-alphabetically
 
 directive @juniper(
-  ownership: String = "borrowed"
+  async: Boolean = false
   infallible: Boolean = false
+  ownership: String = "borrowed"
+  stream_item_infallible: Boolean = true # lint-disable-line input-object-values-are-camel-cased
+  stream_type: String = null # lint-disable-line input-object-values-are-camel-cased
   with_time_zone: Boolean = true # lint-disable-line input-object-values-are-camel-cased
-) on FIELD_DEFINITION
+) on FIELD_DEFINITION | SCALAR
 
 """
 An opaque identifier that uniquely identifies an object within a connection.

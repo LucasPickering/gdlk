@@ -43,7 +43,7 @@ impl<'a> View for CreateHardwareSpecView<'a> {
         let result: Result<models::HardwareSpec, _> = new_hardware_spec
             .insert()
             .returning(hardware_specs::table::all_columns())
-            .get_result(self.context.db_conn());
+            .get_result(&self.context.db_conn()?);
 
         DbErrorConverter {
             // HardwareSpec already exists with this name or slug
@@ -93,7 +93,7 @@ impl<'a> View for UpdateHardwareSpecView<'a> {
             diesel::update(hardware_specs::table.find(self.id))
                 .set(modified_hardware_spec)
                 .returning(hardware_specs::table::all_columns())
-                .get_result(self.context.db_conn())
+                .get_result(&self.context.db_conn()?)
                 .optional();
 
         DbErrorConverter {

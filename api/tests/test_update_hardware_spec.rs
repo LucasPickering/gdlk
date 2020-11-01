@@ -1,6 +1,6 @@
 #![deny(clippy::all)]
 
-use crate::utils::{factories::*, ContextBuilder, QueryRunner};
+use crate::utils::{factories::*, QueryRunner};
 use diesel_factories::Factory;
 use gdlk_api::models::RoleType;
 use juniper::InputValue;
@@ -38,23 +38,25 @@ static QUERY: &str = r#"
 "#;
 
 /// Modify just a subset of fields, make sure the others keep their values
-#[test]
-fn test_update_hardware_spec_partial_modification() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.log_in(&[RoleType::Admin]);
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_update_hardware_spec_partial_modification() {
+    let mut runner = QueryRunner::new();
+    runner.log_in(&[RoleType::Admin]);
 
-    let hw_spec = HardwareSpecFactory::default().name("HW 2").insert(conn);
+    let hw_spec = runner.run_with_conn(|conn| {
+        HardwareSpecFactory::default().name("HW 2").insert(&conn)
+    });
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "id" => InputValue::scalar(hw_spec.id.to_string()),
-                "numRegisters" => InputValue::scalar(3),
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    "id" => InputValue::scalar(hw_spec.id.to_string()),
+                    "numRegisters" => InputValue::scalar(3),
+                }
+            )
+            .await,
         (
             json!({
                 "updateHardwareSpec": {
@@ -76,26 +78,28 @@ fn test_update_hardware_spec_partial_modification() {
 }
 
 /// Modify all fields
-#[test]
-fn test_update_hardware_spec_full_modification() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.log_in(&[RoleType::Admin]);
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_update_hardware_spec_full_modification() {
+    let mut runner = QueryRunner::new();
+    runner.log_in(&[RoleType::Admin]);
 
-    let hw_spec = HardwareSpecFactory::default().name("HW 2").insert(conn);
+    let hw_spec = runner.run_with_conn(|conn| {
+        HardwareSpecFactory::default().name("HW 2").insert(&conn)
+    });
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "id" => InputValue::scalar(hw_spec.id.to_string()),
-                "name" => InputValue::scalar("HW 22"),
-                "numRegisters" => InputValue::scalar(10),
-                "numStacks" => InputValue::scalar(2),
-                "maxStackLength" => InputValue::scalar(16),
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    "id" => InputValue::scalar(hw_spec.id.to_string()),
+                    "name" => InputValue::scalar("HW 22"),
+                    "numRegisters" => InputValue::scalar(10),
+                    "numStacks" => InputValue::scalar(2),
+                    "maxStackLength" => InputValue::scalar(16),
+                }
+            )
+            .await,
         (
             json!({
                 "updateHardwareSpec": {
@@ -116,20 +120,21 @@ fn test_update_hardware_spec_full_modification() {
 }
 
 /// Pass an invalid ID, get null back
-#[test]
-fn test_update_hardware_spec_invalid_id() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.log_in(&[RoleType::Admin]);
-    let runner = QueryRunner::new(context_builder);
+#[actix_rt::test]
+async fn test_update_hardware_spec_invalid_id() {
+    let mut runner = QueryRunner::new();
+    runner.log_in(&[RoleType::Admin]);
 
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "id" => InputValue::scalar("bad"),
-                "name" => InputValue::scalar("HW 3"),
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    "id" => InputValue::scalar("bad"),
+                    "name" => InputValue::scalar("HW 3"),
+                }
+            )
+            .await,
         (
             json!({
                 "updateHardwareSpec": {
@@ -142,22 +147,24 @@ fn test_update_hardware_spec_invalid_id() {
 }
 
 /// [ERROR] Test that passing no modifications is an error
-#[test]
-fn test_update_hardware_spec_empty_modification() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.log_in(&[RoleType::Admin]);
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_update_hardware_spec_empty_modification() {
+    let mut runner = QueryRunner::new();
+    runner.log_in(&[RoleType::Admin]);
 
-    let hw_spec = HardwareSpecFactory::default().name("HW 2").insert(conn);
+    let hw_spec = runner.run_with_conn(|conn| {
+        HardwareSpecFactory::default().name("HW 2").insert(&conn)
+    });
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "id" => InputValue::scalar(hw_spec.id.to_string()),
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    "id" => InputValue::scalar(hw_spec.id.to_string()),
+                }
+            )
+            .await,
         (
             serde_json::Value::Null,
             vec![json!({
@@ -170,25 +177,27 @@ fn test_update_hardware_spec_empty_modification() {
 }
 
 /// [ERROR] Test that using a duplicate name returns an error
-#[test]
-fn test_update_hardware_spec_duplicate() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.log_in(&[RoleType::Admin]);
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_update_hardware_spec_duplicate() {
+    let mut runner = QueryRunner::new();
+    runner.log_in(&[RoleType::Admin]);
 
-    // We'll test collisions against this
-    HardwareSpecFactory::default().name("HW 1").insert(conn);
-    let hw_spec = HardwareSpecFactory::default().name("HW 2").insert(conn);
+    let hw_spec = runner.run_with_conn(|conn| {
+        // We'll test collisions against this
+        HardwareSpecFactory::default().name("HW 1").insert(&conn);
+        HardwareSpecFactory::default().name("HW 2").insert(&conn)
+    });
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "id" => InputValue::scalar(hw_spec.id.to_string()),
-                "name" => InputValue::scalar("HW 1"),
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    "id" => InputValue::scalar(hw_spec.id.to_string()),
+                    "name" => InputValue::scalar("HW 1"),
+                }
+            )
+            .await,
         (
             serde_json::Value::Null,
             vec![json!({
@@ -201,26 +210,28 @@ fn test_update_hardware_spec_duplicate() {
 }
 
 /// [ERROR] Test that passing invalid values gives an error
-#[test]
-fn test_update_hardware_spec_invalid_values() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.log_in(&[RoleType::Admin]);
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_update_hardware_spec_invalid_values() {
+    let mut runner = QueryRunner::new();
+    runner.log_in(&[RoleType::Admin]);
 
-    let hw_spec = HardwareSpecFactory::default().name("HW 2").insert(conn);
+    let hw_spec = runner.run_with_conn(|conn| {
+        HardwareSpecFactory::default().name("HW 2").insert(&conn)
+    });
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "id" => InputValue::scalar(hw_spec.id.to_string()),
-                "name" => InputValue::scalar(""),
-                "numRegisters" => InputValue::scalar(-1),
-                "numStacks" => InputValue::scalar(-1),
-                "maxStackLength" => InputValue::scalar(-1),
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    "id" => InputValue::scalar(hw_spec.id.to_string()),
+                    "name" => InputValue::scalar(""),
+                    "numRegisters" => InputValue::scalar(-1),
+                    "numStacks" => InputValue::scalar(-1),
+                    "maxStackLength" => InputValue::scalar(-1),
+                }
+            )
+            .await,
         (
             serde_json::Value::Null,
             vec![json!({
@@ -239,25 +250,27 @@ fn test_update_hardware_spec_invalid_values() {
 }
 
 /// [ERROR] Test updateHardwareSpec when you aren't logged in
-#[test]
-fn test_update_hardware_spec_not_logged_in() {
-    let context_builder = ContextBuilder::new();
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_update_hardware_spec_not_logged_in() {
+    let runner = QueryRunner::new();
 
-    let hw_spec = HardwareSpecFactory::default().name("HW 2").insert(conn);
+    let hw_spec = runner.run_with_conn(|conn| {
+        HardwareSpecFactory::default().name("HW 2").insert(&conn)
+    });
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "id" => InputValue::scalar(hw_spec.id.to_string()),
-                "name" => InputValue::scalar(""),
-                "numRegisters" => InputValue::scalar(-1),
-                "numStacks" => InputValue::scalar(-1),
-                "maxStackLength" => InputValue::scalar(-1),
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    "id" => InputValue::scalar(hw_spec.id.to_string()),
+                    "name" => InputValue::scalar(""),
+                    "numRegisters" => InputValue::scalar(-1),
+                    "numStacks" => InputValue::scalar(-1),
+                    "maxStackLength" => InputValue::scalar(-1),
+                }
+            )
+            .await,
         (
             serde_json::Value::Null,
             vec![json!({
@@ -270,26 +283,28 @@ fn test_update_hardware_spec_not_logged_in() {
 }
 
 /// [ERROR] Test updateHardwareSpec when you don't have permission
-#[test]
-fn test_update_hardware_spec_permission_denied() {
-    let mut context_builder = ContextBuilder::new();
-    context_builder.log_in(&[]); // Insufficient permissions
-    let conn = context_builder.db_conn();
+#[actix_rt::test]
+async fn test_update_hardware_spec_permission_denied() {
+    let mut runner = QueryRunner::new();
+    runner.log_in(&[]); // Insufficient permissions
 
-    let hw_spec = HardwareSpecFactory::default().name("HW 2").insert(conn);
+    let hw_spec = runner.run_with_conn(|conn| {
+        HardwareSpecFactory::default().name("HW 2").insert(&conn)
+    });
 
-    let runner = QueryRunner::new(context_builder);
     assert_eq!(
-        runner.query(
-            QUERY,
-            hashmap! {
-                "id" => InputValue::scalar(hw_spec.id.to_string()),
-                "name" => InputValue::scalar(""),
-                "numRegisters" => InputValue::scalar(-1),
-                "numStacks" => InputValue::scalar(-1),
-                "maxStackLength" => InputValue::scalar(-1),
-            }
-        ),
+        runner
+            .query(
+                QUERY,
+                hashmap! {
+                    "id" => InputValue::scalar(hw_spec.id.to_string()),
+                    "name" => InputValue::scalar(""),
+                    "numRegisters" => InputValue::scalar(-1),
+                    "numStacks" => InputValue::scalar(-1),
+                    "maxStackLength" => InputValue::scalar(-1),
+                }
+            )
+            .await,
         (
             serde_json::Value::Null,
             vec![json!({

@@ -2,6 +2,7 @@
 
 use diesel::{r2d2::ConnectionManager, Connection, PgConnection};
 use r2d2::CustomizeConnection;
+use std::time::Duration;
 
 /// Type aliases for DB connections
 pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
@@ -42,6 +43,13 @@ pub fn init_test_db_conn_pool() -> Result<Pool, r2d2::Error> {
     let database_url = std::env::var("DATABASE_URL").unwrap();
     let manager = ConnectionManager::new(database_url);
     r2d2::Pool::builder()
+        // We use a transaction on every connection, so limit the pool to one
+        // connection so that every operation is done inside that transaction.
+        // We need to make sure that every connection is dropped before
+        // requesting a new one, otherwise we'll get a failure.
+        .max_size(1)
+        // Shorten the timeout so if a test gets in deadlock it dies faster
+        .connection_timeout(Duration::from_secs(3))
         .connection_customizer(Box::new(TestConnectionCustomizer))
         .build(manager)
 }

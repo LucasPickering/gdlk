@@ -9,7 +9,8 @@ use crate::{
     views::{RequestContext, View},
 };
 use diesel::{
-    ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl, Table,
+    ExpressionMethods, OptionalExtension, PgConnection, QueryDsl, RunQueryDsl,
+    Table,
 };
 use gdlk::{
     error::{CompileError, RuntimeError, WithSource},
@@ -48,7 +49,7 @@ impl<'a> View for CreateUserProgramView<'a> {
         let result: Result<models::UserProgram, _> = new_user_program
             .insert()
             .returning(user_programs::table::all_columns())
-            .get_result(self.context.db_conn());
+            .get_result(&self.context.db_conn()?);
 
         DbErrorConverter {
             // Given program spec ID was invalid. Note: this can also indicate
@@ -99,7 +100,7 @@ impl<'a> View for UpdateUserProgramView<'a> {
             ))
             .set(modified_user_program)
             .returning(user_programs::table::all_columns())
-            .get_result(self.context.db_conn())
+            .get_result(&self.context.db_conn()?)
             .optional();
 
         DbErrorConverter {
@@ -127,13 +128,13 @@ impl<'a> View for CopyUserProgramView<'a> {
     }
 
     fn execute_internal(&self) -> ApiResult<Self::Output> {
-        let conn = self.context.db_conn();
+        let conn = self.context.db_conn()?;
         let user = self.context.user()?;
 
         // The user has to own the user program to copy it
         let existing_user_program: Option<models::UserProgram> =
             models::UserProgram::find_for_user(self.id, user.id)
-                .get_result(conn)
+                .get_result(&conn)
                 .optional()?;
 
         // If the requested user_program exists (for the given user), copy it
@@ -151,7 +152,7 @@ impl<'a> View for CopyUserProgramView<'a> {
                     }
                     .insert()
                     .returning(user_programs::all_columns)
-                    .get_result(conn)?,
+                    .get_result(&conn)?,
                 )
             }
         })
@@ -180,7 +181,7 @@ impl<'a> View for DeleteUserProgramView<'a> {
                 self.id, user.id,
             ))
             .returning(user_programs::columns::id)
-            .get_result(self.context.db_conn())
+            .get_result(&self.context.db_conn()?)
             .optional()?,
         )
     }
@@ -219,10 +220,10 @@ impl<'a> ExecuteUserProgramView<'a> {
     /// point to that record as its latest execution.
     fn save_record(
         &self,
+        conn: &PgConnection,
         program_spec_id: Uuid,
         machine: &Machine,
     ) -> ApiResult<models::UserProgramRecord> {
-        let conn = self.context.db_conn();
         let user = self.context.user()?;
         let program = machine.program();
 
@@ -264,7 +265,7 @@ impl<'a> View for ExecuteUserProgramView<'a> {
 
     fn execute_internal(&self) -> ApiResult<Self::Output> {
         let user = self.context.user()?;
-        let conn = self.context.db_conn();
+        let conn = self.context.db_conn()?;
 
         let (source_code, hardware_spec, program_spec): (
             String,
@@ -279,7 +280,7 @@ impl<'a> View for ExecuteUserProgramView<'a> {
                 hardware_specs::all_columns,
                 program_specs::all_columns,
             ))
-            .get_result(conn)
+            .get_result(&conn)
             .optional()?
         {
             // If the query returned no result, then the ID is no bueno. That
@@ -319,7 +320,7 @@ impl<'a> View for ExecuteUserProgramView<'a> {
 
         let output = if successful {
             // Program succeeded, update the DB to store a record of this run
-            let record = self.save_record(program_spec_id, &machine)?;
+            let record = self.save_record(&conn, program_spec_id, &machine)?;
             ExecuteUserProgramOutput::Accepted { machine, record }
         } else {
             // No errors occurred, but the final state wasn't correct (input

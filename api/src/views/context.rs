@@ -2,18 +2,18 @@
 //! top-level struct is [RequestContext].
 
 use crate::{
-    error::{ApiResult, ClientError},
+    error::{ApiError, ApiResult, ClientError},
     models,
     schema::{
         permissions, role_permissions, roles, user_providers, user_roles, users,
     },
-    util::PooledConnection,
+    util::{Pool, PooledConnection},
 };
 use diesel::{
     NullableExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
     RunQueryDsl,
 };
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
 use uuid::Uuid;
 
 /// Information on the logged-in user.
@@ -54,7 +54,7 @@ pub struct UserContext {
 impl UserContext {
     /// Load the user context from the database. The user_provider ID should
     /// come from some authentication.
-    fn load_context(
+    pub fn load_context(
         conn: &PgConnection,
         user_provider_id: Uuid,
     ) -> ApiResult<Option<Self>> {
@@ -157,8 +157,9 @@ impl UserContext {
 
 /// The context that gets attached to every incoming request.
 pub struct RequestContext {
-    /// DB connection
-    pub db_conn: PooledConnection,
+    /// DB connection pool. We can't store an individual connection here
+    /// because it needs to be Clone.
+    pub db_conn_pool: Arc<Pool>,
     /// The authenticated user. None if the requesting user is not logged in.
     pub user_context: Option<UserContext>,
 }
@@ -166,22 +167,24 @@ pub struct RequestContext {
 impl RequestContext {
     /// Load the context from the given request inputs.
     pub fn load_context(
-        db_conn: PooledConnection,
+        db_conn_pool: Arc<Pool>,
         user_provider_id: Option<Uuid>,
     ) -> ApiResult<Self> {
+        let db_conn =
+            db_conn_pool.get().map_err(ApiError::from_server_error)?;
         let user_context = match user_provider_id {
             None => None,
             Some(upid) => UserContext::load_context(&db_conn, upid)?,
         };
 
         Ok(Self {
-            db_conn,
+            db_conn_pool,
             user_context,
         })
     }
 
-    pub fn db_conn(&self) -> &PgConnection {
-        &self.db_conn
+    pub fn db_conn(&self) -> ApiResult<PooledConnection> {
+        self.db_conn_pool.get().map_err(ApiError::from_server_error)
     }
 
     /// Get the ID of the authenticated user. If the user isn't authenticated,

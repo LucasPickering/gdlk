@@ -13,11 +13,11 @@ use gdlk_api::{
     schema::{user_providers, users},
     server::{create_gql_schema, GqlSchema},
     util::{self, PooledConnection},
-    views::RequestContext,
+    views::{RequestContext, UserContext},
 };
 use juniper::{ExecutionError, InputValue, Variables};
 use serde::Serialize;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 /// Convert a serializable value into a JSON value.
 #[allow(dead_code)] // Not all test crates use this
@@ -26,24 +26,42 @@ pub fn to_json<T: Serialize>(input: T) -> serde_json::Value {
     serde_json::from_str(&serialized).unwrap()
 }
 
-pub struct ContextBuilder {
-    db_conn: PooledConnection,
-    user_provider: Option<models::UserProvider>,
-    user: Option<models::User>,
+/// Helper type for setting up and executing test GraphQL queries
+#[allow(dead_code)] // Not all test crates use this
+pub struct QueryRunner {
+    schema: GqlSchema,
+    context: RequestContext,
 }
 
-impl ContextBuilder {
+impl QueryRunner {
+    /// Construct a new QueryRunner, which is used to execute GraphQL queries
+    /// from a test.
+    #[allow(dead_code)] // Not all test crates use this
     pub fn new() -> Self {
-        let db_conn = util::init_test_db_conn_pool().unwrap().get().unwrap();
+        let db_conn_pool = util::init_test_db_conn_pool().unwrap();
         Self {
-            db_conn,
-            user_provider: None,
-            user: None,
+            schema: create_gql_schema(),
+            context: RequestContext::load_context(Arc::new(db_conn_pool), None)
+                .unwrap(),
         }
     }
 
-    pub fn db_conn(&self) -> &PgConnection {
-        &self.db_conn
+    /// Get a new DB connection. While in testing the pool only holds a single
+    /// connection, so the returned connection **needs to be dropped** before
+    /// a new one is requested from the pool! To try to enforce that, this
+    /// func is interntionally not public.
+    fn db_conn(&self) -> PooledConnection {
+        self.context.db_conn().unwrap()
+    }
+
+    /// Execute a block of code with a DB connection. Tests run with a single
+    /// connection in the pool (to enforce that everything happens inside a
+    /// transaction), so this restricts access to that connection. This prevents
+    /// us from hanging onto a connection reference longer than its needed,
+    /// which would block subsequent code and cause a test failure.
+    #[allow(dead_code)] // Not all test crates use this
+    pub fn run_with_conn<T>(&self, f: impl FnOnce(&PgConnection) -> T) -> T {
+        f(&self.db_conn())
     }
 
     /// Normally all test connections are initialized within a DB transaction.
@@ -55,70 +73,46 @@ impl ContextBuilder {
     /// it doesn't clean all tables - scroll down for more info)
     #[allow(dead_code)] // Not all test crates use this
     pub fn disable_transaction(&self) {
-        self.db_conn
-            .transaction_manager()
-            .commit_transaction(&self.db_conn)
+        let conn = self.db_conn();
+        conn.transaction_manager()
+            .commit_transaction(&conn)
             .unwrap();
     }
 
+    /// Set the user_provider in the user context. This will update the user
+    /// context with that provider ID, so the user field will be re-loaded too.
     #[allow(dead_code)] // Not all test crates use this
     pub fn set_user_provider(&mut self, user_provider: models::UserProvider) {
-        self.user_provider = Some(user_provider);
+        let conn = self.db_conn();
+        self.context.user_context =
+            UserContext::load_context(&conn, user_provider.id).unwrap();
     }
 
+    /// Create a new user with the given roles, then update the user context
+    /// to be authenticated as that new user. Returns the created user.
     #[allow(dead_code)] // Not all test crates use this
     pub fn log_in(&mut self, roles: &[models::RoleType]) -> models::User {
         let conn = self.db_conn();
-        let user = UserFactory::default().username("user1").insert(conn);
+        let user = UserFactory::default().username("user1").insert(&conn);
 
         // Create a bogus user_provider for this user. We're not trying to test
         // the OpenID logic here, so this is fine.
         let user_provider = UserProviderFactory::default()
             .sub(&user.id.to_string()) // guarantees uniqueness
             .user(Some(&user))
-            .insert(conn);
+            .insert(&conn);
 
         // Insert one row into user_roles for each requested row
-        user.add_roles_x(conn, roles).unwrap();
+        user.add_roles_x(&conn, roles).unwrap();
 
-        self.user_provider = Some(user_provider);
-        self.user = Some(user.clone());
+        self.context.user_context =
+            UserContext::load_context(&conn, user_provider.id).unwrap();
         user
     }
 
+    /// Execute a GraphQL query
     #[allow(dead_code)] // Not all test crates use this
-    pub fn build(self) -> RequestContext {
-        RequestContext::load_context(
-            self.db_conn,
-            self.user_provider.map(|up| up.id),
-        )
-        .unwrap()
-    }
-}
-
-/// Helper type for setting up and executing test GraphQL queries
-#[allow(dead_code)] // Not all test crates use this
-pub struct QueryRunner {
-    schema: GqlSchema,
-    context: RequestContext,
-}
-
-impl QueryRunner {
-    #[allow(dead_code)] // Not all test crates use this
-    pub fn new(context_builder: ContextBuilder) -> Self {
-        Self {
-            schema: create_gql_schema(),
-            context: context_builder.build(),
-        }
-    }
-
-    #[allow(dead_code)] // Not all test crates use this
-    pub fn db_conn(&self) -> &PgConnection {
-        &self.context.db_conn
-    }
-
-    #[allow(dead_code)] // Not all test crates use this
-    pub fn query<'a>(
+    pub async fn query<'a>(
         &'a self,
         query: &'a str,
         vars: HashMap<&str, InputValue>,
@@ -137,6 +131,7 @@ impl QueryRunner {
                 &converted_vars,
                 &self.context,
             )
+            .await
             .unwrap();
 
         // Map the output data to JSON, for easier comparison
@@ -156,8 +151,10 @@ impl Drop for QueryRunner {
             == 0
         {
             // TODO clean all tables here
-            diesel::delete(user_providers::table).execute(conn).unwrap();
-            diesel::delete(users::table).execute(conn).unwrap();
+            diesel::delete(user_providers::table)
+                .execute(&conn)
+                .unwrap();
+            diesel::delete(users::table).execute(&conn).unwrap();
         }
     }
 }

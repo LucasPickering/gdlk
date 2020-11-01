@@ -45,7 +45,7 @@ impl<'a> View for CreateProgramSpecView<'a> {
         let result: Result<models::ProgramSpec, _> = new_program_spec
             .insert()
             .returning(program_specs::table::all_columns())
-            .get_result(self.context.db_conn());
+            .get_result(&self.context.db_conn()?);
 
         DbErrorConverter {
             // Given hardware spec ID was invalid
@@ -97,7 +97,7 @@ impl<'a> View for UpdateProgramSpecView<'a> {
             diesel::update(program_specs::table.find(modified_program_spec.id))
                 .set(modified_program_spec)
                 .returning(program_specs::table::all_columns())
-                .get_result(self.context.db_conn())
+                .get_result(&self.context.db_conn()?)
                 .optional();
 
         DbErrorConverter {
