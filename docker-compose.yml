@@ -6,7 +6,6 @@ volumes:
   api_build:
   frontend_core_build:
   frontend_wasm_build:
-  frontend_wasm_pkg:
   frontend_node_modules:
 
 services:
@@ -46,7 +45,6 @@ services:
       - ./:/app:rw
       - frontend_core_build:/app/target
       - frontend_wasm_build:/app/wasm/target
-      - frontend_wasm_pkg:/app/wasm/pkg
       - frontend_node_modules:/app/frontend/node_modules
     ports:
       - "3000:3000"
