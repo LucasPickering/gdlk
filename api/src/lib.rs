@@ -1,4 +1,5 @@
 #![deny(clippy::all)]
+#![feature(async_closure)]
 #![feature(backtrace)]
 
 // Diesel hasn't fully moved to Rust 2018 yet so we need this

@@ -73,13 +73,20 @@ pub async fn build_client_map(open_id_config: &OpenIdConfig) -> ClientMap {
 
     let host_url: &str = &open_id_config.host_url;
 
-    // Build a client for each provider
-    // TODO do these in parallel
-    let mut map = HashMap::new();
-    for (name, provider_config) in &open_id_config.providers {
-        let client = make_client(host_url, name, provider_config).await;
-        map.insert(name.into(), client);
-    }
+    // Create one future per provider
+    let futures = open_id_config.providers.iter().map(
+        async move |(name, provider_config)| {
+            (
+                name.to_owned(),
+                make_client(host_url, name, provider_config).await,
+            )
+        },
+    );
+    // Resolve all the futures (concurrently), then collect results into a map
+    let map: HashMap<_, _> = futures::future::join_all(futures)
+        .await
+        .into_iter()
+        .collect();
 
     ClientMap { map }
 }
@@ -100,6 +107,8 @@ pub async fn route_authorize(
         .authorize_url(
             AuthenticationFlow::<CoreResponseType>::AuthorizationCode,
             move || AuthState::new(next).serialize(),
+            // TODO use a real nonce
+            // https://github.com/LucasPickering/gdlk/issues/159
             || Nonce::new("4".into()),
         )
         .add_scope(Scope::new("email".to_string()))

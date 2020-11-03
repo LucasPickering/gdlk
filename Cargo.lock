@@ -1075,6 +1075,7 @@ dependencies = [
  "diesel",
  "diesel-factories",
  "env_logger",
+ "futures",
  "gdlk",
  "juniper",
  "juniper-from-schema",
