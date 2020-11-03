@@ -101,6 +101,7 @@ DEBUG=1 cargo make test
 We use nightly Rust. Here's a list of reasons why. If this list every gets empty, we should switch to stable.
 
 - Rust features
+  - [async_closure](https://github.com/rust-lang/rust/issues/62290)
   - [backtrace](https://github.com/rust-lang/rust/issues/53487)
   - [or_patterns](https://github.com/rust-lang/rust/issues/54883)
 - Rustfmt
