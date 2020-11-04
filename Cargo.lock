@@ -2500,6 +2500,9 @@ name = "uuid"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90dbc611eb48397705a6b0f6e917da23ae517e4d127123d2cf7674206627d32a"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "validator"

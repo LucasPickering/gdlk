@@ -1,11 +1,13 @@
 use crate::error::{
     ActixClientError, ApiError, ApiResult, ClientError, ServerError,
 };
+use actix_identity::Identity;
 use openidconnect::{
     core::{CoreClient, CoreIdTokenClaims},
     AuthorizationCode, CsrfToken, Nonce, TokenResponse,
 };
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 /// HTTP client for OpenID Connect requests. Basically just a wrapper around
 /// the Actix HTTP client.
@@ -74,54 +76,83 @@ pub async fn oidc_request_token(
     }
 }
 
-/// Contents of the `state` query param that gets passed through the OpenID
-/// login. These will be serialized via JSON -> base64.
-/// https://auth0.com/docs/protocols/oauth2/oauth-state
-#[derive(Serialize, Deserialize, Debug)]
-pub struct AuthState {
-    /// The next param determines what page to redirect the user to after login
-    next: Option<String>,
-    csrf_token: CsrfToken,
+/// Data related to a user's current auth state. This is meant to be serialized
+/// and stored within the identity cookie that we get from actix-identity. That
+/// cookie is signed+encrypted, so any data we put in here is guaranteed to be
+/// secret and authentic. This is meant to be used in tandem with
+/// [actix-identity::Identity]; this struct provides the data, `Identity`
+/// provides the machinery to read from/write to the cookie securely.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum IdentityState {
+    /// The state that we care about while the user is in the OIDC flow. This
+    /// variant is only used while a user is in the login process. Once login
+    /// is finished, we should replace the cookie with a `PostAuth` value.
+    DuringAuth {
+        /// Cross-site Request Forgery token. Used to reject unsolicited OIDC
+        /// callbacks
+        /// https://auth0.com/docs/protocols/state-parameters
+        csrf_token: CsrfToken,
+        /// The route to redirect the user to after finishing login
+        next: Option<String>,
+    },
+    /// State that we track when the user is already logged in.
+    PostAuth {
+        /// The ID of the row in the `user_providers` table that the user is
+        /// logged in through. From this we can fetch the `users` row, which
+        /// will give us everything we need to know about the user.
+        user_provider_id: Uuid,
+    },
 }
 
-impl AuthState {
-    /// Create a new state with the given redirect param.
-    pub fn new(next: Option<String>) -> Self {
-        Self {
-            next,
-            // TODO make this secure
-            // https://github.com/LucasPickering/gdlk/issues/160
-            csrf_token: CsrfToken::new("3".into()),
+impl IdentityState {
+    /// Read the identity state from the identity cookie. If the cookie isn't
+    /// present/valid, or if the contents aren't deserializable, return `None`.
+    pub fn from_identity(identity: &Identity) -> Option<Self> {
+        let id_string = identity.identity()?;
+        serde_json::from_str(&id_string).ok()
+    }
+
+    /// Serialize this object into a string. Used to store the value in the
+    /// identity cookie.
+    pub fn serialize(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
+
+    /// Check the stored CSRF token against a token that was given as input.
+    /// This should be done during the callback stage of auth, to make sure that
+    /// the callback is coming from the user that requested the auth cycle.
+    pub fn verify_csrf(&self, suspect_csrf_token: &str) -> ApiResult<()> {
+        match self {
+            // Check that we have a stored token, and that it matches the given
+            Self::DuringAuth { csrf_token, .. }
+                if suspect_csrf_token == csrf_token.secret() =>
+            {
+                Ok(())
+            }
+            _ => Err(ClientError::CsrfError.into()),
         }
     }
 
-    /// Get the `next` field, which specifies which route to redirect the user
-    /// to after the logic is successful.
+    /// Get the `next` param, which tells the API which route to redirect to
+    /// after finishing the auth process. If the value isn't present in the
+    /// state, just return the root route.
     pub fn next(&self) -> &str {
-        self.next.as_deref().unwrap_or("/")
+        match self {
+            Self::DuringAuth {
+                next: Some(next), ..
+            } => next,
+            _ => "/",
+        }
     }
 
-    /// Serialization into a string that can be passed to `openidconnect`.
-    pub fn serialize(&self) -> CsrfToken {
-        let json_string = serde_json::to_string(self).unwrap();
-        CsrfToken::new(json_string)
-    }
-
-    /// Deserialize input from the user into auth state. This will also
-    /// validate the CSRF token in the param.
-    pub fn deserialize(input: Option<&str>) -> ApiResult<Self> {
-        match input {
-            None => Err(ClientError::CsrfError.into()),
-            Some(json_str) => {
-                let state: Self = serde_json::from_str(json_str)
-                    .map_err(ApiError::from_client_error)?;
-                // TODO make this secure
-                if "3" == state.csrf_token.secret() {
-                    Ok(state)
-                } else {
-                    Err(ClientError::CsrfError.into())
-                }
-            }
+    /// Get the `user_provider_id` stored in the cookie. This is used to
+    /// determine if a user is already logged in.
+    pub fn user_provider_id(&self) -> Option<Uuid> {
+        match self {
+            Self::PostAuth {
+                user_provider_id, ..
+            } => Some(*user_provider_id),
+            _ => None,
         }
     }
 }

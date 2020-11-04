@@ -8,7 +8,7 @@ use crate::{
     config::GdlkConfig,
     error::ApiError,
     server::auth::{logout_route, route_authorize, route_login},
-    util::{self, Pool},
+    util::{self, IdentityState, Pool},
     views::RequestContext,
 };
 use actix_identity::{CookieIdentityPolicy, Identity, IdentityService};
@@ -18,6 +18,7 @@ use actix_web::{
 use chrono::Duration;
 use juniper::http::{graphiql::graphiql_source, GraphQLRequest};
 use std::{io, sync::Arc};
+use uuid::Uuid;
 
 #[get("/api/graphiql")]
 async fn route_graphiql() -> HttpResponse {
@@ -34,8 +35,11 @@ async fn route_graphql(
     gql_schema: web::Data<Arc<GqlSchema>>,
     data: web::Json<GraphQLRequest>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    // Auth cookie holds a user provider ID - if populated, parse it
-    let user_provider_id = identity.identity().map(|id| util::parse_uuid(&id));
+    // Auth cookie holds a user provider ID - if present, the user is logged in
+    let identity_state = IdentityState::from_identity(&identity);
+    let user_provider_id: Option<Uuid> = identity_state
+        .map(|id_state| id_state.user_provider_id())
+        .flatten();
     let context = RequestContext::load_context(
         pool.get().map_err(ApiError::from_server_error)?,
         user_provider_id,

@@ -1,9 +1,9 @@
 use crate::{
     config::{OpenIdConfig, ProviderConfig},
-    error::ApiError,
+    error::{ApiError, ClientError},
     models::NewUserProvider,
     schema::user_providers,
-    util::{self, Pool},
+    util::{self, IdentityState, Pool},
 };
 use actix_identity::Identity;
 use actix_web::{get, http, post, web, HttpResponse};
@@ -12,12 +12,11 @@ use diesel::{
 };
 use openidconnect::{
     core::{CoreClient, CoreProviderMetadata, CoreResponseType},
-    AuthenticationFlow, ClientId, ClientSecret, IssuerUrl, Nonce, RedirectUrl,
-    Scope,
+    AuthenticationFlow, ClientId, ClientSecret, CsrfToken, IssuerUrl, Nonce,
+    RedirectUrl, Scope,
 };
 use serde::Deserialize;
 use std::collections::HashMap;
-use util::AuthState;
 use uuid::Uuid;
 
 /// Map of provider name to configured [CoreClient]
@@ -98,23 +97,31 @@ pub async fn route_authorize(
     client_map: web::Data<ClientMap>,
     params: web::Path<(String,)>,
     query: web::Query<RedirectQuery>,
+    identity: Identity,
 ) -> Result<HttpResponse, actix_web::Error> {
     let provider_name: &str = &params.0;
     let oidc_client = client_map.get_client(provider_name)?;
-    let next = query.next.clone();
 
-    let (auth_url, _csrf_state, _nonce) = oidc_client
+    let (auth_url, csrf_token, _nonce) = oidc_client
         .authorize_url(
             AuthenticationFlow::<CoreResponseType>::AuthorizationCode,
-            move || AuthState::new(next).serialize(),
+            CsrfToken::new_random,
             // TODO use a real nonce
             // https://github.com/LucasPickering/gdlk/issues/159
             || Nonce::new("4".into()),
         )
         .add_scope(Scope::new("email".to_string()))
-        // Serialization shouldn't ever fail so yeet that shit outta the Result
-        .add_extra_param("next", query.next.as_deref().unwrap_or(""))
         .url();
+
+    // Encode the CSRF token and some extra data, then store that in a
+    // signed+encrypted cookie. We'll read the CSRF token from there in the
+    // callback and compare to what we get from the URL. Since the cookie is
+    // signed, this prevents CSRF attacks.
+    let state = IdentityState::DuringAuth {
+        next: query.next.clone(),
+        csrf_token,
+    };
+    identity.remember(state.serialize());
 
     Ok(HttpResponse::Found()
         .header(http::header::LOCATION, auth_url.to_string())
@@ -141,14 +148,20 @@ pub async fn route_login(
     let oidc_client = client_map.get_client(provider_name)?;
     let conn =
         &pool.get().map_err(ApiError::from_server_error)? as &PgConnection;
+    // Read identity/state data that stored in an encrypted+signed cookie. We
+    // know this data is safe, we wrote it and it hasn't been modified.
+    let identity_state =
+        IdentityState::from_identity(&identity).ok_or_else(|| {
+            ApiError::from_client_error(ClientError::Unauthenticated)
+        })?;
 
+    // VERY IMPORTANT - read the CSRF token from the state param, and compare it
+    // to the token we stored in the cookie. The cookie is encrypted+signed,
     // Parse the state param and validate the CSRF token in there
-    let auth_state = AuthState::deserialize(query.state.as_deref())?;
+    identity_state.verify_csrf(query.state.as_deref().unwrap_or(""))?;
 
     // Send the user's code to the server to authenticate it
     let user_info = util::oidc_request_token(oidc_client, &query.code).await?;
-
-    // Not sure when this can be None, hopefully never??
     let sub: &str = user_info.subject().as_str();
 
     // In most cases, the user should already hvae a user_provider row. If not,
@@ -182,13 +195,15 @@ pub async fn route_login(
         }
     };
 
-    // Add a cookie which can be used to auth requests. We use the UserProvider
-    // ID so that this works even if the User object hasn't been created yet.
-    identity.remember(user_provider_id.to_string());
+    // Replace the auth state cookie with one for permanenet auth. We use the
+    // UserProvider ID so that this works even if the User object hasn't
+    // been created yet.
+    let new_identity_state = IdentityState::PostAuth { user_provider_id };
+    identity.remember(new_identity_state.serialize());
 
-    // Redirect to the path specified in the OpenID state param
+    // Redirect to the path specified in the state cookie
     Ok(HttpResponse::Found()
-        .header(http::header::LOCATION, auth_state.next())
+        .header(http::header::LOCATION, identity_state.next())
         .finish())
 }
 
