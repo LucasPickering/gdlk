@@ -237,7 +237,8 @@ impl actix_web::ResponseError for ApiError {
             Self::Client { source, .. } => {
                 match source {
                     // 401
-                    ClientError::CsrfError
+                    ClientError::Unauthenticated
+                    | ClientError::CsrfError
                     | ClientError::ClaimsVerificationError(_) => {
                         HttpResponse::Unauthorized().into()
                     }
