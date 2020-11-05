@@ -47,7 +47,7 @@ done
 [tasks.start]
 dependencies = ["db-setup"]
 command = "cargo"
-args = ["watch", "-x", "run -- server"]
+args = ["watch", "-x", "run"]
 
 [tasks.secrets]
 script = [
