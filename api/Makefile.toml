@@ -34,16 +34,6 @@ extend = "diesel"
 dependencies = ["db-setup"]
 args = ["migration", "run"]
 
-[tasks.seed]
-dependencies = ["migrations"]
-script = [
-'''
-for f in ./seeds/*.sql; do
-    psql $DATABASE_URL -f $f
-done
-'''
-]
-
 [tasks.start]
 dependencies = ["db-setup"]
 command = "cargo"

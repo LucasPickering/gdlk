@@ -10,10 +10,8 @@ volumes:
 
 services:
   db:
-    image: postgres:12-alpine
-    environment:
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: root
+    # DB: gdlk; creds: root/root
+    image: gcr.io/gdlkit/gdlk-db:${DOCKER_TAG}
     command: postgres -c log_statement=all
     ports:
       - "5432:5432"

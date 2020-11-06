@@ -1,11 +1,11 @@
 version: "3.2"
 
 services:
+  # Unlike the other images, this one has to be built and pushed manually.
+  # See README for instructions.
   db:
-    image: postgres:12-alpine
-    environment:
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: root
+    build: ./db/dev
+    image: gcr.io/gdlkit/gdlk-db:${DOCKER_TAG}
 
   api:
     build:
