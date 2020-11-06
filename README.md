@@ -55,20 +55,25 @@ docker-compose up
 
 Then, see the next section to initialize the DB.
 
-### Migrations & Seed Data
+### Dev DB Image & Migrations
 
-Migrations are managed by Diesel. Seed data is defined via SQL scripts, in `api/seeds`.
+We use a custom Postgres image for development that contains sanitized data from production. New migrations can be applied on top of it with:
 
 ```sh
 cd api
 # Migrations are automatically run on server startup, but if you need to run them manually:
 cargo make diesel migration run
 
-# You can load seed data with:
-cargo make seed
-
 # If you need to re-run migrations (this will wipe out your DB!)
 cargo make diesel db reset
+```
+
+To re-build the dev DB image, first you need read permission on the prod DB backup storage bucket.
+
+```sh
+gsutil cp gs://<backup bucket>/backups.tar.gz db/dev
+docker-compose -f docker-compose.ci.yml build db
+docker-compose -f docker-compose.ci.yml push db
 ```
 
 ### Tests

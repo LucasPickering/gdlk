@@ -93,7 +93,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
       - name: Build API image
         run: |-
-          docker-compose pull api
+          docker-compose pull db api
           docker-compose build api
       - name: Test API
         run: docker-compose run api cargo make -p docker test
