@@ -81,7 +81,8 @@ async fn test_load_pbs_x() {
 }
 
 /// Test the `delete_dangling_records` trigger, which deletes all
-/// user_program_records that are no longer referenced by any other rows and are not pbs
+/// user_program_records that are no longer referenced by any other rows and are
+/// not pbs
 #[test]
 fn test_delete_dangling() {
     let runner = QueryRunner::new();
@@ -94,24 +95,54 @@ fn test_delete_dangling() {
             .name("Prog1")
             .insert(&conn);
 
+        // this should be deleted after the last record since it will no longer
+        // has any pbs.
         let to_del = UserProgramRecordFactory::default()
             .user(&user)
             .program_spec(&prog_spec)
-            // this should be deleted after the third record since its no longer
-            // has any pbs
             .cpu_cycles(100)
             .instructions(100)
             .registers_used(6)
             .stacks_used(7)
             .insert(&conn);
-        // user+prog_spec
-        UserProgramRecordFactory::default()
+
+        // This is also a trash record but it will be referenced so it will stay
+        let to_keep = UserProgramRecordFactory::default()
+            .user(&user)
+            .program_spec(&prog_spec)
+            .cpu_cycles(100)
+            .instructions(100)
+            .registers_used(6)
+            .stacks_used(7)
+            .insert(&conn);
+
+        UserProgramFactory::default()
+            .user(&user)
+            .program_spec(&prog_spec)
+            .file_name("existing.gdlk")
+            .source_code("READ RX0")
+            .record(Some(&to_keep))
+            .insert(&conn);
+
+        let cycle_pb1 = UserProgramRecordFactory::default()
             .user(&user)
             .program_spec(&prog_spec)
             // These 2 are PBs
             .cpu_cycles(1)
             .instructions(2)
             // These 2 are NOT PBs
+            .registers_used(10)
+            .stacks_used(10)
+            .insert(&conn);
+
+        let cycle_pb2 = UserProgramRecordFactory::default()
+            .user(&user)
+            .program_spec(&prog_spec)
+            // This is a PB thats the same as the previous one so it will not be
+            // deleted
+            .cpu_cycles(1)
+            // These 3 are NOT PBs
+            .instructions(100)
             .registers_used(10)
             .stacks_used(10)
             .insert(&conn);
@@ -125,12 +156,14 @@ fn test_delete_dangling() {
             .registers_used(3)
             .stacks_used(4)
             .insert(&conn);
+
+        // all records are either pbs or referenced by a user program
         assert_eq!(
             user_program_records::table
                 .select(dsl::count_star())
                 .get_result::<i64>(conn)
                 .unwrap(),
-            2
+            4
         );
 
         let remaining_ids: HashSet<Uuid> = user_program_records::table
@@ -141,5 +174,8 @@ fn test_delete_dangling() {
             .collect();
 
         assert!(!remaining_ids.contains(&to_del.id));
+        assert!(remaining_ids.contains(&to_keep.id));
+        assert!(remaining_ids.contains(&cycle_pb1.id));
+        assert!(remaining_ids.contains(&cycle_pb2.id));
     });
 }

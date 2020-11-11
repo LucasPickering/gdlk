@@ -1,2 +1,4 @@
-DROP TRIGGER IF EXISTS delete_dangling_records;
-DROP FUNCTION IF EXISTS delete_dangling_program_records;
+DROP TRIGGER delete_dangling_records;
+DROP FUNCTION delete_dangling_program_records;
+DROP INDEX user_program_records_user_program_ids;
+
