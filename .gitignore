@@ -6,6 +6,6 @@ pkg/
 **/target/
 **/__generated__/
 **/logs
-api/config/dev.json
+crates/api/config/dev.json
 backups/
 backups.tar.gz

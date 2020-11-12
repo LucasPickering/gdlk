@@ -43,7 +43,7 @@ services:
     volumes:
       - ./:/app:rw
       - frontend_core_build:/app/target
-      - frontend_wasm_build:/app/wasm/target
+      - frontend_wasm_build:/app/crates/wasm/target
       - frontend_node_modules:/app/frontend/node_modules
     ports:
       - "3000:3000"

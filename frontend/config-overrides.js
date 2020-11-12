@@ -24,12 +24,12 @@ module.exports = function override(config) {
 
   config.plugins.push(
     new WasmPackPlugin({
-      crateDirectory: path.resolve(__dirname, '../wasm'),
-      outDir: path.resolve(__dirname, '../wasm/pkg'),
+      crateDirectory: path.resolve(__dirname, '../crates/wasm'),
+      outDir: path.resolve(__dirname, '../crates/wasm/pkg'),
       outName: 'gdlk_wasm',
       watchDirectories: [
-        path.resolve(__dirname, '../core/src'),
-        path.resolve(__dirname, '../wasm/src'),
+        path.resolve(__dirname, '../crates/core/src'),
+        path.resolve(__dirname, '../crates/wasm/src'),
       ],
     })
   );

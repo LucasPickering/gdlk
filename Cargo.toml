@@ -1,7 +1,4 @@
 [workspace]
 members = [
-  "api",
-  "cli",
-  "core",
-  "wasm",
+  "crates/*",
 ]

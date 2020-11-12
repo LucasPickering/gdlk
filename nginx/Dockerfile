@@ -11,12 +11,12 @@ RUN sed -i -e '/api/d' -e '/cli/d' /app/Cargo.toml
 
 # Copy in the stuff needed for the wasm build first - do this before the
 # frontend stuff so that if we just make TS changes, we can avoid a Rust rebuild
-COPY core/ /app/core/
-COPY wasm/ /app/wasm/
-WORKDIR /app/wasm
+COPY crates/core/ /app/crates/core/
+COPY crates/wasm/ /app/crates/wasm/
+WORKDIR /app/crates/wasm
 RUN wasm-pack build
 
-COPY api/schema.graphql /app/api/schema.graphql
+COPY crates/api/schema.graphql /app/crates/api/schema.graphql
 COPY frontend /app/frontend/
 WORKDIR /app/frontend
 RUN npm install && npm run build

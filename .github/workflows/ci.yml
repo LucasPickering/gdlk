@@ -73,7 +73,7 @@ jobs:
       - name: Install wasm-pack
         run: curl -sSLf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
       - name: Run tests
-        working-directory: wasm
+        working-directory: crates/wasm
         # I couldn't get browser tests to work, but node is fine since we aren't
         # doing any DOM stuff
         run: wasm-pack test --node
