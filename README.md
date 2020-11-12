@@ -48,7 +48,7 @@ cargo run -p gdlk_cli -- run --hardware hw.json --program prog.json -s prog.gdlk
 In the repo root, run:
 
 ```sh
-cd api && cargo make secrets && cd .. # Only needed on first execution
+pushd crates/api && cargo make secrets && popd # Only needed on first execution
 # Enter your username and the new token as your password
 docker-compose up
 ```
@@ -60,7 +60,7 @@ Then, see the next section to initialize the DB.
 We use a custom Postgres image for development that contains sanitized data from production. New migrations can be applied on top of it with:
 
 ```sh
-cd api
+cd crates/api
 # Migrations are automatically run on server startup, but if you need to run them manually:
 cargo make diesel migration run
 

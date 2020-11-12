@@ -15,8 +15,7 @@ RUN curl -sSLf https://sh.rustup.rs | sh -s -- -y --default-toolchain none && \
     curl -sSLf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
 
 # Install correct rust toolchain
-WORKDIR /app
-COPY rust-toolchain ./
-RUN sh -c "rustup toolchain install $(cat rust-toolchain)"
-
 WORKDIR /app/frontend
+COPY .cargo /app/.cargo
+COPY rust-toolchain /app/
+RUN sh -c "rustup toolchain install $(cat /app/rust-toolchain)"

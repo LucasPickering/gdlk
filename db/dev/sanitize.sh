@@ -7,7 +7,7 @@ export POSTGRES_PASSWORD=root
 
 # Start the pg server
 nohup sh -c "docker-entrypoint.sh postgres &"
-sleep 3 # Highly technical
+sleep 10 # Highly technical
 
 # This user is referenced in the prd DB, but we don't need it in dev. Create it
 # just so the restore passes, then immediately delete it

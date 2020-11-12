@@ -2,20 +2,18 @@
 FROM gcr.io/gdlkit/gdlk-frontend:latest as frontend-builder
 ENV NODE_ENV production
 
-COPY Cargo.toml Cargo.lock rust-toolchain /app/
-
-# This is a hack to remove crates from Cargo.toml that we don't want in this
-# image. Cargo refuses to do anything if these crates aren't in the filesystem,
-# but pulling them in causes unnecessary rebuilds.
-RUN sed -i -e '/api/d' -e '/cli/d' /app/Cargo.toml
+WORKDIR /app/
+COPY .cargo ./.cargo
+COPY Cargo.toml Cargo.lock rust-toolchain ./
 
 # Copy in the stuff needed for the wasm build first - do this before the
 # frontend stuff so that if we just make TS changes, we can avoid a Rust rebuild
-COPY crates/core/ /app/crates/core/
-COPY crates/wasm/ /app/crates/wasm/
+COPY crates/core/ ./crates/core/
+COPY crates/wasm/ ./crates/wasm/
 WORKDIR /app/crates/wasm
 RUN wasm-pack build
 
+# Rely on the .dockerignore file here to make sure we don't copy in too much
 COPY crates/api/schema.graphql /app/crates/api/schema.graphql
 COPY frontend /app/frontend/
 WORKDIR /app/frontend
