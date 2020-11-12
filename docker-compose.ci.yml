@@ -10,7 +10,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: ./api/Dockerfile
+      dockerfile: ./crates/api/Dockerfile
       cache_from:
         - gcr.io/gdlkit/gdlk-api:${DOCKER_TAG}
     image: gcr.io/gdlkit/gdlk-api:${DOCKER_TAG}
@@ -39,7 +39,7 @@ services:
   api-prd:
     build:
       context: .
-      dockerfile: ./api/prd.Dockerfile
+      dockerfile: ./crates/api/prd.Dockerfile
       cache_from:
         - gcr.io/gdlkit/gdlk-api-prd:${DOCKER_TAG}
     image: gcr.io/gdlkit/gdlk-api-prd:${DOCKER_TAG}

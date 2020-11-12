@@ -17,8 +17,8 @@ RUN apt-get update && \
 COPY --from=rust-builder /usr/local/cargo/bin/diesel /usr/local/bin/
 COPY --from=rust-builder /app/target/release/gdlk_api .
 
-ADD ./api/migrations ./migrations/
-ADD ./api/config/default.json ./config/
-ADD ./api/docker/ /app/
+ADD ./crates/api/migrations ./migrations/
+ADD ./crates/api/config/default.json ./config/
+ADD ./crates/api/docker/ /app/
 
 CMD ["/app/cmd.sh"]
