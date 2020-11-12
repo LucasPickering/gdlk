@@ -8,6 +8,9 @@ on:
 
 env:
   COMPOSE_FILE: docker-compose.ci.yml
+  # Both needed to enable buildkit, which gives us a better build tool
+  COMPOSE_DOCKER_CLI_BUILD: 1
+  DOCKER_BUILDKIT: 1
 
 jobs:
   lint:
@@ -123,37 +126,40 @@ jobs:
   build-db-prd:
     name: "[DB] Build production image"
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@master
-      - name: Build & push image
+      - name: Build image
         run: |
-          docker login -u _json_key -p '${{ secrets.GCR_SECRET_KEY }}' gcr.io
           docker-compose pull db-prd
           docker-compose build db-prd
+      - name: Push image
+        if: github.ref == 'refs/heads/master'
+        run: |-
+          docker login -u _json_key -p '${{ secrets.GCR_SECRET_KEY }}' gcr.io
           docker-compose push db-prd
 
   build-api-prd:
     name: "[API] Build production image"
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
     needs:
       - lint
       - test-core
       - test-api
     steps:
       - uses: actions/checkout@master
-      - name: Build & push image
+      - name: Build image
         run: |
-          docker login -u _json_key -p '${{ secrets.GCR_SECRET_KEY }}' gcr.io
           docker-compose pull api api-prd
           docker-compose build api-prd
+      - name: Push image
+        if: github.ref == 'refs/heads/master'
+        run: |-
+          docker login -u _json_key -p '${{ secrets.GCR_SECRET_KEY }}' gcr.io
           docker-compose push api-prd
 
   build-nginx-prd:
     name: "[NGINX] Build production image"
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
     needs:
       - lint
       - test-core
@@ -161,9 +167,12 @@ jobs:
       - test-frontend
     steps:
       - uses: actions/checkout@master
-      - name: Build & push image
+      - name: Build image
         run: |
-          docker login -u _json_key -p '${{ secrets.GCR_SECRET_KEY }}' gcr.io
           docker-compose pull nginx-prd
           docker-compose build nginx-prd
+      - name: Push image
+        if: github.ref == 'refs/heads/master'
+        run: |-
+          docker login -u _json_key -p '${{ secrets.GCR_SECRET_KEY }}' gcr.io
           docker-compose push nginx-prd

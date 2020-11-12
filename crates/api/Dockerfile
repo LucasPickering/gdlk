@@ -11,7 +11,8 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app/crates/api
-COPY rust-toolchain ../
+COPY rust-toolchain /app
+COPY .cargo /app/.cargo
 RUN cargo install cargo-make --version 0.32.0 && \
     cargo install diesel_cli --version 1.4.1 --no-default-features --features=postgres && \
     cargo install cargo-watch --version 7.5.0
