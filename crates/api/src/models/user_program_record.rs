@@ -48,6 +48,8 @@ pub struct UserProgramRecord {
     pub stacks_used: i32,
     /// When this row was created, which is also when the program was executed.
     pub created: DateTime<Utc>,
+    /// A composite score of other stats
+    pub cost: i32,
 }
 
 /// A set of statistics gathered on an executed user_program. This could be a
@@ -63,6 +65,8 @@ pub struct UserProgramRecordStats {
     pub registers_used: i32,
     /// Number of unique stacks referenced by the program
     pub stacks_used: i32,
+    /// A composite score of other stats
+    pub cost: i32,
 }
 
 impl UserProgramRecord {
@@ -100,6 +104,7 @@ impl UserProgramRecord {
                     user_program_records::columns::instructions,
                     user_program_records::columns::registers_used,
                     user_program_records::columns::stacks_used,
+                    user_program_records::columns::cost,
                 ))
                 .get_results(conn)?;
 
@@ -119,6 +124,7 @@ impl UserProgramRecord {
                             row.registers_used,
                         ),
                         stacks_used: cmp::min(acc.stacks_used, row.stacks_used),
+                        cost: cmp::min(acc.cost, row.cost),
                     }
                 }))
             }

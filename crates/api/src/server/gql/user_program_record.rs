@@ -69,6 +69,13 @@ impl UserProgramRecordNodeFields for UserProgramRecordNode {
         self.user_program_record.stacks_used
     }
 
+    fn field_cost(
+        &self,
+        _executor: &juniper::Executor<'_, '_, RequestContext>,
+    ) -> i32 {
+        self.user_program_record.cost
+    }
+
     fn field_created(
         &self,
         _executor: &juniper::Executor<'_, '_, RequestContext>,
