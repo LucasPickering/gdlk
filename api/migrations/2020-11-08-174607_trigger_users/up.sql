@@ -1,4 +1,4 @@
-CREATE INDEX user_program_records_user_program_ids ON user_program_records (program_spec_id, user_id);
+CREATE INDEX user_program_records_program_spec_and_user_ids ON user_program_records (program_spec_id, user_id);
 
 CREATE OR REPLACE FUNCTION delete_dangling_program_records ()
     RETURNS TRIGGER

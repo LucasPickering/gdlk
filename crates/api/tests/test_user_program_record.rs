@@ -94,10 +94,11 @@ fn test_delete_dangling() {
             .hardware_spec(&hw_spec)
             .name("Prog1")
             .insert(&conn);
+        let mut expected_ids: HashSet<Uuid> = HashSet::new();
 
         // this should be deleted after the last record since it will no longer
         // has any pbs.
-        let to_del = UserProgramRecordFactory::default()
+        UserProgramRecordFactory::default()
             .user(&user)
             .program_spec(&prog_spec)
             .cpu_cycles(100)
@@ -115,6 +116,7 @@ fn test_delete_dangling() {
             .registers_used(6)
             .stacks_used(7)
             .insert(&conn);
+        expected_ids.insert(to_keep.id);
 
         UserProgramFactory::default()
             .user(&user)
@@ -124,38 +126,48 @@ fn test_delete_dangling() {
             .record(Some(&to_keep))
             .insert(&conn);
 
-        let cycle_pb1 = UserProgramRecordFactory::default()
-            .user(&user)
-            .program_spec(&prog_spec)
-            // These 2 are PBs
-            .cpu_cycles(1)
-            .instructions(2)
-            // These 2 are NOT PBs
-            .registers_used(10)
-            .stacks_used(10)
-            .insert(&conn);
+        expected_ids.insert(
+            UserProgramRecordFactory::default()
+                .user(&user)
+                .program_spec(&prog_spec)
+                // These 2 are PBs
+                .cpu_cycles(1)
+                .instructions(2)
+                // These 2 are NOT PBs
+                .registers_used(10)
+                .stacks_used(10)
+                .insert(&conn)
+                .id,
+        );
 
-        let cycle_pb2 = UserProgramRecordFactory::default()
-            .user(&user)
-            .program_spec(&prog_spec)
-            // This is a PB thats the same as the previous one so it will not be
-            // deleted
-            .cpu_cycles(1)
-            // These 3 are NOT PBs
-            .instructions(100)
-            .registers_used(10)
-            .stacks_used(10)
-            .insert(&conn);
-        UserProgramRecordFactory::default()
-            .user(&user)
-            .program_spec(&prog_spec)
-            // These 2 are NOT PBs
-            .cpu_cycles(10)
-            .instructions(10)
-            // These 2 are PBs
-            .registers_used(3)
-            .stacks_used(4)
-            .insert(&conn);
+        expected_ids.insert(
+            UserProgramRecordFactory::default()
+                .user(&user)
+                .program_spec(&prog_spec)
+                // This is a PB thats the same as the previous one so it will
+                // not be deleted
+                .cpu_cycles(1)
+                // These 3 are NOT PBs
+                .instructions(100)
+                .registers_used(10)
+                .stacks_used(10)
+                .insert(&conn)
+                .id,
+        );
+
+        expected_ids.insert(
+            UserProgramRecordFactory::default()
+                .user(&user)
+                .program_spec(&prog_spec)
+                // These 2 are NOT PBs
+                .cpu_cycles(10)
+                .instructions(10)
+                // These 2 are PBs
+                .registers_used(3)
+                .stacks_used(4)
+                .insert(&conn)
+                .id,
+        );
 
         // all records are either pbs or referenced by a user program
         assert_eq!(
@@ -172,10 +184,6 @@ fn test_delete_dangling() {
             .unwrap()
             .into_iter()
             .collect();
-
-        assert!(!remaining_ids.contains(&to_del.id));
-        assert!(remaining_ids.contains(&to_keep.id));
-        assert!(remaining_ids.contains(&cycle_pb1.id));
-        assert!(remaining_ids.contains(&cycle_pb2.id));
+        assert_eq!(remaining_ids, expected_ids);
     });
 }
