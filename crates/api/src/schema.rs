@@ -57,6 +57,7 @@ table! {
         registers_used -> Int4,
         stacks_used -> Int4,
         created -> Timestamptz,
+        cost -> Int4,
     }
 }
 

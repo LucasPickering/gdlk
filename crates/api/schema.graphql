@@ -512,6 +512,11 @@ type UserProgramRecordNode implements Node {
   """
   stacksUsed: Int! @juniper(infallible: true, ownership: "owned")
   """
+  A composite score equal to 2 * cpuCycles + 3 * instructions +
+  100 * registersUsed + 200 * stacksUsed
+  """
+  cost: Int! @juniper(infallible: true, ownership: "owned")
+  """
   The date/time when the program execution completed.
   """
   created: DateTimeUtc! @juniper(infallible: true)

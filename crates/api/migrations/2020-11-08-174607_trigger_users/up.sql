@@ -1,3 +1,6 @@
+ALTER TABLE user_program_records
+    ADD COLUMN cost INTEGER GENERATED ALWAYS AS ((2 * cpu_cycles) + (3 * instructions) + (100 * registers_used) + (200 * stacks_used)) STORED NOT NULL;
+
 CREATE INDEX user_program_records_program_spec_and_user_ids ON user_program_records (program_spec_id, user_id);
 
 CREATE OR REPLACE FUNCTION delete_dangling_program_records ()
@@ -10,7 +13,8 @@ BEGIN
             min(cpu_cycles) AS cpu_cycles,
             min(instructions) AS instructions,
             min(registers_used) AS registers_used,
-            min(stacks_used) AS stacks_used
+            min(stacks_used) AS stacks_used,
+            min(cost) AS cost
         FROM
             "user_program_records"
         WHERE
@@ -35,6 +39,7 @@ BEGIN
             AND "user_program_records".instructions > pbs.instructions
             AND "user_program_records".registers_used > pbs.registers_used
             AND "user_program_records".stacks_used > pbs.stacks_used
+            AND "user_program_records".cost > pbs.cost
             -- get all referenced rows so they wont be deleted
             AND "user_program_records".id NOT IN (
                 SELECT

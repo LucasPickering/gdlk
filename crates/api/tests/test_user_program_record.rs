@@ -69,6 +69,7 @@ async fn test_load_pbs_x() {
             instructions: 2,
             registers_used: 3,
             stacks_used: 4,
+            cost: 1150
         })
     );
 

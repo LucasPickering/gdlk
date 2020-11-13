@@ -191,6 +191,7 @@ async fn test_execute_user_program_pb_update() {
                 instructions: 2,
                 registers_used: 1,
                 stacks_used: 0,
+                cost: 110
             })
         );
     });
@@ -235,6 +236,7 @@ async fn test_execute_user_program_pb_update() {
                 instructions: 2,
                 registers_used: 0,
                 stacks_used: 0,
+                cost: 15
             })
         );
     });
