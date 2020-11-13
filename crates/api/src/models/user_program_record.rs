@@ -48,8 +48,7 @@ pub struct UserProgramRecord {
     pub stacks_used: i32,
     /// When this row was created, which is also when the program was executed.
     pub created: DateTime<Utc>,
-    /// composite stat, is equal to CEIL(2 * cpu_cycles + 3 * instructions +
-    /// 100 * registers_used + 200 * stacks_used)
+    /// A composite score of other stats
     pub cost: i32,
 }
 
@@ -66,8 +65,7 @@ pub struct UserProgramRecordStats {
     pub registers_used: i32,
     /// Number of unique stacks referenced by the program
     pub stacks_used: i32,
-    /// composite stat, is equal to 2 * cpu_cycles + 3 * instructions +
-    /// 100 * registers_used + 200 * stacks_used
+    /// A composite score of other stats
     pub cost: i32,
 }
 

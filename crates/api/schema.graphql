@@ -512,8 +512,7 @@ type UserProgramRecordNode implements Node {
   """
   stacksUsed: Int! @juniper(infallible: true, ownership: "owned")
   """
-  A composite score equal to 2 * cpuCycles + 3 * instructions +
-  100 * registersUsed + 200 * stacksUsed
+  A composite score of the other stats
   """
   cost: Int! @juniper(infallible: true, ownership: "owned")
   """
