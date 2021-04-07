@@ -1,5 +1,5 @@
 # Build the server distributable
-FROM gcr.io/gdlkit/gdlk-api:latest as rust-builder
+FROM ghcr.io/lucaspickering/gdlk-api:latest as rust-builder
 # We need core/, api/, and a bunch of other files, so just copy everything in
 COPY . /app
 RUN cargo build -p gdlk_api --release

@@ -1,5 +1,5 @@
 # Build the frontend static assets
-FROM gcr.io/gdlkit/gdlk-frontend:latest as frontend-builder
+FROM ghcr.io/lucaspickering/gdlk-frontend:latest as frontend-builder
 ENV NODE_ENV production
 
 WORKDIR /app/

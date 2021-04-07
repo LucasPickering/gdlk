@@ -27,7 +27,7 @@ secrets:
 
 services:
   nginx:
-    image: gcr.io/gdlkit/gdlk-nginx-prd:${DOCKER_TAG}
+    image: ghcr.io/lucaspickering/gdlk-nginx-prd:${DOCKER_TAG}
     # Need mode:host so the client IP gets logged properly
     ports:
       - target: 80
@@ -48,7 +48,7 @@ services:
         delay: 10s
 
   db:
-    image: gcr.io/gdlkit/gdlk-db-prd:${DOCKER_TAG}
+    image: ghcr.io/lucaspickering/gdlk-db-prd:${DOCKER_TAG}
     environment:
       POSTGRES_DB: gdlk
       POSTGRES_USER: root
@@ -87,7 +87,7 @@ services:
         delay: 10m
 
   api:
-    image: gcr.io/gdlkit/gdlk-api-prd:${DOCKER_TAG}
+    image: ghcr.io/lucaspickering/gdlk-api-prd:${DOCKER_TAG}
     depends_on:
       - db
     environment:
