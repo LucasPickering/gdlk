@@ -103,7 +103,7 @@ jobs:
       - name: Push API image
         if: github.ref == 'refs/heads/master'
         run: |-
-          docker login -u _json_key -p '${{ secrets.GCR_SECRET_KEY }}' gcr.io
+          docker login -u '${{ github.actor }}' -p '${{ secrets.GHCR_SECRET }}' ghcr.io
           docker-compose push api
 
   test-frontend:
@@ -120,7 +120,7 @@ jobs:
       - name: Push Frontend image
         if: github.ref == 'refs/heads/master'
         run: |-
-          docker login -u _json_key -p '${{ secrets.GCR_SECRET_KEY }}' gcr.io
+          docker login -u '${{ github.actor }}' -p '${{ secrets.GHCR_SECRET }}' ghcr.io
           docker-compose push frontend
 
   build-db-prd:
@@ -135,7 +135,7 @@ jobs:
       - name: Push image
         if: github.ref == 'refs/heads/master'
         run: |-
-          docker login -u _json_key -p '${{ secrets.GCR_SECRET_KEY }}' gcr.io
+          docker login -u '${{ github.actor }}' -p '${{ secrets.GHCR_SECRET }}' ghcr.io
           docker-compose push db-prd
 
   build-api-prd:
@@ -154,7 +154,7 @@ jobs:
       - name: Push image
         if: github.ref == 'refs/heads/master'
         run: |-
-          docker login -u _json_key -p '${{ secrets.GCR_SECRET_KEY }}' gcr.io
+          docker login -u '${{ github.actor }}' -p '${{ secrets.GHCR_SECRET }}' ghcr.io
           docker-compose push api-prd
 
   build-nginx-prd:
@@ -174,5 +174,5 @@ jobs:
       - name: Push image
         if: github.ref == 'refs/heads/master'
         run: |-
-          docker login -u _json_key -p '${{ secrets.GCR_SECRET_KEY }}' gcr.io
+          docker login -u '${{ github.actor }}' -p '${{ secrets.GHCR_SECRET }}' ghcr.io
           docker-compose push nginx-prd

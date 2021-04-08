@@ -11,13 +11,13 @@ volumes:
 services:
   db:
     # DB: gdlk; creds: root/root
-    image: gcr.io/gdlkit/gdlk-db:${DOCKER_TAG}
+    image: ghcr.io/lucaspickering/gdlk-db:${DOCKER_TAG}
     command: postgres -c log_statement=all
     ports:
       - "5432:5432"
 
   api:
-    image: gcr.io/gdlkit/gdlk-api:${DOCKER_TAG}
+    image: ghcr.io/lucaspickering/gdlk-api:${DOCKER_TAG}
     command: cargo make -p docker start
     init: true # Workaround for cargo-watch bug that prevents graceful restart
     tty: true # Colorize output
@@ -33,7 +33,7 @@ services:
       - "8000:8000"
 
   frontend:
-    image: gcr.io/gdlkit/gdlk-frontend:${DOCKER_TAG}
+    image: ghcr.io/lucaspickering/gdlk-frontend:${DOCKER_TAG}
     command: ./docker/run_frontend.sh
     init: true # Needed to kill the relay compiler background process
     tty: true # Colorize output
