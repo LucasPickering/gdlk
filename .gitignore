@@ -9,3 +9,6 @@ pkg/
 crates/api/config/dev.json
 backups/
 backups.tar.gz
+
+api/schema.graphql
+**/*.pyc

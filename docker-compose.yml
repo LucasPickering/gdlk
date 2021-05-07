@@ -3,47 +3,50 @@ version: "3.7"
 # Use these instead of the local directory for building the projects
 # to prevent the containers from fighting with external build tools
 volumes:
-  api_build:
-  frontend_core_build:
-  frontend_wasm_build:
-  frontend_node_modules:
+  api_poetry:
+  # frontend_core_build:
+  # frontend_wasm_build:
+  # frontend_node_modules:
 
 services:
   db:
-    # DB: gdlk; creds: root/root
-    image: ghcr.io/lucaspickering/gdlk-db:${DOCKER_TAG}
-    command: postgres -c log_statement=all
+    image: postgres:13-alpine
     ports:
       - "5432:5432"
+    environment:
+      - POSTGRES_DB=gdlk
+      - POSTGRES_USER=gdlk
+      - POSTGRES_PASSWORD=gdlk
 
   api:
-    image: ghcr.io/lucaspickering/gdlk-api:${DOCKER_TAG}
-    command: cargo make -p docker start
-    init: true # Workaround for cargo-watch bug that prevents graceful restart
-    tty: true # Colorize output
+    build: ./api/
+    command: ./start.sh
+    # Makes shutdown faster
+    init: true
+    environment:
+      - GDLK_HOSTNAME=0.0.0.0
     volumes:
-      - ./:/app:rw
-      - api_build:/app/target
+      - ./api/:/app/api:rw
+      - api_poetry:/root/.cache/pypoetry/virtualenvs
     depends_on:
       - db
-    environment:
-      RUST_BACKTRACE: 1
-      RUST_LOG: ${RUST_LOG:-info}
     ports:
       - "8000:8000"
 
-  frontend:
-    image: ghcr.io/lucaspickering/gdlk-frontend:${DOCKER_TAG}
-    command: ./docker/run_frontend.sh
-    init: true # Needed to kill the relay compiler background process
-    tty: true # Colorize output
-    environment:
-      GDLK_API_HOST: http://api:8000
-      HTTPS: "true"
-    volumes:
-      - ./:/app:rw
-      - frontend_core_build:/app/target
-      - frontend_wasm_build:/app/crates/wasm/target
-      - frontend_node_modules:/app/frontend/node_modules
-    ports:
-      - "3000:3000"
+  # commented out during api development
+  #
+  # frontend:
+  #   image: ghcr.io/lucaspickering/gdlk-frontend:${DOCKER_TAG}
+  #   command: ./docker/run_frontend.sh
+  #   init: true # Needed to kill the relay compiler background process
+  #   tty: true # Colorize output
+  #   environment:
+  #     GDLK_API_HOST: http://api:8000
+  #     HTTPS: "true"
+  #   volumes:
+  #     - ./:/app:rw
+  #     - frontend_core_build:/app/target
+  #     - frontend_wasm_build:/app/crates/wasm/target
+  #     - frontend_node_modules:/app/frontend/node_modules
+  #   ports:
+  #     - "3000:3000"
