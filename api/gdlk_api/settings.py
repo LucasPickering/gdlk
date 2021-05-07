@@ -138,4 +138,5 @@ GRAPHENE = {
     "SCHEMA": "gdlk_api.schema.schema",
     "SCHEMA_OUTPUT": "schema.graphql",
     "SCHEMA_INDENT": 2,
+    "CAMELCASE_ERRORS": True,
 }

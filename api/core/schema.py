@@ -1,7 +1,8 @@
+import graphene
 from graphene import relay, ObjectType
 from graphene_django import DjangoObjectType, DjangoConnectionField
 
-from .models import HardwareSpec, ProgramSpec
+from .models import HardwareSpec, Puzzle, Player, PlayerSolution
 
 
 class HardwareSpecNode(DjangoObjectType):
@@ -10,12 +11,34 @@ class HardwareSpecNode(DjangoObjectType):
         interfaces = (relay.Node,)
 
 
-class ProgramSpecNode(DjangoObjectType):
+class PuzzleNode(DjangoObjectType):
     class Meta:
-        model = ProgramSpec
+        model = Puzzle
+        interfaces = (relay.Node,)
+
+
+class PlayerNode(DjangoObjectType):
+    class Meta:
+        model = Player
+        interfaces = (relay.Node,)
+        fields = ('id', 'username', 'puzzleSolutions')
+
+
+class PlayerSolutionNode(DjangoObjectType):
+    class Meta:
+        model = PlayerSolution
         interfaces = (relay.Node,)
 
 
 class Query(ObjectType):
-    hardware_spec = relay.Node.Field(HardwareSpecNode)
+    node = relay.Node.Field()
+    player = relay.Node.Field(PlayerNode)
+    hardware_spec = graphene.Field(
+        HardwareSpecNode,
+        description="Get a single hardware spec by its slug",
+        slug=graphene.String(
+            required=True,
+            description="The unique slug of the hardware spec to fetch",
+        ),
+    )
     hardware_specs = DjangoConnectionField(HardwareSpecNode)

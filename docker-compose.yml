@@ -20,14 +20,14 @@ services:
 
   api:
     build: ./api/
-    command: ./start.sh
+    command: ./scripts/start.sh
     # Makes shutdown faster
     init: true
     environment:
       - GDLK_HOSTNAME=0.0.0.0
     volumes:
       - ./api/:/app/api:rw
-      - api_poetry:/root/.cache/pypoetry/virtualenvs
+      - api_poetry:/usr/local/lib/python3.9/site-packages
     depends_on:
       - db
     ports:
