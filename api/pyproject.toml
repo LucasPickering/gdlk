@@ -10,6 +10,7 @@ python = "^3.9"
 Django = "^3.2.1"
 graphene-django = "^2.15.0"
 psycopg2 = "^2.8.6"
+djangorestframework = "^3.12.4"
 
 [tool.poetry.dev-dependencies]
 black = "^21.5b0"
