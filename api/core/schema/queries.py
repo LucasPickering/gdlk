@@ -2,7 +2,7 @@ import graphene
 from graphene import relay, ObjectType
 from graphene_django import DjangoObjectType, DjangoConnectionField
 
-from ..models import HardwareSpec, Puzzle, Player, PlayerSolution
+from ..models import HardwareSpec, Puzzle, Player, PuzzleSolution
 
 
 class HardwareSpecNode(DjangoObjectType):
@@ -16,8 +16,8 @@ class PuzzleNode(DjangoObjectType):
         model = Puzzle
         interfaces = (relay.Node,)
         # Don't think we'll need puzzle->player directly, so force caller to go
-        # through PlayerSolution. We can add this back later if we need it
-        exclude = ('players',)
+        # through PuzzleSolution. We can add this back later if we need it
+        exclude = ("players",)
 
 
 class PlayerNode(DjangoObjectType):
@@ -25,15 +25,15 @@ class PlayerNode(DjangoObjectType):
         model = Player
         interfaces = (relay.Node,)
         # Don't think we'll need player->puzzle directly, so force caller to go
-        # through PlayerSolution. We can add this back later if we need it
+        # through PuzzleSolution. We can add this back later if we need it
         exclude = ("puzzles",)
 
     username = graphene.String(required=True)
 
 
-class PlayerSolutionNode(DjangoObjectType):
+class PuzzleSolutionNode(DjangoObjectType):
     class Meta:
-        model = PlayerSolution
+        model = PuzzleSolution
         interfaces = (relay.Node,)
 
 

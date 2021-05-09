@@ -24,7 +24,7 @@ services:
     # Makes shutdown faster
     init: true
     environment:
-      - GDLK_HOSTNAME=0.0.0.0
+      - GDLK_DB_HOST=db
     volumes:
       - ./api/:/app/api:rw
       - api_poetry:/usr/local/lib/python3.9/site-packages

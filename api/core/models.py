@@ -39,7 +39,7 @@ class Puzzle(models.Model):
     and a predefined expected output. The user's goal is to write a program
     that consumes the entire input and emits the expected output. A user can
     create multiple solutions to a single puzzle, which are stored in the
-    PlayerSolution model.
+    PuzzleSolution model.
     """
 
     id = UUIDField()
@@ -74,7 +74,7 @@ class Player(models.Model):
     user = models.OneToOneField(to=User, null=True, on_delete=models.CASCADE)
     # All the puzzles for which this player has created one solution
     puzzles = models.ManyToManyField(
-        Puzzle, through="PlayerSolution", related_name="players"
+        Puzzle, through="PuzzleSolution", related_name="players"
     )
 
     @cached_property
@@ -83,11 +83,24 @@ class Player(models.Model):
             return self.user.username
         return "Anonymous User #77"  # TODO
 
+    @classmethod
+    def get_or_create_for_user(cls, user):
+        """
+        Get the Player object associated with the given User, or if none exists
+        yet, create one and return it.
+
+        See Player class description for the difference between User and Player.
+        """
+
+        player, created = Player.objects.get_or_create(user_id=user.id)
+        user.player = player
+        return player
+
     def __str__(self):
         return str(self.user) if self.user else f"Anonymous Player {self.id}"
 
 
-class PlayerSolution(models.Model):
+class PuzzleSolution(models.Model):
     id = UUIDField()
     puzzle = models.ForeignKey(
         Puzzle, on_delete=models.CASCADE, related_name="player_solutions"
@@ -104,3 +117,6 @@ class PlayerSolution(models.Model):
         # A player can have multiple solutions to the same puzzle, but each one
         # must have a unique name
         unique_together = ("puzzle", "player", "name")
+
+    def __str__(self):
+        return self.name

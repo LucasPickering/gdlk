@@ -1,8 +1,8 @@
 from django.contrib import admin
-from .models import HardwareSpec, Puzzle, Player, PlayerSolution
+from .models import HardwareSpec, Puzzle, Player, PuzzleSolution
 
 
-@admin.register(Player, PlayerSolution)
+@admin.register(Player, PuzzleSolution)
 class CoreAdmin(admin.ModelAdmin):
     pass
 

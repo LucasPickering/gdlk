@@ -84,7 +84,7 @@ DATABASES = {
         "NAME": os.getenv("GDLK_DB_NAME", "gdlk"),
         "USER": os.getenv("GDLK_DB_USER", "gdlk"),
         "PASSWORD": os.getenv("GDLK_DB_PASSWORD", "gdlk"),
-        "HOST": os.getenv("GDLK_DB_HOST", "db"),
+        "HOST": os.getenv("GDLK_DB_HOST", "localhost"),
         "PORT": "",
         "OPTIONS": {"connect_timeout": 10},
     }
