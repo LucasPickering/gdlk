@@ -46,9 +46,6 @@ class Puzzle(models.Model):
     name = models.CharField(max_length=50, blank=False, unique=True)
     slug = models.SlugField(max_length=50, blank=False, unique=True)
     description = models.TextField()
-    hardware_spec = models.ForeignKey(
-        HardwareSpec, on_delete=models.CASCADE, related_name="puzzles"
-    )
     input = pg_fields.ArrayField(
         models.IntegerField(), validators=[validators.MaxLengthValidator(256)]
     )
