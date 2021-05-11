@@ -3,7 +3,7 @@ import useStaticValue from 'hooks/useStaticValue';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CompiledState } from 'state/ide';
 import { CompileResult, CompilerWrapper } from 'util/compile';
-import graphql from 'babel-plugin-relay/macro';
+import { graphql } from 'react-relay';
 import { assertIsDefined } from 'util/guards';
 import { ProgramIde_hardwareSpec } from './__generated__/ProgramIde_hardwareSpec.graphql';
 import { useMutation } from 'relay-hooks';
@@ -79,9 +79,8 @@ const useCompiler = ({ hardwareSpec, sourceCode }: Input): Output => {
   const compileResult = useRef<CompileResult | undefined>();
 
   // This is the safe version of the wasm values, which CAN be shared
-  const [compiledState, setCompiledState] = useState<
-    CompiledState | undefined
-  >();
+  const [compiledState, setCompiledState] =
+    useState<CompiledState | undefined>();
 
   /**
    * A manual function called to refresh the shared state that's derived from

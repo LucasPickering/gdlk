@@ -4,9 +4,9 @@ version: "3.7"
 # to prevent the containers from fighting with external build tools
 volumes:
   api_poetry:
-  # frontend_core_build:
-  # frontend_wasm_build:
-  # frontend_node_modules:
+  frontend_core_build:
+  frontend_wasm_build:
+  frontend_node_modules:
 
 services:
   db:
@@ -33,20 +33,20 @@ services:
     ports:
       - "8000:8000"
 
-  # commented out during api development
-  #
-  # frontend:
-  #   image: ghcr.io/lucaspickering/gdlk-frontend:${DOCKER_TAG}
-  #   command: ./docker/run_frontend.sh
-  #   init: true # Needed to kill the relay compiler background process
-  #   tty: true # Colorize output
-  #   environment:
-  #     GDLK_API_HOST: http://api:8000
-  #     HTTPS: "true"
-  #   volumes:
-  #     - ./:/app:rw
-  #     - frontend_core_build:/app/target
-  #     - frontend_wasm_build:/app/crates/wasm/target
-  #     - frontend_node_modules:/app/frontend/node_modules
-  #   ports:
-  #     - "3000:3000"
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+    command: ./docker/run_frontend.sh
+    init: true # Needed to kill the relay compiler background process
+    tty: true # Colorize output
+    environment:
+      GDLK_API_HOST: http://api:8000
+      HTTPS: "true"
+    volumes:
+      - ./:/app:rw
+      - frontend_core_build:/app/target
+      - frontend_wasm_build:/app/crates/wasm/target
+      - frontend_node_modules:/app/frontend/node_modules
+    ports:
+      - "3000:3000"

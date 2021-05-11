@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
-import graphql from 'babel-plugin-relay/macro';
+import { graphql } from 'react-relay';
 import { Snackbar } from '@material-ui/core';
 import { Alert } from '@material-ui/lab';
 import { IdeContext } from 'state/ide';

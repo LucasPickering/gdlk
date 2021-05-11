@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import graphql from 'babel-plugin-relay/macro';
+import { graphql } from 'react-relay';
 import HardwareSpecDetails from './HardwareSpecDetails';
 import { HardwareSpecDetailsViewQuery } from './__generated__/HardwareSpecDetailsViewQuery.graphql';
 import { useParams } from 'react-router-dom';

@@ -1,6 +1,6 @@
 import React from 'react';
 import { RelayProp, createFragmentContainer } from 'react-relay';
-import graphql from 'babel-plugin-relay/macro';
+import { graphql } from 'react-relay';
 import { HardwareSpecListItem_hardwareSpec } from './__generated__/HardwareSpecListItem_hardwareSpec.graphql';
 import { List, ListItem, ListItemText, makeStyles } from '@material-ui/core';
 import UnstyledLink from 'components/common/UnstyledLink';

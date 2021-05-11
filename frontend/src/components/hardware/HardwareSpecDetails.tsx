@@ -1,6 +1,6 @@
 import React from 'react';
 import { RelayProp, createFragmentContainer } from 'react-relay';
-import graphql from 'babel-plugin-relay/macro';
+import { graphql } from 'react-relay';
 import { HardwareSpecDetails_hardwareSpec } from './__generated__/HardwareSpecDetails_hardwareSpec.graphql';
 import {
   Card,

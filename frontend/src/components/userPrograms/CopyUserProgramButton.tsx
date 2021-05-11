@@ -1,6 +1,6 @@
 import React from 'react';
 import { FileCopy as IconFileCopy } from '@material-ui/icons';
-import graphql from 'babel-plugin-relay/macro';
+import { graphql } from 'react-relay';
 import { useMutation } from 'relay-hooks';
 import { CopyUserProgramButton_Mutation } from './__generated__/CopyUserProgramButton_Mutation.graphql';
 import { createFragmentContainer, RelayProp } from 'react-relay';

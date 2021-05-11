@@ -1,6 +1,6 @@
 import React from 'react';
 import { RelayPaginationProp, createPaginationContainer } from 'react-relay';
-import graphql from 'babel-plugin-relay/macro';
+import { graphql } from 'react-relay';
 import { UserProgramsCard_programSpec } from './__generated__/UserProgramsCard_programSpec.graphql';
 import {
   TableBody,
@@ -81,10 +81,10 @@ export default createPaginationContainer(
   {
     programSpec: graphql`
       fragment UserProgramsCard_programSpec on ProgramSpecNode
-        @argumentDefinitions(
-          userProgramCount: { type: "Int" }
-          userProgramCursor: { type: "Cursor" }
-        ) {
+      @argumentDefinitions(
+        userProgramCount: { type: "Int" }
+        userProgramCursor: { type: "Cursor" }
+      ) {
         id
         # A user probably won't have a lot of solutions for one program, so
         # don't bother with pagination

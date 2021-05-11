@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RelayProp, createFragmentContainer } from 'react-relay';
-import graphql from 'babel-plugin-relay/macro';
+import { graphql } from 'react-relay';
 import { ProgramIde_hardwareSpec } from './__generated__/ProgramIde_hardwareSpec.graphql';
 import { makeStyles } from '@material-ui/core';
 import CodeEditor from './CodeEditor';
@@ -103,13 +103,8 @@ const ProgramIde: React.FC<{
     return userProgram.sourceCode;
   });
 
-  const {
-    wasmHardwareSpec,
-    wasmProgramSpec,
-    compiledState,
-    compile,
-    execute,
-  } = useCompiler({ hardwareSpec, sourceCode });
+  const { wasmHardwareSpec, wasmProgramSpec, compiledState, compile, execute } =
+    useCompiler({ hardwareSpec, sourceCode });
 
   // When the source changes, save it to local storage and recompile
   // Use a debounce to prevent constant recompilation
@@ -169,10 +164,10 @@ const ProgramIdeWrapper: React.FC<{
 export default createFragmentContainer(ProgramIdeWrapper, {
   hardwareSpec: graphql`
     fragment ProgramIde_hardwareSpec on HardwareSpecNode
-      @argumentDefinitions(
-        programSlug: { type: "String!" }
-        fileName: { type: "String!" }
-      ) {
+    @argumentDefinitions(
+      programSlug: { type: "String!" }
+      fileName: { type: "String!" }
+    ) {
       id
       numRegisters
       numStacks

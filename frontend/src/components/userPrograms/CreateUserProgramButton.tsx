@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogTitle, DialogContent, Button } from '@material-ui/core';
 import { Add as IconAdd } from '@material-ui/icons';
 import EditUserProgramForm from './EditUserProgramForm';
-import graphql from 'babel-plugin-relay/macro';
+import { graphql } from 'react-relay';
 import { useMutation } from 'relay-hooks';
 import { CreateUserProgramButton_Mutation } from './__generated__/CreateUserProgramButton_Mutation.graphql';
 

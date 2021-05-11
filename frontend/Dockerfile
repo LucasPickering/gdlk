@@ -1,5 +1,5 @@
 # If you update this, make sure you update .nvmrc too
-FROM node:14.2.0-slim
+FROM node:15.14.0-slim
 
 ENV PATH="/root/.cargo/bin:${PATH}"
 

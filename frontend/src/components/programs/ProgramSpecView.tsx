@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import graphql from 'babel-plugin-relay/macro';
+import { graphql } from 'react-relay';
 import { ProgramSpecViewQuery } from './__generated__/ProgramSpecViewQuery.graphql';
 import { useParams } from 'react-router-dom';
 import ProgramSpecDetails from './ProgramSpecDetails';

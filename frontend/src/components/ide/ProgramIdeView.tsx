@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import graphql from 'babel-plugin-relay/macro';
+import { graphql } from 'react-relay';
 import { ProgramIdeViewQuery } from './__generated__/ProgramIdeViewQuery.graphql';
 import { useParams } from 'react-router-dom';
 import ProgramIde from './ProgramIde';
@@ -36,9 +36,8 @@ const ProgramIdeView: React.FC = () => {
 
   // Initialize the Compiler. Wasm imports have to be async until we get
   // webpack 5, so we want to block the entire page until it's imported.
-  const [compilerInitialized, setCompilerInitialized] = useState<boolean>(
-    false
-  );
+  const [compilerInitialized, setCompilerInitialized] =
+    useState<boolean>(false);
   useEffect(() => {
     CompilerWrapper.init().then(() => {
       setCompilerInitialized(true);

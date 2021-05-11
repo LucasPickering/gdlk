@@ -5,7 +5,7 @@ import {
   RelayProp,
   createFragmentContainer,
 } from 'react-relay';
-import graphql from 'babel-plugin-relay/macro';
+import { graphql } from 'react-relay';
 import { ProgramSpecListCard_hardwareSpec } from './__generated__/ProgramSpecListCard_hardwareSpec.graphql';
 import {
   Button,
@@ -152,10 +152,7 @@ export default createPaginationContainer(
   {
     hardwareSpec: graphql`
       fragment ProgramSpecListCard_hardwareSpec on HardwareSpecNode
-        @argumentDefinitions(
-          count: { type: "Int" }
-          cursor: { type: "Cursor" }
-        ) {
+      @argumentDefinitions(count: { type: "Int" }, cursor: { type: "Cursor" }) {
         programSpecs(first: $count, after: $cursor)
           @connection(key: "ProgramSpecList_programSpecs") {
           edges {

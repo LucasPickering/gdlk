@@ -5,7 +5,7 @@ import {
   DialogTitle,
   DialogContent,
 } from '@material-ui/core';
-import graphql from 'babel-plugin-relay/macro';
+import { graphql } from 'react-relay';
 import { useMutation } from 'relay-hooks';
 import { InitializeUserDialog_Mutation } from './__generated__/InitializeUserDialog_Mutation.graphql';
 import Form from 'components/common/Form';

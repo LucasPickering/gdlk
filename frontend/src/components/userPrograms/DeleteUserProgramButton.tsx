@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMutation } from 'relay-hooks';
-import graphql from 'babel-plugin-relay/macro';
+import { graphql } from 'react-relay';
 import { IconButton } from '@material-ui/core';
 import { Delete as IconDelete } from '@material-ui/icons';
 import { DeleteUserProgramButton_Mutation } from './__generated__/DeleteUserProgramButton_Mutation.graphql';

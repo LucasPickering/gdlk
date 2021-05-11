@@ -1,6 +1,6 @@
 import React from 'react';
 import { Switch, Route } from 'react-router-dom';
-import graphql from 'babel-plugin-relay/macro';
+import { graphql } from 'react-relay';
 import HomePage from './HomePage';
 import HardwareSpecDetailsView from './hardware/HardwareSpecDetailsView';
 import ProgramSpecView from './programs/ProgramSpecView';

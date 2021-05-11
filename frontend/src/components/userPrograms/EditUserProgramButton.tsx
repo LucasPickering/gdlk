@@ -7,7 +7,7 @@ import {
 } from '@material-ui/core';
 import { Edit as IconEdit } from '@material-ui/icons';
 import EditUserProgramForm from './EditUserProgramForm';
-import graphql from 'babel-plugin-relay/macro';
+import { graphql } from 'react-relay';
 import { useMutation } from 'relay-hooks';
 import { EditUserProgramButton_Mutation } from './__generated__/EditUserProgramButton_Mutation.graphql';
 import { createFragmentContainer, RelayProp } from 'react-relay';

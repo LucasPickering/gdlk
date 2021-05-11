@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { RelayProp, createFragmentContainer } from 'react-relay';
-import graphql from 'babel-plugin-relay/macro';
+import { graphql } from 'react-relay';
 import { ProgramSpecDetails_programSpec } from './__generated__/ProgramSpecDetails_programSpec.graphql';
 import {
   Card,

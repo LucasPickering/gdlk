@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPaginationContainer, RelayPaginationProp } from 'react-relay';
-import graphql from 'babel-plugin-relay/macro';
+import { graphql } from 'react-relay';
 import { HardwareSpecList_query } from './__generated__/HardwareSpecList_query.graphql';
 import {
   Button,
@@ -52,11 +52,11 @@ export default createPaginationContainer(
   {
     query: graphql`
       fragment HardwareSpecList_query on Query
-        @argumentDefinitions(
-          count: { type: "Int" }
-          cursor: { type: "Cursor" }
-          programSpecCount: { type: "Int" }
-        ) {
+      @argumentDefinitions(
+        count: { type: "Int" }
+        cursor: { type: "Cursor" }
+        programSpecCount: { type: "Int" }
+      ) {
         hardwareSpecs(first: $count, after: $cursor)
           @connection(key: "HardwareSpecList_hardwareSpecs") {
           edges {
