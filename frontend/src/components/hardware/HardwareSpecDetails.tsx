@@ -9,7 +9,7 @@ import {
   Grid,
   CardHeader,
 } from '@material-ui/core';
-import ProgramSpecListCard from './ProgramSpecListCard';
+import ProgramSpecListCard from './PuzzleListCard';
 import HardwareSpecSummary from './HardwareSpecSummary';
 
 const HardwareSpecDetails: React.FC<{

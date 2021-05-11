@@ -3,7 +3,7 @@ import { Switch, Route } from 'react-router-dom';
 import { graphql } from 'react-relay';
 import HomePage from './HomePage';
 import HardwareSpecDetailsView from './hardware/HardwareSpecDetailsView';
-import ProgramSpecView from './programs/ProgramSpecView';
+import PuzzleView from './programs/PuzzleView';
 import NotFoundPage from './NotFoundPage';
 import PageContainer from './common/PageContainer';
 import DocsPage from 'components/docs/DocsPage';
@@ -74,7 +74,7 @@ const CoreContent: React.FC = () => {
                 <HardwareSpecDetailsView />
               </Route>
               <Route path="/hardware/:hwSlug/puzzles/:programSlug" exact>
-                <ProgramSpecView />
+                <PuzzleView />
               </Route>
 
               <Route path="*">

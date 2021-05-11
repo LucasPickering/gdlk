@@ -54,7 +54,7 @@ export default createPaginationContainer(
       fragment HardwareSpecList_query on Query
       @argumentDefinitions(
         count: { type: "Int" }
-        cursor: { type: "Cursor" }
+        cursor: { type: "String" }
         programSpecCount: { type: "Int" }
       ) {
         hardwareSpecs(first: $count, after: $cursor)
@@ -78,7 +78,7 @@ export default createPaginationContainer(
       };
     },
     query: graphql`
-      query HardwareSpecListPaginationQuery($count: Int, $cursor: Cursor) {
+      query HardwareSpecListPaginationQuery($count: Int, $cursor: String) {
         ...HardwareSpecList_query @arguments(count: $count, cursor: $cursor)
       }
     `,

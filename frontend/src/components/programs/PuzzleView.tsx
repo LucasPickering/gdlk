@@ -1,8 +1,8 @@
 import React, { useContext } from 'react';
 import { graphql } from 'react-relay';
-import { ProgramSpecViewQuery } from './__generated__/ProgramSpecViewQuery.graphql';
+import { PuzzleViewQuery } from './__generated__/PuzzleViewQuery.graphql';
 import { useParams } from 'react-router-dom';
-import ProgramSpecDetails from './ProgramSpecDetails';
+import PuzzleDetails from './PuzzleDetails';
 import QueryResult from 'components/common/QueryResult';
 import NotFoundPage from 'components/NotFoundPage';
 import { UserContext } from 'state/user';
@@ -12,14 +12,14 @@ interface RouteParams {
   programSlug: string;
 }
 
-const ProgramSpecView: React.FC = () => {
+const PuzzleView: React.FC = () => {
   const { hwSlug, programSlug } = useParams<RouteParams>();
   const { loggedIn } = useContext(UserContext);
 
   return (
-    <QueryResult<ProgramSpecViewQuery>
+    <QueryResult<PuzzleViewQuery>
       query={graphql`
-        query ProgramSpecViewQuery(
+        query PuzzleViewQuery(
           $loggedIn: Boolean!
           $hwSlug: String!
           $programSlug: String!
@@ -30,7 +30,7 @@ const ProgramSpecView: React.FC = () => {
             numStacks
             maxStackLength
             programSpec(slug: $programSlug) {
-              ...ProgramSpecDetails_programSpec
+              ...PuzzleDetails_programSpec
             }
           }
         }
@@ -38,9 +38,7 @@ const ProgramSpecView: React.FC = () => {
       variables={{ hwSlug, programSlug, loggedIn }}
       render={({ props }) => {
         if (props?.hardwareSpec?.programSpec) {
-          return (
-            <ProgramSpecDetails programSpec={props.hardwareSpec.programSpec} />
-          );
+          return <PuzzleDetails programSpec={props.hardwareSpec.programSpec} />;
         }
 
         return <NotFoundPage />;
@@ -49,4 +47,4 @@ const ProgramSpecView: React.FC = () => {
   );
 };
 
-export default ProgramSpecView;
+export default PuzzleView;

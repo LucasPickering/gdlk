@@ -17,7 +17,7 @@ import NotFoundPage from 'components/NotFoundPage';
 import { StorageHandler } from 'util/storage';
 import useStaticValue from 'hooks/useStaticValue';
 import PromptOnExit from 'components/common/PromptOnExit';
-import useCompiler from './useCompiler';
+// import useCompiler from './useCompiler.ts.disable';
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => {
   const border = `2px solid ${palette.divider}`;

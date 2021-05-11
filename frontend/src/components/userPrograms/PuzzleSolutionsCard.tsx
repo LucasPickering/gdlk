@@ -1,7 +1,7 @@
 import React from 'react';
 import { RelayPaginationProp, createPaginationContainer } from 'react-relay';
 import { graphql } from 'react-relay';
-import { UserProgramsCard_programSpec } from './__generated__/UserProgramsCard_programSpec.graphql';
+import { PuzzleSolutionsCard_puzzle } from './__generated__/PuzzleSolutionsCard_puzzle.graphql';
 import {
   TableBody,
   TableContainer,
@@ -17,15 +17,15 @@ import {
 } from '@material-ui/core';
 import Link from 'components/common/Link';
 import { useRouteMatch } from 'react-router-dom';
-import DeleteUserProgramButton from './DeleteUserProgramButton';
-import EditUserProgramButton from './EditUserProgramButton';
-import CreateUserProgramButton from './CreateUserProgramButton';
-import CopyUserProgramButton from './CopyUserProgramButton';
+import DeletePuzzleSolutionButton from './DeletePuzzleSolutionButton';
+import EditPuzzleSolutionButton from './EditPuzzleSolutionButton';
+import CreatePuzzleSolutionButton from './CreatePuzzleSolutionButton';
+import CopyPuzzleSolutionButton from './CopyPuzzleSolutionButton';
 
-const UserProgramsCard: React.FC<{
-  programSpec: UserProgramsCard_programSpec;
+const PuzzleSolutionsCard: React.FC<{
+  puzzle: PuzzleSolutionsCard_puzzle;
   relay: RelayPaginationProp;
-}> = ({ programSpec }) => {
+}> = ({ puzzle }) => {
   const { url } = useRouteMatch();
 
   return (
@@ -42,24 +42,24 @@ const UserProgramsCard: React.FC<{
             </TableHead>
             <TableBody>
               {/* One row per existing solution */}
-              {programSpec.userPrograms.edges.map(({ node: userProgram }) => (
-                <TableRow key={userProgram.id}>
+              {puzzle.puzzleSolutions.edges.map(({ node: puzzleSolution }) => (
+                <TableRow key={puzzleSolution.id}>
                   <TableCell>
-                    <Link to={`${url}/${userProgram.fileName}`}>
-                      {userProgram.fileName}
+                    <Link to={`${url}/${puzzleSolution.fileName}`}>
+                      {puzzleSolution.fileName}
                     </Link>
                   </TableCell>
 
                   <TableCell>
-                    <EditUserProgramButton userProgram={userProgram} />
-                    <CopyUserProgramButton
-                      programSpecId={programSpec.id}
-                      userProgram={userProgram}
+                    <EditPuzzleSolutionButton puzzleSolution={puzzleSolution} />
+                    <CopyPuzzleSolutionButton
+                      puzzleId={puzzle.id}
+                      puzzleSolution={puzzleSolution}
                     />
-                    <DeleteUserProgramButton
-                      programSpecId={programSpec.id}
-                      userProgramId={userProgram.id}
-                      fileName={userProgram.fileName}
+                    <DeletePuzzleSolutionButton
+                      puzzleId={puzzle.id}
+                      puzzleSolutionId={puzzleSolution.id}
+                      fileName={puzzleSolution.fileName}
                     />
                   </TableCell>
                 </TableRow>
@@ -70,32 +70,34 @@ const UserProgramsCard: React.FC<{
       </CardContent>
 
       <CardActions>
-        <CreateUserProgramButton programSpecId={programSpec.id} />
+        <CreatePuzzleSolutionButton puzzleId={puzzle.id} />
       </CardActions>
     </Card>
   );
 };
 
 export default createPaginationContainer(
-  UserProgramsCard,
+  PuzzleSolutionsCard,
   {
-    programSpec: graphql`
-      fragment UserProgramsCard_programSpec on ProgramSpecNode
+    puzzle: graphql`
+      fragment PuzzleSolutionsCard_puzzle on PuzzleNode
       @argumentDefinitions(
-        userProgramCount: { type: "Int" }
-        userProgramCursor: { type: "Cursor" }
+        puzzleSolutionCount: { type: "Int" }
+        puzzleSolutionCursor: { type: "String" }
       ) {
         id
         # A user probably won't have a lot of solutions for one program, so
         # don't bother with pagination
-        userPrograms(first: $userProgramCount, after: $userProgramCursor)
-          @connection(key: "UserProgramsCard_userPrograms") {
+        puzzleSolutions(
+          first: $puzzleSolutionCount
+          after: $puzzleSolutionCursor
+        ) @connection(key: "PuzzleSolutionsCard_puzzleSolutions") {
           edges {
             node {
               id
               fileName
-              ...EditUserProgramButton_userProgram
-              ...CopyUserProgramButton_userProgram
+              ...EditPuzzleSolutionButton_puzzleSolution
+              ...CopyPuzzleSolutionButton_puzzleSolution
             }
           }
         }
@@ -111,14 +113,9 @@ export default createPaginationContainer(
       };
     },
     query: graphql`
-      query UserProgramsCardPaginationQuery(
-        $hardwareSlug: String!
-        $programSlug: String!
-      ) {
-        hardwareSpec(slug: $hardwareSlug) {
-          programSpec(slug: $programSlug) {
-            ...UserProgramsCard_programSpec
-          }
+      query PuzzleSolutionsCardPaginationQuery($programSlug: String!) {
+        puzzle(slug: $programSlug) {
+          ...PuzzleSolutionsCard_puzzle
         }
       }
     `,

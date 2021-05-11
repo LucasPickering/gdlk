@@ -6,7 +6,7 @@ import {
   createFragmentContainer,
 } from 'react-relay';
 import { graphql } from 'react-relay';
-import { ProgramSpecListCard_hardwareSpec } from './__generated__/ProgramSpecListCard_hardwareSpec.graphql';
+import { PuzzleListCard_hardwareSpec } from './__generated__/PuzzleListCard_hardwareSpec.graphql';
 import {
   Button,
   Card,
@@ -30,60 +30,53 @@ import {
 } from '@material-ui/icons';
 import { useRouteMatch } from 'react-router-dom';
 import Link from 'components/common/Link';
-import { ProgramSpecListCard_programSpec } from './__generated__/ProgramSpecListCard_programSpec.graphql';
+import { PuzzleListCard_puzzle } from './__generated__/PuzzleListCard_puzzle.graphql';
 import { UserContext } from 'state/user';
 
 const useLocalStyles = makeStyles(({ spacing }) => ({
-  programSpecRow: {
+  puzzleRow: {
     '& > *': {
       borderBottom: 'none',
     },
   },
-  programSpecRowExtra: {
+  puzzleRowExtra: {
     paddingTop: 0,
     paddingBottom: 0,
   },
-  programSpecSummaryWrapper: {
+  puzzleSummaryWrapper: {
     margin: spacing(1),
   },
 }));
 
-const ProgramSpecListRow = createFragmentContainer(
-  ({
-    programSpec,
-  }: {
-    programSpec: ProgramSpecListCard_programSpec;
-    relay: RelayProp;
-  }) => {
+const PuzzleListRow = createFragmentContainer(
+  ({ puzzle }: { puzzle: PuzzleListCard_puzzle; relay: RelayProp }) => {
     const localClasses = useLocalStyles();
     const { url } = useRouteMatch();
     const [open, setOpen] = useState<boolean>(false);
 
     return (
       <>
-        <TableRow className={localClasses.programSpecRow}>
+        <TableRow className={localClasses.puzzleRow}>
           <TableCell>
             <IconButton onClick={() => setOpen((prev) => !prev)}>
               {open ? <IconExpandLess /> : <IconExpandMore />}
             </IconButton>
           </TableCell>
           <TableCell>
-            <Link to={`${url}/puzzles/${programSpec.slug}`}>
-              {programSpec.name}
-            </Link>
+            <Link to={`${url}/puzzles/${puzzle.slug}`}>{puzzle.name}</Link>
           </TableCell>
 
-          {programSpec.userPrograms && (
+          {puzzle.userPrograms && (
             <TableCell align="right">
-              {programSpec.userPrograms.totalCount}
+              {puzzle.userPrograms.totalCount}
             </TableCell>
           )}
         </TableRow>
         <TableRow>
-          <TableCell className={localClasses.programSpecRowExtra} colSpan={3}>
+          <TableCell className={localClasses.puzzleRowExtra} colSpan={3}>
             <Collapse in={open} unmountOnExit>
-              <div className={localClasses.programSpecSummaryWrapper}>
-                {programSpec.description}
+              <div className={localClasses.puzzleSummaryWrapper}>
+                {puzzle.description}
               </div>
             </Collapse>
           </TableCell>
@@ -92,8 +85,8 @@ const ProgramSpecListRow = createFragmentContainer(
     );
   },
   {
-    programSpec: graphql`
-      fragment ProgramSpecListCard_programSpec on ProgramSpecNode {
+    puzzle: graphql`
+      fragment PuzzleListCard_puzzle on PuzzleNode {
         slug
         name
         description
@@ -105,8 +98,8 @@ const ProgramSpecListRow = createFragmentContainer(
   }
 );
 
-const ProgramSpecListCard: React.FC<{
-  hardwareSpec: ProgramSpecListCard_hardwareSpec;
+const PuzzleListCard: React.FC<{
+  hardwareSpec: PuzzleListCard_hardwareSpec;
   relay: RelayPaginationProp;
 }> = ({ hardwareSpec, relay: { hasMore, loadMore } }) => {
   const { loggedIn } = useContext(UserContext);
@@ -125,11 +118,8 @@ const ProgramSpecListCard: React.FC<{
             </TableHead>
             <TableBody>
               {/* One row per program spec*/}
-              {hardwareSpec.programSpecs.edges.map(({ node: programSpec }) => (
-                <ProgramSpecListRow
-                  key={programSpec.id}
-                  programSpec={programSpec}
-                />
+              {hardwareSpec.puzzles.edges.map(({ node: puzzle }) => (
+                <PuzzleListRow key={puzzle.id} puzzle={puzzle} />
               ))}
             </TableBody>
           </Table>
@@ -148,17 +138,17 @@ const ProgramSpecListCard: React.FC<{
 };
 
 export default createPaginationContainer(
-  ProgramSpecListCard,
+  PuzzleListCard,
   {
     hardwareSpec: graphql`
-      fragment ProgramSpecListCard_hardwareSpec on HardwareSpecNode
-      @argumentDefinitions(count: { type: "Int" }, cursor: { type: "Cursor" }) {
-        programSpecs(first: $count, after: $cursor)
-          @connection(key: "ProgramSpecList_programSpecs") {
+      fragment PuzzleListCard_hardwareSpec on Query
+      @argumentDefinitions(count: { type: "Int" }, cursor: { type: "String" }) {
+        puzzles(first: $count, after: $cursor)
+          @connection(key: "PuzzleList_puzzles") {
           edges {
             node {
               id
-              ...ProgramSpecListCard_programSpec
+              ...PuzzleListCard_puzzle
             }
           }
         }
@@ -174,14 +164,13 @@ export default createPaginationContainer(
       };
     },
     query: graphql`
-      query ProgramSpecListCardPaginationQuery(
+      query PuzzleListCardPaginationQuery(
         $loggedIn: Boolean!
-        $hwSlug: String!
         $count: Int
-        $cursor: Cursor
+        $cursor: String
       ) {
         hardwareSpec(slug: $hwSlug) {
-          ...ProgramSpecListCard_hardwareSpec
+          ...PuzzleListCard_hardwareSpec
             @arguments(count: $count, cursor: $cursor)
         }
       }

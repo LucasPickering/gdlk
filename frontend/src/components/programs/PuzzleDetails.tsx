@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { RelayProp, createFragmentContainer } from 'react-relay';
 import { graphql } from 'react-relay';
-import { ProgramSpecDetails_programSpec } from './__generated__/ProgramSpecDetails_programSpec.graphql';
+import { PuzzleDetails_puzzle } from './__generated__/PuzzleDetails_puzzle.graphql';
 import {
   Card,
   CardContent,
@@ -9,7 +9,7 @@ import {
   makeStyles,
   Grid,
 } from '@material-ui/core';
-import UserProgramsCard from '../userPrograms/UserProgramsCard';
+import UserProgramsCard from '../userPrograms/PuzzleSolutionsCard';
 import HardwareSpecSummary from 'components/hardware/HardwareSpecSummary';
 import Link from 'components/common/Link';
 import { UserContext } from 'state/user';
@@ -31,10 +31,10 @@ const useLocalStyles = makeStyles(({ spacing }) => ({
   },
 }));
 
-const ProgramSpecDetails: React.FC<{
-  programSpec: ProgramSpecDetails_programSpec;
+const PuzzleDetails: React.FC<{
+  puzzle: PuzzleDetails_puzzle;
   relay: RelayProp;
-}> = ({ programSpec }) => {
+}> = ({ puzzle }) => {
   const localClasses = useLocalStyles();
   const { loggedIn } = useContext(UserContext);
 
@@ -42,11 +42,11 @@ const ProgramSpecDetails: React.FC<{
     <Grid container>
       <Grid item xs={12}>
         <Typography variant="h1">
-          <Link to={`/hardware/${programSpec.hardwareSpec.slug}`}>
-            {programSpec.hardwareSpec.name}
+          <Link to={`/hardware/${puzzle.hardwareSpec.slug}`}>
+            {puzzle.hardwareSpec.name}
           </Link>
           {' / '}
-          {programSpec.name}
+          {puzzle.name}
         </Typography>
       </Grid>
 
@@ -55,12 +55,12 @@ const ProgramSpecDetails: React.FC<{
           <CardContent>
             <div className={localClasses.specSection}>
               <Typography variant="h2">Description</Typography>
-              <Typography>{programSpec.description}</Typography>
+              <Typography>{puzzle.description}</Typography>
             </div>
 
             <div className={localClasses.specSection}>
               <Typography variant="h2">Hardware Spec</Typography>
-              <HardwareSpecSummary hardwareSpec={programSpec.hardwareSpec} />
+              <HardwareSpecSummary hardwareSpec={puzzle.hardwareSpec} />
             </div>
           </CardContent>
         </Card>
@@ -68,27 +68,21 @@ const ProgramSpecDetails: React.FC<{
 
       {loggedIn && (
         <Grid item sm={6} xs={12}>
-          <UserProgramsCard programSpec={programSpec} />
+          <UserProgramsCard puzzle={puzzle} />
         </Grid>
       )}
     </Grid>
   );
 };
 
-export default createFragmentContainer(ProgramSpecDetails, {
-  programSpec: graphql`
-    fragment ProgramSpecDetails_programSpec on ProgramSpecNode {
+export default createFragmentContainer(PuzzleDetails, {
+  puzzle: graphql`
+    fragment PuzzleDetails_puzzle on PuzzleNode {
       id
       slug
       name
       description
-      hardwareSpec {
-        slug
-        name
-        ...HardwareSpecSummary_hardwareSpec
-      }
-      # Requesting user programs while not logged in causes an error
-      ...UserProgramsCard_programSpec @include(if: $loggedIn)
+      ...PuzzleSolutionsCard_puzzle
     }
   `,
 });

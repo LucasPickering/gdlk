@@ -6,13 +6,13 @@ import { IdeContext } from 'state/ide';
 import { useMutation } from 'relay-hooks';
 import { AutoSaveHandler_Mutation } from './__generated__/AutoSaveHandler_Mutation.graphql';
 import { createFragmentContainer, RelayProp } from 'react-relay';
-import { AutoSaveHandler_userProgram } from './__generated__/AutoSaveHandler_userProgram.graphql';
+import { AutoSaveHandler_puzzleSolution } from './__generated__/AutoSaveHandler_puzzleSolution.graphql';
 import useDebouncedValue from 'hooks/useDebouncedValue';
 
-const saveUserProgramMutation = graphql`
+const savePuzzleSolutionMutation = graphql`
   mutation AutoSaveHandler_Mutation($id: ID!, $sourceCode: String!) {
-    updateUserProgram(input: { id: $id, sourceCode: $sourceCode }) {
-      userProgramEdge {
+    updatePuzzleSolution(input: { id: $id, sourceCode: $sourceCode }) {
+      puzzleSolutionEdge {
         node {
           sourceCode
         }
@@ -26,30 +26,35 @@ const saveUserProgramMutation = graphql`
  * status indicator.
  */
 const AutoSaveHandler: React.FC<{
-  userProgram: AutoSaveHandler_userProgram;
+  puzzleSolution: AutoSaveHandler_puzzleSolution;
   relay: RelayProp;
-}> = ({ userProgram }) => {
+}> = ({ puzzleSolution }) => {
   const { sourceCode } = useContext(IdeContext);
   // Debounce changes so we're not sending constant requests
   const debouncedSourceCode = useDebouncedValue(sourceCode, 1000);
   const [mutate, { loading }] = useMutation<AutoSaveHandler_Mutation>(
-    saveUserProgramMutation
+    savePuzzleSolutionMutation
   );
   const [saveState, setSaveState] = useState<'success' | 'error' | undefined>();
 
   useEffect(() => {
     // If the user has changed the source code, save the new value
-    if (debouncedSourceCode !== userProgram.sourceCode) {
+    if (debouncedSourceCode !== puzzleSolution.sourceCode) {
       mutate({
         variables: {
-          id: userProgram.id,
+          id: puzzleSolution.id,
           sourceCode: debouncedSourceCode,
         },
         onCompleted: () => setSaveState('success'),
         onError: () => setSaveState('error'),
       });
     }
-  }, [debouncedSourceCode, userProgram.sourceCode, userProgram.id, mutate]);
+  }, [
+    debouncedSourceCode,
+    puzzleSolution.sourceCode,
+    puzzleSolution.id,
+    mutate,
+  ]);
 
   return (
     <>
@@ -71,8 +76,8 @@ const AutoSaveHandler: React.FC<{
 };
 
 export default createFragmentContainer(AutoSaveHandler, {
-  userProgram: graphql`
-    fragment AutoSaveHandler_userProgram on UserProgramNode {
+  puzzleSolution: graphql`
+    fragment AutoSaveHandler_puzzleSolution on PuzzleSolutionNode {
       id
       sourceCode
     }

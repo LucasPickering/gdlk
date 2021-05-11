@@ -2,17 +2,17 @@ import React from 'react';
 import { FileCopy as IconFileCopy } from '@material-ui/icons';
 import { graphql } from 'react-relay';
 import { useMutation } from 'relay-hooks';
-import { CopyUserProgramButton_Mutation } from './__generated__/CopyUserProgramButton_Mutation.graphql';
+import { CopyPuzzleSolutionButton_Mutation } from './__generated__/CopyPuzzleSolutionButton_Mutation.graphql';
 import { createFragmentContainer, RelayProp } from 'react-relay';
-import { CopyUserProgramButton_userProgram } from './__generated__/CopyUserProgramButton_userProgram.graphql';
+import { CopyPuzzleSolutionButton_userProgram } from './__generated__/CopyPuzzleSolutionButton_userProgram.graphql';
 import IconButton from 'components/common/IconButton';
 
-const updateUserProgramMutation = graphql`
-  mutation CopyUserProgramButton_Mutation($id: ID!) {
-    copyUserProgram(input: { id: $id }) {
-      userProgramEdge {
+const copyPuzzleSolutionMutation = graphql`
+  mutation CopyPuzzleSolutionButton_Mutation($id: ID!) {
+    copyPuzzleSolution(input: { id: $id }) {
+      puzzleSolutionEdge {
         node {
-          fileName
+          name
         }
       }
     }
@@ -25,13 +25,13 @@ const updateUserProgramMutation = graphql`
  * @param programSpecId The ID of the program that owns this solution
  * @param userProgram The user program being copied
  */
-const CopyUserProgramButton: React.FC<{
+const CopyPuzzleSolutionButton: React.FC<{
   programSpecId: string;
-  userProgram: CopyUserProgramButton_userProgram;
+  userProgram: CopyPuzzleSolutionButton_userProgram;
   relay: RelayProp;
 }> = ({ programSpecId, userProgram }) => {
-  const [mutate, { loading }] = useMutation<CopyUserProgramButton_Mutation>(
-    updateUserProgramMutation
+  const [mutate, { loading }] = useMutation<CopyPuzzleSolutionButton_Mutation>(
+    copyPuzzleSolutionMutation
   );
 
   return (
@@ -50,11 +50,11 @@ const CopyUserProgramButton: React.FC<{
               parentID: programSpecId,
               connectionInfo: [
                 {
-                  key: 'UserProgramsCard_userPrograms',
+                  key: 'PuzzleSolutionsCard_userPrograms',
                   rangeBehavior: 'append',
                 },
               ],
-              edgeName: 'userProgramEdge',
+              edgeName: 'puzzleSolutionEdge',
             },
           ],
         });
@@ -65,9 +65,9 @@ const CopyUserProgramButton: React.FC<{
   );
 };
 
-export default createFragmentContainer(CopyUserProgramButton, {
+export default createFragmentContainer(CopyPuzzleSolutionButton, {
   userProgram: graphql`
-    fragment CopyUserProgramButton_userProgram on UserProgramNode {
+    fragment CopyPuzzleSolutionButton_userProgram on PuzzleSolutionNode {
       id
     }
   `,

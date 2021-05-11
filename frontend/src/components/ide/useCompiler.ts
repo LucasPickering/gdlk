@@ -22,15 +22,15 @@ interface Output {
   execute: (executeAll?: boolean) => void;
 }
 
-const executeUserProgramMutation = graphql`
-  mutation useCompiler_ExecuteMutation($id: ID!) {
-    executeUserProgram(input: { id: $id }) {
-      status {
-        __typename
-      }
-    }
-  }
-`;
+// const executeUserProgramMutation = graphql`
+//   mutation useCompiler_ExecuteMutation($id: ID!) {
+//     executeUserProgram(input: { id: $id }) {
+//       status {
+//         __typename
+//       }
+//     }
+//   }
+// `;
 
 /**
  * A helper hook that handles a lot of state management for the compiler.
@@ -48,9 +48,9 @@ const useCompiler = ({ hardwareSpec, sourceCode }: Input): Output => {
   const userProgram = programSpec.userProgram;
   assertIsDefined(userProgram);
 
-  const [executeMutation] = useMutation<useCompiler_ExecuteMutation>(
-    executeUserProgramMutation
-  );
+  // const [executeMutation] = useMutation<useCompiler_ExecuteMutation>(
+  //   executeUserProgramMutation
+  // );
 
   // These values come from wasm. They're read only, so they're safe to share
   // with the whole component tree. They are pointers and therefore updates
@@ -160,17 +160,17 @@ const useCompiler = ({ hardwareSpec, sourceCode }: Input): Output => {
   // If we've successfully executed the program in the browser, and the latest
   // version of the code has been saved to the API, then execute it server-side
   // to collect stats
-  const hasUnsavedChanges = sourceCode !== userProgram.sourceCode;
-  const machineSuccessful = Boolean(
-    compiledState?.type === 'compiled' && compiledState.machineState.successful
-  );
-  useEffect(() => {
-    if (!hasUnsavedChanges && machineSuccessful) {
-      executeMutation({
-        variables: { id: userProgram.id },
-      });
-    }
-  }, [hasUnsavedChanges, machineSuccessful, userProgram.id, executeMutation]);
+  // const hasUnsavedChanges = sourceCode !== userProgram.sourceCode;
+  // const machineSuccessful = Boolean(
+  //   compiledState?.type === 'compiled' && compiledState.machineState.successful
+  // );
+  // useEffect(() => {
+  //   if (!hasUnsavedChanges && machineSuccessful) {
+  //     executeMutation({
+  //       variables: { id: userProgram.id },
+  //     });
+  //   }
+  // }, [hasUnsavedChanges, machineSuccessful, userProgram.id, executeMutation]);
 
   return { wasmHardwareSpec, wasmProgramSpec, compiledState, compile, execute };
 };
