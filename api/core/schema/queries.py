@@ -49,3 +49,12 @@ class Query(ObjectType):
         ),
     )
     hardware_specs = DjangoConnectionField(HardwareSpecNode)
+    puzzle = graphene.Field(
+        PuzzleNode,
+        description="Get a single puzzle by its slug",
+        slug=graphene.String(
+            required=True,
+            description="The unique slug of the puzzle to fetch",
+        ),
+    )
+    puzzles = DjangoConnectionField(PuzzleNode)
