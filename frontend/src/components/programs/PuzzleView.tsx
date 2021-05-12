@@ -8,34 +8,33 @@ import NotFoundPage from 'components/NotFoundPage';
 import { UserContext } from 'state/user';
 
 interface RouteParams {
-  hwSlug: string;
-  programSlug: string;
+  hardwareSpecSlug: string;
+  puzzleSlug: string;
 }
 
 const PuzzleView: React.FC = () => {
-  const { hwSlug, programSlug } = useParams<RouteParams>();
+  const { hardwareSpecSlug, puzzleSlug } = useParams<RouteParams>();
   const { loggedIn } = useContext(UserContext);
 
   return (
     <QueryResult<PuzzleViewQuery>
       query={graphql`
         query PuzzleViewQuery(
-          $loggedIn: Boolean!
-          $hwSlug: String!
-          $programSlug: String!
+          $hardwareSpecSlug: String!
+          $puzzleSlug: String!
         ) {
-          hardwareSpec(slug: $hwSlug) {
+          hardwareSpec(slug: $hardwareSpecSlug) {
             slug
             numRegisters
             numStacks
             maxStackLength
           }
-          puzzle(slug: $programSlug) {
+          puzzle(slug: $puzzleSlug) {
             ...PuzzleDetails_puzzle
           }
         }
       `}
-      variables={{ hwSlug, programSlug, loggedIn }}
+      variables={{ hardwareSpecSlug, puzzleSlug }}
       render={({ props }) => {
         if (props?.hardwareSpec?.puzzle) {
           return <PuzzleDetails puzzle={props.puzzle} />;

@@ -66,7 +66,7 @@ const PuzzleListRow = createFragmentContainer(
           </TableCell>
 
           <TableCell align="right">
-            {puzzle.playerSolutions.totalCount}
+            {puzzle.puzzleSolutions.totalCount}
           </TableCell>
         </TableRow>
         <TableRow>
@@ -87,7 +87,7 @@ const PuzzleListRow = createFragmentContainer(
         slug
         name
         description
-        playerSolutions {
+        puzzleSolutions {
           totalCount
         }
       }
@@ -161,11 +161,7 @@ export default createPaginationContainer(
       };
     },
     query: graphql`
-      query PuzzleListCardPaginationQuery(
-        $loggedIn: Boolean!
-        $count: Int
-        $cursor: String
-      ) {
+      query PuzzleListCardPaginationQuery($count: Int, $cursor: String) {
         ...PuzzleListCard_query @arguments(count: $count, cursor: $cursor)
       }
     `,

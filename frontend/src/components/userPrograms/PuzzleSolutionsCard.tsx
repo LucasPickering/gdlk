@@ -88,7 +88,7 @@ export default createPaginationContainer(
         id
         # A user probably won't have a lot of solutions for one program, so
         # don't bother with pagination
-        playerSolutions(
+        puzzleSolutions(
           first: $puzzleSolutionCount
           after: $puzzleSolutionCursor
         ) @connection(key: "PuzzleSolutionsCard_puzzleSolutions") {

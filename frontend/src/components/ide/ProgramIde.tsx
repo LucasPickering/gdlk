@@ -78,11 +78,11 @@ const ProgramIde: React.FC<{
   const localClasses = useLocalStyles();
   const query = useFragment(
     graphql`
-      fragment ProgramIde_hardwareSpec on Query
+      fragment ProgramIde_query on Query
       @argumentDefinitions(
         hardwareSpecSlug: { type: "String!" }
         puzzleSlug: { type: "String!" }
-        fileName: { type: "String!" }
+        name: { type: "String!" }
       ) {
         hardwareSpec(slug: $hardwareSpecSlug) {
           id
@@ -94,10 +94,10 @@ const ProgramIde: React.FC<{
           id
           input
           expectedOutput
-          puzzleSolution(fileName: $fileName) {
+          puzzleSolution(name: $name) {
             id
             sourceCode
-            lastModified
+            updatedAt
             ...AutoSaveHandler_puzzleSolution
           }
         }
@@ -129,7 +129,7 @@ const ProgramIde: React.FC<{
     if (
       storedSource &&
       // Only use the local copy if it's newer than the remote one
-      storedSource.lastModified > new Date(puzzleSolution.lastModified)
+      storedSource.updatedAt > new Date(puzzleSolution.updatedAt)
     ) {
       return storedSource.value;
     }

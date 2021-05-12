@@ -1,12 +1,12 @@
 export interface StorageValue<T> {
   value: T;
-  lastModified: Date;
+  updatedAt: Date;
 }
 
 /**
  * A utility class to handle storing values in browser local storage.This
  * handles serializing/deserialize the value via JSON, and also tags it with
- * a lastModified field automatically.
+ * a updatedAt field automatically.
  */
 export class StorageHandler<T> {
   private key: string;
@@ -25,11 +25,11 @@ export class StorageHandler<T> {
         if (
           typeof objValue === 'object' &&
           typeof objValue.value !== undefined &&
-          typeof objValue.lastModified === 'string'
+          typeof objValue.updatedAt === 'string'
         ) {
           return {
             value: objValue.value as T,
-            lastModified: new Date(objValue.lastModified),
+            updatedAt: new Date(objValue.updatedAt),
           };
         }
       } catch (e) {
@@ -43,7 +43,7 @@ export class StorageHandler<T> {
   public set(value: T): void {
     const storedObj: StorageValue<T> = {
       value,
-      lastModified: new Date(), // This will be serialized as an ISO string
+      updatedAt: new Date(), // This will be serialized as an ISO string
     };
     window.localStorage.setItem(this.key, JSON.stringify(storedObj));
   }

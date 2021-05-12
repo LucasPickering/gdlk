@@ -10,22 +10,22 @@ import { CompilerWrapper } from 'util/compile';
 import { CircularProgress } from '@material-ui/core';
 
 interface RouteParams {
-  hwSlug: string;
-  programSlug: string;
-  fileName: string;
+  hardwareSpecSlug: string;
+  puzzleSlug: string;
+  name: string;
 }
 
 const query = graphql`
   query ProgramIdeViewQuery(
     $hardwareSpecSlug: String!
-    $programSlug: String!
-    $fileName: String!
+    $puzzleSlug: String!
+    $name: String!
   ) {
     ...ProgramIde_query
       @arguments(
         hardwareSpecSlug: $hardwareSpecSlug
         puzzleSlug: $puzzleSlug
-        fileName: $fileName
+        name: $name
       )
   }
 `;
@@ -34,7 +34,7 @@ const query = graphql`
  * A view that allows the user to edit and run GDLK code.
  */
 const ProgramIdeView: React.FC = () => {
-  const { hwSlug, programSlug, fileName } = useParams<RouteParams>();
+  const { hardwareSpecSlug, puzzleSlug, name } = useParams<RouteParams>();
 
   // Initialize the Compiler. Wasm imports have to be async until we get
   // webpack 5, so we want to block the entire page until it's imported.
@@ -51,14 +51,14 @@ const ProgramIdeView: React.FC = () => {
       fullScreen
       navProps={{
         backLink: {
-          to: `/hardware/${hwSlug}/puzzles/${programSlug}`,
+          to: `/hardware/${hardwareSpecSlug}/puzzles/${puzzleSlug}`,
           label: 'Back to Puzzle',
         },
       }}
     >
       <QueryResult<ProgramIdeViewQuery>
         query={query}
-        variables={{ hwSlug, programSlug, fileName }}
+        variables={{ hardwareSpecSlug, puzzleSlug, name }}
         render={({ props }) => {
           if (!compilerInitialized) {
             return <CircularProgress />;

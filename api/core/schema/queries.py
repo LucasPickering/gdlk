@@ -27,6 +27,13 @@ class HardwareSpecNode(DjangoObjectType):
         connection_class = ExtendedConnection
 
 
+class PuzzleSolutionNode(DjangoObjectType):
+    class Meta:
+        model = PuzzleSolution
+        interfaces = (relay.Node,)
+        connection_class = ExtendedConnection
+
+
 class PuzzleNode(DjangoObjectType):
     class Meta:
         model = Puzzle
@@ -34,7 +41,20 @@ class PuzzleNode(DjangoObjectType):
         connection_class = ExtendedConnection
         # Don't think we'll need puzzle->player directly, so force caller to go
         # through PuzzleSolution. We can add this back later if we need it
-        exclude = ("players",)
+        exclude = ("players", "player_solutions")
+
+    # Rename player_solutions->puzzle_solutions, to match PuzzleSolution name
+    puzzle_solutions = DjangoConnectionField(
+        PuzzleSolutionNode, source="player_solutions"
+    )
+    puzzle_solution = graphene.Field(
+        PuzzleSolutionNode,
+        description="Get a single solution for this puzzle by its name",
+        name=graphene.String(
+            required=True,
+            description="The unique name of the solution to fetch",
+        ),
+    )
 
 
 class PlayerNode(DjangoObjectType):
@@ -47,13 +67,6 @@ class PlayerNode(DjangoObjectType):
         exclude = ("puzzles",)
 
     username = graphene.String(required=True)
-
-
-class PuzzleSolutionNode(DjangoObjectType):
-    class Meta:
-        model = PuzzleSolution
-        interfaces = (relay.Node,)
-        connection_class = ExtendedConnection
 
 
 class Query(ObjectType):

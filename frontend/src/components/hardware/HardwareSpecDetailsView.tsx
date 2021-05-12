@@ -8,27 +8,24 @@ import NotFoundPage from 'components/NotFoundPage';
 import { UserContext } from 'state/user';
 
 interface RouteParams {
-  hwSlug: string;
+  hardwareSpecSlug: string;
 }
 
 const HardwareSpecView: React.FC = () => {
-  const { hwSlug } = useParams<RouteParams>();
+  const { hardwareSpecSlug } = useParams<RouteParams>();
   const { loggedIn } = useContext(UserContext);
 
   return (
     <QueryResult<HardwareSpecDetailsViewQuery>
       query={graphql`
-        query HardwareSpecDetailsViewQuery(
-          $loggedIn: Boolean!
-          $hwSlug: String!
-        ) {
-          hardwareSpec(slug: $hwSlug) {
+        query HardwareSpecDetailsViewQuery($hardwareSpecSlug: String!) {
+          hardwareSpec(slug: $hardwareSpecSlug) {
             id
             ...HardwareSpecDetails_hardwareSpec
           }
         }
       `}
-      variables={{ loggedIn, hwSlug }}
+      variables={{ hardwareSpecSlug }}
       render={({ props }) => {
         if (props?.hardwareSpec) {
           return <HardwareSpecDetails hardwareSpec={props.hardwareSpec} />;
