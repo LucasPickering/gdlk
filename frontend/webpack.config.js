@@ -1,4 +1,5 @@
 const path = require('path');
+const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const WasmPackPlugin = require('@wasm-tool/wasm-pack-plugin');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
@@ -56,6 +57,8 @@ module.exports = {
         path.resolve(__dirname, '../crates/wasm/src'),
       ],
     }),
+    // Run typechecking in a separate process (cause babel doesn't do it)
+    new ForkTsCheckerWebpackPlugin(),
     new BundleAnalyzerPlugin({
       analyzerMode: process.env.WEBPACK_BUNDLE_ANALYZER_MODE || 'disabled',
     }),

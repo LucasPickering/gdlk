@@ -17,17 +17,17 @@ const deletePuzzleSolutionMutation = graphql`
 `;
 
 /**
- * A button that deletes a user program (with a confirmation modal).
+ * A button that deletes a puzzle solution (with a confirmation modal).
  *
- * @param programSpecId The ID of the program that owns this solution
- * @param userProgramId The user program being deleted
- * @param fileName The name of the user program being deleted
+ * @param puzzleId The ID of the puzzle that owns this solution
+ * @param puzzleSolutionId The puzzle solution being deleted
+ * @param name The name of the puzzle solution being deleted
  */
 const DeletePuzzleSolutionButton: React.FC<{
-  programSpecId: string;
-  userProgramId: string;
-  fileName: string;
-}> = ({ programSpecId, userProgramId, fileName }) => {
+  puzzleId: string;
+  puzzleSolutionId: string;
+  name: string;
+}> = ({ puzzleId, puzzleSolutionId, name }) => {
   const [mutate, { loading }] =
     useMutation<DeletePuzzleSolutionButton_Mutation>(
       deletePuzzleSolutionMutation
@@ -44,24 +44,24 @@ const DeletePuzzleSolutionButton: React.FC<{
       </IconButton>
       <ConfirmationDialog
         open={confirmationOpen}
-        label="confirm-delete-user-program"
+        label="confirm-delete-puzzle-solution"
         title="Delete solution?"
         loading={loading}
         confirmText="Delete"
         confirmColor="secondary"
         onConfirm={() => {
           mutate({
-            variables: { id: userProgramId },
+            variables: { id: puzzleSolutionId },
             configs: [
               {
                 type: 'RANGE_DELETE',
-                parentID: programSpecId,
+                parentID: puzzleId,
                 connectionKeys: [
                   {
-                    key: 'PuzzleSolutionsCard_userPrograms',
+                    key: 'PuzzleSolutionsCard_puzzleSolutions',
                   },
                 ],
-                pathToConnection: ['programSpec', 'userPrograms'],
+                pathToConnection: ['puzzle', 'puzzleSolutions'],
                 deletedIDFieldName: 'deletedId',
               },
             ],
@@ -71,7 +71,7 @@ const DeletePuzzleSolutionButton: React.FC<{
         }}
         onClose={() => setConfirmationOpen(false)}
       >
-        Are you sure you want to delete {fileName}?
+        Are you sure you want to delete {name}?
       </ConfirmationDialog>
     </>
   );

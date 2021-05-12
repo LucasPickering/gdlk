@@ -4,7 +4,7 @@ import clsx from 'clsx';
 import { IdeContext, gdlkSpanToAce } from 'state/ide';
 import AceEditor, { IAnnotation, IMarker, IEditorProps } from 'react-ace';
 import 'ace-builds/src-noconflict/theme-terminal';
-import GDLKMode from 'util/ace_mode';
+// import GDLKMode from 'util/ace_mode';
 
 const useLocalStyles = makeStyles(({ palette }) => ({
   codeEditor: {
@@ -85,10 +85,10 @@ const CodeEditor: React.FC<{ className?: string }> = ({ className }) => {
       break;
   }
 
-  const onLoad = (editor: IEditorProps): void => {
-    const gdlkMode = new GDLKMode();
-    editor.getSession().setMode(gdlkMode);
-  };
+  // const onLoad = (editor: IEditorProps): void => {
+  //   const gdlkMode = new GDLKMode();
+  //   editor.getSession().setMode(gdlkMode);
+  // };
 
   return (
     <div className={clsx(className, localClasses.codeEditor)}>

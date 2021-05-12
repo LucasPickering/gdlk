@@ -5,9 +5,7 @@ import { CompiledState } from 'state/ide';
 import { CompileResult, CompilerWrapper } from 'util/compile';
 import { graphql } from 'react-relay';
 import { assertIsDefined } from 'util/guards';
-import { ProgramIde_hardwareSpec } from './__generated__/ProgramIde_hardwareSpec.graphql';
 import { useMutation } from 'relay-hooks';
-import { useCompiler_ExecuteMutation } from './__generated__/useCompiler_ExecuteMutation.graphql';
 
 interface Input {
   hardwareSpec: ProgramIde_hardwareSpec;

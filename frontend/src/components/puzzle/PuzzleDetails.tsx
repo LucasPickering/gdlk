@@ -9,7 +9,7 @@ import {
   makeStyles,
   Grid,
 } from '@material-ui/core';
-import UserProgramsCard from '../userPrograms/PuzzleSolutionsCard';
+import UserProgramsCard from '../puzzleSolution/PuzzleSolutionsCard';
 import HardwareSpecSummary from 'components/hardware/HardwareSpecSummary';
 import Link from 'components/common/Link';
 import { UserContext } from 'state/user';
@@ -41,13 +41,7 @@ const PuzzleDetails: React.FC<{
   return (
     <Grid container>
       <Grid item xs={12}>
-        <Typography variant="h1">
-          <Link to={`/hardware/${puzzle.hardwareSpec.slug}`}>
-            {puzzle.hardwareSpec.name}
-          </Link>
-          {' / '}
-          {puzzle.name}
-        </Typography>
+        <Typography variant="h1">{puzzle.name}</Typography>
       </Grid>
 
       <Grid item sm={6} xs={12}>
@@ -56,11 +50,6 @@ const PuzzleDetails: React.FC<{
             <div className={localClasses.specSection}>
               <Typography variant="h2">Description</Typography>
               <Typography>{puzzle.description}</Typography>
-            </div>
-
-            <div className={localClasses.specSection}>
-              <Typography variant="h2">Hardware Spec</Typography>
-              <HardwareSpecSummary hardwareSpec={puzzle.hardwareSpec} />
             </div>
           </CardContent>
         </Card>

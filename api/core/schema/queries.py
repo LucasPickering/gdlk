@@ -45,7 +45,7 @@ class PuzzleNode(DjangoObjectType):
 
     # Rename player_solutions->puzzle_solutions, to match PuzzleSolution name
     puzzle_solutions = DjangoConnectionField(
-        PuzzleSolutionNode, source="player_solutions"
+        PuzzleSolutionNode, source="player_solutions", required=True
     )
     puzzle_solution = graphene.Field(
         PuzzleSolutionNode,
