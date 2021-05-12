@@ -3,7 +3,6 @@ from graphql_relay import from_global_id, to_global_id
 
 from .schema.queries import PuzzleNode
 from .models import PuzzleSolution
-from .util import pop_many
 
 
 class NodeIdField(serializers.CharField):
@@ -52,12 +51,3 @@ class PuzzleSolutionSerializer(serializers.ModelSerializer):
             "name",
             "source_code",
         )
-
-    def create(self, validated_data):
-        # Update existing record based on (player,puzzle,name) if it exists,
-        # otherwise create a new one
-        defaults = pop_many(validated_data, ["source_code"])
-        puzzle_solution, created = PuzzleSolution.objects.update_or_create(
-            **validated_data, defaults=defaults
-        )
-        return puzzle_solution

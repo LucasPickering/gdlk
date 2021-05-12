@@ -1,3 +1,4 @@
+from enum import Enum
 from django.db import IntegrityError
 import graphene
 from graphene_django.rest_framework.mutation import (
@@ -19,11 +20,24 @@ class NodeMutationOptions(MutationOptions):
     Meta-class options for NodeMutation base class
     """
 
+    operation = None
     serializer_class = None
     node_class = None
     edge_class = None
     node_field = None
     edge_field = None
+
+
+class NodeMutationOperation(Enum):
+    """
+    The different type of pre-defined operations that a node mutation can
+    perform. Use CUSTOM to write your own mutation logic.
+    """
+
+    CREATE = "create"
+    UPDATE = "update"
+    DELETE = "delete"
+    CUSTOM = "custom"
 
 
 class NodeMutation(ClientIDMutation):
@@ -38,8 +52,9 @@ class NodeMutation(ClientIDMutation):
     Behavior is configured through the `Meta` class:
 
     ### Required `Meta` Fields
+    - `operation` (must be an option from NodeMutationOperation)
     - `node_class`
-    - `serializer_class`
+    - `serializer_class` (only required for CREATE and UPDATE operations)
 
     ### Optional `Meta` Fields
     - `node_field`
@@ -50,10 +65,23 @@ class NodeMutation(ClientIDMutation):
 
     @classmethod
     def __init_subclass_with_meta__(
-        cls, serializer_class=None, node_class=None, _meta=None, **options
+        cls,
+        operation=None,
+        serializer_class=None,
+        node_class=None,
+        _meta=None,
+        **options,
     ):
         if not _meta:
             _meta = NodeMutationOptions(cls)
+
+        if operation not in set(NodeMutationOperation):
+            raise Exception(
+                f"Invalid node mutation operation: expected one of "
+                f"{list(NodeMutationOperation)}, got {operation}"
+            )
+
+        _meta.operation = operation
         _meta.serializer_class = serializer_class
         _meta.node_class = node_class
         # Derive edge class from the node class
@@ -86,15 +114,27 @@ class NodeMutation(ClientIDMutation):
         """
 
         player = Player.get_or_create_for_user(info.context.user)
-        serializer = cls._meta.serializer_class(
-            data={
-                # Always pass in the player ID from the request, the serializer
-                # may or may not use it. The subclass is free to override this
-                # value by defining its own player_id input field.
-                "player_id": player.id,
-                **input,
-            },
-        )
+        serializer_class = cls._meta.serializer_class
+        data = {
+            # Always pass in the player ID from the request, the serializer
+            # may or may not use it. The subclass is free to override this
+            # value by defining its own player_id input field.
+            "player_id": player.id,
+            **input,
+        }
+        if cls._meta.operation == NodeMutationOperation.CREATE:
+            serializer = serializer_class(data=data)
+        elif cls._meta.operation == NodeMutationOperation.UPDATE:
+            # TODO make this a bit more dynamic or cleaner or something
+            # IDK it feels jank but not sure what the right fix is
+            serializer = serializer_class(
+                serializer_class.Meta.model.objects.get(
+                    id=from_global_id(input["id"])[1]
+                ),
+                partial=True,
+                data=data,
+            )
+        # TODO implement DELETE and CUSTOM operations
 
         if serializer.is_valid():
             return serializer.save()
@@ -112,28 +152,14 @@ class NodeMutation(ClientIDMutation):
         return cls(**{cls._meta.node_field: node, cls._meta.edge_field: edge})
 
 
-# TODO de-dupe some more of the logic between these. We should probably have
-# a simple way to do CUD operations for any node type (and potentially make it
-# easier to do extensions of that, like copy).
-
-
-class SavePuzzleSolutionMutation(NodeMutation):
+class CreatePuzzleSolutionMutation(NodeMutation):
     """
-    Create OR update a puzzle solution. Solutions are unique by their
-    (name,player,puzzle) combo, so if a solution does not exist for that combo,
-    a new one is created. If it does exist, the existing record is updated.
-
-    The create and update operations are combined here to make it easy for a
-    client to save a solution without having to know whether one exists for
-    that player+puzzle+name yet. Think of this as a file save, where it will
-    typically create the file if it doesn't existing before saving contents.
-
-    We may want to split this into two mutations if that ends up being the
-    pattern we use elsewhere, but for now it seems like it will be easier, at
-    least for a CLI client.
+    Create a puzzle solution. Solutions are unique by their
+    (name,player,puzzle), so if that combo already exists, this will fail.
     """
 
     class Meta:
+        operation = NodeMutationOperation.CREATE
         node_class = PuzzleSolutionNode
         serializer_class = PuzzleSolutionSerializer
 
@@ -141,6 +167,24 @@ class SavePuzzleSolutionMutation(NodeMutation):
         puzzle_id = graphene.ID(required=True)
         name = graphene.String(required=True)
         source_code = graphene.String(required=True)
+
+
+class UpdatePuzzleSolutionMutation(NodeMutation):
+    """
+    Update a puzzle solution by ID. This is a partial update, so any field
+    that's provided will be modified, and any other field will remain untouched.
+    """
+
+    class Meta:
+        operation = NodeMutationOperation.UPDATE
+        node_class = PuzzleSolutionNode
+        serializer_class = PuzzleSolutionSerializer
+
+    class Input:
+        id = graphene.ID(required=True)
+        puzzle_id = graphene.String()
+        name = graphene.String()
+        source_code = graphene.String()
 
 
 class CopyPuzzleSolutionMutation(NodeMutation):
@@ -151,6 +195,7 @@ class CopyPuzzleSolutionMutation(NodeMutation):
     """
 
     class Meta:
+        operation = NodeMutationOperation.CUSTOM
         node_class = PuzzleSolutionNode
 
     class Input:
@@ -196,6 +241,7 @@ class DeletePuzzleSolutionMutation(NodeMutation):
     """
 
     class Meta:
+        operation = NodeMutationOperation.DELETE
         node_class = PuzzleSolutionNode
 
     class Input:
@@ -210,6 +256,7 @@ class DeletePuzzleSolutionMutation(NodeMutation):
 
 
 class Mutation(graphene.ObjectType):
-    save_puzzle_solution = SavePuzzleSolutionMutation.Field()
+    create_puzzle_solution = CreatePuzzleSolutionMutation.Field()
+    update_puzzle_solution = UpdatePuzzleSolutionMutation.Field()
     copy_puzzle_solution = CopyPuzzleSolutionMutation.Field()
     delete_puzzle_solution = DeletePuzzleSolutionMutation.Field()
