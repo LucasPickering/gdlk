@@ -4,7 +4,7 @@ import { graphql } from 'react-relay';
 import { useMutation } from 'relay-hooks';
 import { CopyPuzzleSolutionButton_Mutation } from './__generated__/CopyPuzzleSolutionButton_Mutation.graphql';
 import { createFragmentContainer, RelayProp } from 'react-relay';
-import { CopyPuzzleSolutionButton_userProgram } from './__generated__/CopyPuzzleSolutionButton_userProgram.graphql';
+import { CopyPuzzleSolutionButton_puzzleSolution } from './__generated__/CopyPuzzleSolutionButton_puzzleSolution.graphql';
 import IconButton from 'components/common/IconButton';
 
 const copyPuzzleSolutionMutation = graphql`
@@ -20,16 +20,16 @@ const copyPuzzleSolutionMutation = graphql`
 `;
 
 /**
- * A button that duplicates an existing user program.
+ * A button that duplicates an existing puzzle solution.
  *
- * @param programSpecId The ID of the program that owns this solution
- * @param userProgram The user program being copied
+ * @param puzzleId The ID of the puzzle that owns this solution
+ * @param puzzleSolution The puzzle solution being copied
  */
 const CopyPuzzleSolutionButton: React.FC<{
-  programSpecId: string;
-  userProgram: CopyPuzzleSolutionButton_userProgram;
+  puzzleId: string;
+  puzzleSolution: CopyPuzzleSolutionButton_puzzleSolution;
   relay: RelayProp;
-}> = ({ programSpecId, userProgram }) => {
+}> = ({ puzzleId, puzzleSolution }) => {
   const [mutate, { loading }] = useMutation<CopyPuzzleSolutionButton_Mutation>(
     copyPuzzleSolutionMutation
   );
@@ -41,16 +41,16 @@ const CopyPuzzleSolutionButton: React.FC<{
       onClick={() => {
         mutate({
           variables: {
-            id: userProgram.id,
+            id: puzzleSolution.id,
           },
           configs: [
             // Update the list of programs in the parent after modification
             {
               type: 'RANGE_ADD',
-              parentID: programSpecId,
+              parentID: puzzleId,
               connectionInfo: [
                 {
-                  key: 'PuzzleSolutionsCard_userPrograms',
+                  key: 'PuzzleSolutionsCard_puzzleSolutions',
                   rangeBehavior: 'append',
                 },
               ],
@@ -66,8 +66,8 @@ const CopyPuzzleSolutionButton: React.FC<{
 };
 
 export default createFragmentContainer(CopyPuzzleSolutionButton, {
-  userProgram: graphql`
-    fragment CopyPuzzleSolutionButton_userProgram on PuzzleSolutionNode {
+  puzzleSolution: graphql`
+    fragment CopyPuzzleSolutionButton_puzzleSolution on PuzzleSolutionNode {
       id
     }
   `,

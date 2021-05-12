@@ -8,7 +8,9 @@ import { CreatePuzzleSolutionButton_Mutation } from './__generated__/CreatePuzzl
 
 const createPuzzleSolutionMutation = graphql`
   mutation CreatePuzzleSolutionButton_Mutation($puzzleId: ID!, $name: String!) {
-    createPuzzleSolution(input: { puzzleId: $puzzleId, name: $name }) {
+    createPuzzleSolution(
+      input: { puzzleId: $puzzleId, name: $name, sourceCode: "" }
+    ) {
       puzzleSolutionEdge {
         node {
           name
