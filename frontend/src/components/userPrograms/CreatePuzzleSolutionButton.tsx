@@ -1,22 +1,17 @@
 import React, { useState } from 'react';
 import { Dialog, DialogTitle, DialogContent, Button } from '@material-ui/core';
 import { Add as IconAdd } from '@material-ui/icons';
-import EditUserProgramForm from './EditUserProgramForm';
+import EditPuzzleSolutionForm from './EditPuzzleSolutionForm';
 import { graphql } from 'react-relay';
 import { useMutation } from 'relay-hooks';
-import { CreateUserProgramButton_Mutation } from './__generated__/CreateUserProgramButton_Mutation.graphql';
+import { CreatePuzzleSolutionButton_Mutation } from './__generated__/CreatePuzzleSolutionButton_Mutation.graphql';
 
-const createUserProgramMutation = graphql`
-  mutation CreateUserProgramButton_Mutation(
-    $programSpecId: ID!
-    $fileName: String!
-  ) {
-    createUserProgram(
-      input: { programSpecId: $programSpecId, fileName: $fileName }
-    ) {
-      userProgramEdge {
+const createPuzzleSolutionMutation = graphql`
+  mutation CreatePuzzleSolutionButton_Mutation($puzzleId: ID!, $name: String!) {
+    createPuzzleSolution(input: { puzzleId: $puzzleId, name: $name }) {
+      puzzleSolutionEdge {
         node {
-          fileName
+          name
         }
       }
     }
@@ -27,15 +22,16 @@ const createUserProgramMutation = graphql`
  * A button to open a modal that creates a new a user program.
  *
  * @param className Optional CSS class name
- * @param programSpecId The ID of the program that will own the new user program
+ * @param puzzleId The ID of the program that will own the new user program
  */
-const CreateUserProgramButton: React.FC<{
+const CreatePuzzleSolutionButton: React.FC<{
   className?: string;
-  programSpecId: string;
-}> = ({ className, programSpecId }) => {
-  const [mutate, { loading }] = useMutation<CreateUserProgramButton_Mutation>(
-    createUserProgramMutation
-  );
+  puzzleId: string;
+}> = ({ className, puzzleId }) => {
+  const [mutate, { loading }] =
+    useMutation<CreatePuzzleSolutionButton_Mutation>(
+      createPuzzleSolutionMutation
+    );
   const [modalOpen, setModalOpen] = useState<boolean>(false);
 
   return (
@@ -57,23 +53,23 @@ const CreateUserProgramButton: React.FC<{
           Create new solution
         </DialogTitle>
         <DialogContent>
-          <EditUserProgramForm
+          <EditPuzzleSolutionForm
             loading={loading}
-            onSubmit={({ fileName }) => {
+            onSubmit={({ name }) => {
               mutate({
-                variables: { programSpecId, fileName },
+                variables: { puzzleId, name },
                 configs: [
                   // Update the list of programs in the parent after modification
                   {
                     type: 'RANGE_ADD',
-                    parentID: programSpecId,
+                    parentID: puzzleId,
                     connectionInfo: [
                       {
-                        key: 'UserProgramsCard_userPrograms',
+                        key: 'PuzzleSolutionsCard_puzzleSolutions',
                         rangeBehavior: 'append',
                       },
                     ],
-                    edgeName: 'userProgramEdge',
+                    edgeName: 'puzzleSolutionEdge',
                   },
                 ],
                 onCompleted: () => setModalOpen(false),
@@ -86,4 +82,4 @@ const CreateUserProgramButton: React.FC<{
   );
 };
 
-export default CreateUserProgramButton;
+export default CreatePuzzleSolutionButton;

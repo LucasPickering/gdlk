@@ -29,16 +29,16 @@ const PuzzleView: React.FC = () => {
             numRegisters
             numStacks
             maxStackLength
-            programSpec(slug: $programSlug) {
-              ...PuzzleDetails_programSpec
-            }
+          }
+          puzzle(slug: $programSlug) {
+            ...PuzzleDetails_puzzle
           }
         }
       `}
       variables={{ hwSlug, programSlug, loggedIn }}
       render={({ props }) => {
-        if (props?.hardwareSpec?.programSpec) {
-          return <PuzzleDetails programSpec={props.hardwareSpec.programSpec} />;
+        if (props?.hardwareSpec?.puzzle) {
+          return <PuzzleDetails puzzle={props.puzzle} />;
         }
 
         return <NotFoundPage />;

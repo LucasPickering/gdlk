@@ -17,14 +17,16 @@ interface RouteParams {
 
 const query = graphql`
   query ProgramIdeViewQuery(
-    $hwSlug: String!
+    $hardwareSpecSlug: String!
     $programSlug: String!
     $fileName: String!
   ) {
-    hardwareSpec(slug: $hwSlug) {
-      ...ProgramIde_hardwareSpec
-        @arguments(programSlug: $programSlug, fileName: $fileName)
-    }
+    ...ProgramIde_query
+      @arguments(
+        hardwareSpecSlug: $hardwareSpecSlug
+        puzzleSlug: $puzzleSlug
+        fileName: $fileName
+      )
   }
 `;
 
@@ -63,7 +65,7 @@ const ProgramIdeView: React.FC = () => {
           }
 
           if (props.hardwareSpec) {
-            return <ProgramIde hardwareSpec={props.hardwareSpec} />;
+            return <ProgramIde queryKey={props.hardwareSpec} />;
           }
 
           // TODO fix padding here

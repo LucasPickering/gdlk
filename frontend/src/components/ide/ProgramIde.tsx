@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { RelayProp, createFragmentContainer } from 'react-relay';
+import { RelayProp, useFragment } from 'react-relay';
 import { graphql } from 'react-relay';
-import { ProgramIde_hardwareSpec } from './__generated__/ProgramIde_hardwareSpec.graphql';
 import { makeStyles } from '@material-ui/core';
 import CodeEditor from './CodeEditor';
 import RegistersInfo from './RegistersInfo';
@@ -17,6 +16,7 @@ import NotFoundPage from 'components/NotFoundPage';
 import { StorageHandler } from 'util/storage';
 import useStaticValue from 'hooks/useStaticValue';
 import PromptOnExit from 'components/common/PromptOnExit';
+import useCompiler from './useCompiler';
 // import useCompiler from './useCompiler.ts.disable';
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => {
@@ -73,21 +73,54 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => {
  * parent, otherwise an error will be thrown.
  */
 const ProgramIde: React.FC<{
-  hardwareSpec: ProgramIde_hardwareSpec;
-}> = ({ hardwareSpec }) => {
+  queryKey: ProgramIde_query$key;
+}> = ({ queryKey }) => {
   const localClasses = useLocalStyles();
+  const query = useFragment(
+    graphql`
+      fragment ProgramIde_hardwareSpec on Query
+      @argumentDefinitions(
+        hardwareSpecSlug: { type: "String!" }
+        puzzleSlug: { type: "String!" }
+        fileName: { type: "String!" }
+      ) {
+        hardwareSpec(slug: $hardwareSpecSlug) {
+          id
+          numRegisters
+          numStacks
+          maxStackLength
+        }
+        puzzle(slug: $puzzleSlug) {
+          id
+          input
+          expectedOutput
+          puzzleSolution(fileName: $fileName) {
+            id
+            sourceCode
+            lastModified
+            ...AutoSaveHandler_puzzleSolution
+          }
+        }
+      }
+    `,
+    queryKey
+  );
 
-  // If the program spec or the user program doesn't exist, freak out!!
-  const programSpec = hardwareSpec.programSpec;
-  assertIsDefined(programSpec);
-  const userProgram = programSpec.userProgram;
-  assertIsDefined(userProgram);
+  // If any of the queries things don't exist, freak out!!
+  const hardwareSpec = query.hardwareSpec;
+  assertIsDefined(hardwareSpec);
+  const puzzle = query.puzzle;
+  assertIsDefined(puzzle);
+  const puzzleSolution = puzzle.puzzleSolution;
+  assertIsDefined(puzzleSolution);
 
   // This will be used to read and write source from/to browser local storage
   const sourceStorageHandler = useStaticValue<StorageHandler<string>>(
     () =>
       new StorageHandler(
-        [hardwareSpec.id, programSpec.id, userProgram.id, 'source'].join(':')
+        [query.hardwareSpec.id, puzzle.id, puzzleSolution.id, 'source'].join(
+          ':'
+        )
       )
   );
   const [sourceCode, setSourceCode] = useState<string>(() => {
@@ -96,11 +129,11 @@ const ProgramIde: React.FC<{
     if (
       storedSource &&
       // Only use the local copy if it's newer than the remote one
-      storedSource.lastModified > new Date(userProgram.lastModified)
+      storedSource.lastModified > new Date(puzzleSolution.lastModified)
     ) {
       return storedSource.value;
     }
-    return userProgram.sourceCode;
+    return puzzleSolution.sourceCode;
   });
 
   const { wasmHardwareSpec, wasmProgramSpec, compiledState, compile, execute } =
@@ -134,10 +167,10 @@ const ProgramIde: React.FC<{
         <StackInfo className={localClasses.stackInfo} />
         <CodeEditor className={localClasses.editor} />
 
-        <AutoSaveHandler userProgram={userProgram} />
+        <AutoSaveHandler puzzleSolution={puzzleSolution} />
         {/* Prompt on exit for unsaved changes */}
         <PromptOnExit
-          when={sourceCode !== userProgram.sourceCode}
+          when={sourceCode !== puzzleSolution.sourceCode}
           message="You have unsaved changes. Are you sure you want to leave?"
         />
       </div>
@@ -154,35 +187,11 @@ const ProgramIdeWrapper: React.FC<{
   hardwareSpec: ProgramIde_hardwareSpec;
   relay: RelayProp;
 }> = ({ hardwareSpec }) => {
-  if (hardwareSpec?.programSpec?.userProgram) {
+  if (hardwareSpec?.puzzle?.puzzleSolution) {
     return <ProgramIde hardwareSpec={hardwareSpec} />;
   }
 
   return <NotFoundPage />;
 };
 
-export default createFragmentContainer(ProgramIdeWrapper, {
-  hardwareSpec: graphql`
-    fragment ProgramIde_hardwareSpec on HardwareSpecNode
-    @argumentDefinitions(
-      programSlug: { type: "String!" }
-      fileName: { type: "String!" }
-    ) {
-      id
-      numRegisters
-      numStacks
-      maxStackLength
-      programSpec(slug: $programSlug) {
-        id
-        input
-        expectedOutput
-        userProgram(fileName: $fileName) {
-          id
-          sourceCode
-          lastModified
-          ...AutoSaveHandler_userProgram
-        }
-      }
-    }
-  `,
-});
+export default ProgramIdeWrapper;

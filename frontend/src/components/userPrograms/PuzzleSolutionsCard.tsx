@@ -45,8 +45,8 @@ const PuzzleSolutionsCard: React.FC<{
               {puzzle.puzzleSolutions.edges.map(({ node: puzzleSolution }) => (
                 <TableRow key={puzzleSolution.id}>
                   <TableCell>
-                    <Link to={`${url}/${puzzleSolution.fileName}`}>
-                      {puzzleSolution.fileName}
+                    <Link to={`${url}/${puzzleSolution.name}`}>
+                      {puzzleSolution.name}
                     </Link>
                   </TableCell>
 
@@ -59,7 +59,7 @@ const PuzzleSolutionsCard: React.FC<{
                     <DeletePuzzleSolutionButton
                       puzzleId={puzzle.id}
                       puzzleSolutionId={puzzleSolution.id}
-                      fileName={puzzleSolution.fileName}
+                      name={puzzleSolution.name}
                     />
                   </TableCell>
                 </TableRow>
@@ -88,14 +88,14 @@ export default createPaginationContainer(
         id
         # A user probably won't have a lot of solutions for one program, so
         # don't bother with pagination
-        puzzleSolutions(
+        playerSolutions(
           first: $puzzleSolutionCount
           after: $puzzleSolutionCursor
         ) @connection(key: "PuzzleSolutionsCard_puzzleSolutions") {
           edges {
             node {
               id
-              fileName
+              name
               ...EditPuzzleSolutionButton_puzzleSolution
               ...CopyPuzzleSolutionButton_puzzleSolution
             }

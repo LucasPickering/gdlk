@@ -6,7 +6,6 @@ import {
   createFragmentContainer,
 } from 'react-relay';
 import { graphql } from 'react-relay';
-import { PuzzleListCard_hardwareSpec } from './__generated__/PuzzleListCard_hardwareSpec.graphql';
 import {
   Button,
   Card,
@@ -66,11 +65,9 @@ const PuzzleListRow = createFragmentContainer(
             <Link to={`${url}/puzzles/${puzzle.slug}`}>{puzzle.name}</Link>
           </TableCell>
 
-          {puzzle.userPrograms && (
-            <TableCell align="right">
-              {puzzle.userPrograms.totalCount}
-            </TableCell>
-          )}
+          <TableCell align="right">
+            {puzzle.playerSolutions.totalCount}
+          </TableCell>
         </TableRow>
         <TableRow>
           <TableCell className={localClasses.puzzleRowExtra} colSpan={3}>
@@ -90,7 +87,7 @@ const PuzzleListRow = createFragmentContainer(
         slug
         name
         description
-        userPrograms @include(if: $loggedIn) {
+        playerSolutions {
           totalCount
         }
       }
@@ -99,9 +96,9 @@ const PuzzleListRow = createFragmentContainer(
 );
 
 const PuzzleListCard: React.FC<{
-  hardwareSpec: PuzzleListCard_hardwareSpec;
+  query: PuzzleListCard_query;
   relay: RelayPaginationProp;
-}> = ({ hardwareSpec, relay: { hasMore, loadMore } }) => {
+}> = ({ query, relay: { hasMore, loadMore } }) => {
   const { loggedIn } = useContext(UserContext);
   return (
     <Card>
@@ -118,7 +115,7 @@ const PuzzleListCard: React.FC<{
             </TableHead>
             <TableBody>
               {/* One row per program spec*/}
-              {hardwareSpec.puzzles.edges.map(({ node: puzzle }) => (
+              {query.puzzles.edges.map(({ node: puzzle }) => (
                 <PuzzleListRow key={puzzle.id} puzzle={puzzle} />
               ))}
             </TableBody>
@@ -140,8 +137,8 @@ const PuzzleListCard: React.FC<{
 export default createPaginationContainer(
   PuzzleListCard,
   {
-    hardwareSpec: graphql`
-      fragment PuzzleListCard_hardwareSpec on Query
+    query: graphql`
+      fragment PuzzleListCard_query on Query
       @argumentDefinitions(count: { type: "Int" }, cursor: { type: "String" }) {
         puzzles(first: $count, after: $cursor)
           @connection(key: "PuzzleList_puzzles") {
@@ -169,10 +166,7 @@ export default createPaginationContainer(
         $count: Int
         $cursor: String
       ) {
-        hardwareSpec(slug: $hwSlug) {
-          ...PuzzleListCard_hardwareSpec
-            @arguments(count: $count, cursor: $cursor)
-        }
+        ...PuzzleListCard_query @arguments(count: $count, cursor: $cursor)
       }
     `,
   }

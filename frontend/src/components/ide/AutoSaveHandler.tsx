@@ -10,8 +10,14 @@ import { AutoSaveHandler_puzzleSolution } from './__generated__/AutoSaveHandler_
 import useDebouncedValue from 'hooks/useDebouncedValue';
 
 const savePuzzleSolutionMutation = graphql`
-  mutation AutoSaveHandler_Mutation($id: ID!, $sourceCode: String!) {
-    updatePuzzleSolution(input: { id: $id, sourceCode: $sourceCode }) {
+  mutation AutoSaveHandler_Mutation(
+    $puzzleId: ID!
+    $name: String!
+    $sourceCode: String!
+  ) {
+    savePuzzleSolution(
+      input: { puzzleId: $puzzleId, name: $name, sourceCode: $sourceCode }
+    ) {
       puzzleSolutionEdge {
         node {
           sourceCode

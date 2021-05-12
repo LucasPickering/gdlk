@@ -3,13 +3,15 @@ import { useMutation } from 'relay-hooks';
 import { graphql } from 'react-relay';
 import { IconButton } from '@material-ui/core';
 import { Delete as IconDelete } from '@material-ui/icons';
-import { DeleteUserProgramButton_Mutation } from './__generated__/DeleteUserProgramButton_Mutation.graphql';
+import { DeletePuzzleSolutionButton_Mutation } from './__generated__/DeletePuzzleSolutionButton_Mutation.graphql';
 import ConfirmationDialog from 'components/common/ConfirmationDialog';
 
-const deleteUserProgramMutation = graphql`
-  mutation DeleteUserProgramButton_Mutation($id: ID!) {
-    deleteUserProgram(input: { id: $id }) {
-      deletedId
+const deletePuzzleSolutionMutation = graphql`
+  mutation DeletePuzzleSolutionButton_Mutation($id: ID!) {
+    deletePuzzleSolution(input: { id: $id }) {
+      puzzleSolution {
+        id
+      }
     }
   }
 `;
@@ -21,14 +23,15 @@ const deleteUserProgramMutation = graphql`
  * @param userProgramId The user program being deleted
  * @param fileName The name of the user program being deleted
  */
-const DeleteUserProgramButton: React.FC<{
+const DeletePuzzleSolutionButton: React.FC<{
   programSpecId: string;
   userProgramId: string;
   fileName: string;
 }> = ({ programSpecId, userProgramId, fileName }) => {
-  const [mutate, { loading }] = useMutation<DeleteUserProgramButton_Mutation>(
-    deleteUserProgramMutation
-  );
+  const [mutate, { loading }] =
+    useMutation<DeletePuzzleSolutionButton_Mutation>(
+      deletePuzzleSolutionMutation
+    );
   const [confirmationOpen, setConfirmationOpen] = useState<boolean>(false);
 
   return (
@@ -55,7 +58,7 @@ const DeleteUserProgramButton: React.FC<{
                 parentID: programSpecId,
                 connectionKeys: [
                   {
-                    key: 'UserProgramsCard_userPrograms',
+                    key: 'PuzzleSolutionsCard_userPrograms',
                   },
                 ],
                 pathToConnection: ['programSpec', 'userPrograms'],
@@ -74,4 +77,4 @@ const DeleteUserProgramButton: React.FC<{
   );
 };
 
-export default DeleteUserProgramButton;
+export default DeletePuzzleSolutionButton;

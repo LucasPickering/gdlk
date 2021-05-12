@@ -10,19 +10,14 @@ import DocsPage from 'components/docs/DocsPage';
 import { UserContext, UserContextType, defaultUserContext } from 'state/user';
 import { useQuery } from 'relay-hooks';
 import { CoreContentQuery } from './__generated__/CoreContentQuery.graphql';
-import InitializeUserDialog from './user/InitializeUserDialog';
 
 const ProgramIdeView = React.lazy(() => import('./ide/ProgramIdeView'));
 
 const ROOT_QUERY = graphql`
   query CoreContentQuery {
-    authStatus {
-      authenticated
-      userCreated
-      user {
-        id
-        username
-      }
+    currentPlayer {
+      id
+      username
     }
   }
 `;
@@ -47,9 +42,9 @@ const CoreContent: React.FC = () => {
     <UserContext.Provider value={userContext}>
       {/* If the user is logged in but hasn't finished setup, show the setup
           modal */}
-      {userContext.loggedInUnsafe && !userContext.loggedIn && (
+      {/* {userContext.loggedInUnsafe && !userContext.loggedIn && (
         <InitializeUserDialog />
-      )}
+      )} */}
 
       <Switch>
         {/* Full screen routes first */}

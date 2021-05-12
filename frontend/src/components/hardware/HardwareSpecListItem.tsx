@@ -53,16 +53,6 @@ export default createFragmentContainer(HardwareSpecListItem, {
       slug
       name
       ...HardwareSpecSummary_hardwareSpec
-      programSpecs(first: 5) {
-        totalCount
-        edges {
-          node {
-            id
-            slug
-            name
-          }
-        }
-      }
     }
   `,
 });

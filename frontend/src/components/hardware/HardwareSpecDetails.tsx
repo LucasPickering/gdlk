@@ -1,7 +1,10 @@
 import React from 'react';
-import { RelayProp, createFragmentContainer } from 'react-relay';
+import { RelayProp, createFragmentContainer, useFragment } from 'react-relay';
 import { graphql } from 'react-relay';
-import { HardwareSpecDetails_hardwareSpec } from './__generated__/HardwareSpecDetails_hardwareSpec.graphql';
+import {
+  HardwareSpecDetails_hardwareSpec,
+  HardwareSpecDetails_hardwareSpec$key,
+} from './__generated__/HardwareSpecDetails_hardwareSpec.graphql';
 import {
   Card,
   CardContent,
@@ -13,9 +16,20 @@ import ProgramSpecListCard from './PuzzleListCard';
 import HardwareSpecSummary from './HardwareSpecSummary';
 
 const HardwareSpecDetails: React.FC<{
-  hardwareSpec: HardwareSpecDetails_hardwareSpec;
-  relay: RelayProp;
-}> = ({ hardwareSpec }) => {
+  hardwareSpecKey: HardwareSpecDetails_hardwareSpec$key;
+}> = ({ hardwareSpecKey }) => {
+  const hardwareSpec = useFragment(
+    graphql`
+      fragment HardwareSpecDetails_hardwareSpec on HardwareSpecNode {
+        id
+        slug
+        name
+        ...HardwareSpecSummary_hardwareSpec
+      }
+    `,
+    hardwareSpecKey
+  );
+
   return (
     <Grid container>
       <Grid item xs={12}>
@@ -26,26 +40,16 @@ const HardwareSpecDetails: React.FC<{
         <Card>
           <CardHeader title={<Typography variant="h2">Hardware</Typography>} />
           <CardContent>
-            <HardwareSpecSummary hardwareSpec={hardwareSpec} />
+            <HardwareSpecSummary hardwareSpecKey={hardwareSpec} />
           </CardContent>
         </Card>
       </Grid>
 
-      <Grid item sm={8} xs={12}>
+      {/* <Grid item sm={8} xs={12}>
         <ProgramSpecListCard hardwareSpec={hardwareSpec} />
-      </Grid>
+      </Grid> */}
     </Grid>
   );
 };
 
-export default createFragmentContainer(HardwareSpecDetails, {
-  hardwareSpec: graphql`
-    fragment HardwareSpecDetails_hardwareSpec on HardwareSpecNode {
-      id
-      slug
-      name
-      ...HardwareSpecSummary_hardwareSpec
-      ...ProgramSpecListCard_hardwareSpec @arguments(count: 5)
-    }
-  `,
-});
+export default HardwareSpecDetails;
