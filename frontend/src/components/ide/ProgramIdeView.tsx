@@ -1,76 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import graphql from 'babel-plugin-relay/macro';
-import { ProgramIdeViewQuery } from './__generated__/ProgramIdeViewQuery.graphql';
+import React, { useContext } from 'react';
 import { useParams } from 'react-router-dom';
 import ProgramIde from './ProgramIde';
-import QueryResult from 'components/common/QueryResult';
-import NotFoundPage from 'components/NotFoundPage';
-import PageContainer from 'components/common/PageContainer';
-import { CompilerWrapper } from 'util/compile';
-import { CircularProgress } from '@material-ui/core';
+import NotFoundPage from '@root/components/NotFoundPage';
+import PageContainer from '@root/components/common/PageContainer';
+import { puzzles } from '@root/data/puzzles';
+import { PuzzleSolutionsContext } from '@root/state/user';
 
 interface RouteParams {
-  hwSlug: string;
-  programSlug: string;
+  puzzleSlug: string;
   fileName: string;
 }
-
-const query = graphql`
-  query ProgramIdeViewQuery(
-    $hwSlug: String!
-    $programSlug: String!
-    $fileName: String!
-  ) {
-    hardwareSpec(slug: $hwSlug) {
-      ...ProgramIde_hardwareSpec
-        @arguments(programSlug: $programSlug, fileName: $fileName)
-    }
-  }
-`;
 
 /**
  * A view that allows the user to edit and run GDLK code.
  */
 const ProgramIdeView: React.FC = () => {
-  const { hwSlug, programSlug, fileName } = useParams<RouteParams>();
-
-  // Initialize the Compiler. Wasm imports have to be async until we get
-  // webpack 5, so we want to block the entire page until it's imported.
-  const [compilerInitialized, setCompilerInitialized] = useState<boolean>(
-    false
-  );
-  useEffect(() => {
-    CompilerWrapper.init().then(() => {
-      setCompilerInitialized(true);
-    });
-  }, []);
+  const { puzzleSlug, fileName } = useParams<RouteParams>();
+  const puzzle = puzzles[puzzleSlug];
+  const { getPuzzleSolution } = useContext(PuzzleSolutionsContext);
+  const puzzleSolution = getPuzzleSolution(puzzleSlug, fileName);
 
   return (
     <PageContainer
       fullScreen
       navProps={{
         backLink: {
-          to: `/hardware/${hwSlug}/puzzles/${programSlug}`,
+          to: `/puzzles/${puzzleSlug}`,
           label: 'Back to Puzzle',
         },
       }}
     >
-      <QueryResult<ProgramIdeViewQuery>
-        query={query}
-        variables={{ hwSlug, programSlug, fileName }}
-        render={({ props }) => {
-          if (!compilerInitialized) {
-            return <CircularProgress />;
-          }
-
-          if (props.hardwareSpec) {
-            return <ProgramIde hardwareSpec={props.hardwareSpec} />;
-          }
-
-          // TODO fix padding here
-          return <NotFoundPage />;
-        }}
-      />
+      {puzzle && puzzleSolution ? (
+        <ProgramIde puzzle={puzzle} puzzleSolution={puzzleSolution} />
+      ) : (
+        <NotFoundPage />
+      )}
     </PageContainer>
   );
 };

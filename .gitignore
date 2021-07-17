@@ -6,6 +6,7 @@ pkg/
 **/target/
 **/__generated__/
 **/logs
-crates/api/config/dev.json
+dev.json
 backups/
 backups.tar.gz
+frontend/dist/

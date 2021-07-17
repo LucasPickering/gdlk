@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { IdeContext } from 'state/ide';
+import { IdeContext } from '@root/state/ide';
 import { makeStyles, Typography } from '@material-ui/core';
 import BufferDisplay from './BufferDisplay';
 import clsx from 'clsx';

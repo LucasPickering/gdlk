@@ -1,10 +1,10 @@
 import React, { useContext } from 'react';
 import { makeStyles } from '@material-ui/core';
 import clsx from 'clsx';
-import { IdeContext, gdlkSpanToAce } from 'state/ide';
+import { IdeContext, gdlkSpanToAce } from '@root/state/ide';
 import AceEditor, { IAnnotation, IMarker, IEditorProps } from 'react-ace';
 import 'ace-builds/src-noconflict/theme-terminal';
-import GDLKMode from 'util/ace_mode';
+import GDLKMode from '@root/util/ace_mode';
 
 const useLocalStyles = makeStyles(({ palette }) => ({
   codeEditor: {
@@ -73,7 +73,7 @@ const CodeEditor: React.FC<{ className?: string }> = ({ className }) => {
         markers.push({
           ...aceSpan,
           className: localClasses.errorSpan,
-          type: 'line',
+          type: 'screenLine',
         });
         annotations.push({
           row: aceSpan.startRow,

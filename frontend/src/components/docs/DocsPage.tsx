@@ -1,6 +1,6 @@
 import React from 'react';
 import { makeStyles, Paper, Typography } from '@material-ui/core';
-import Link from 'components/common/Link';
+import Link from '@root/components/common/Link';
 import RegisterDocs from './RegisterDocs';
 import InstructionDocs from './InstructionDocs';
 import DocsSection from './DocsSection';
@@ -80,17 +80,17 @@ const DocsPage: React.FC = () => {
       <DocsSection level={2} title="Language Reference">
         <DocsSection level={3} title="Values">
           <Typography>
-            All GDLK values are integers in the range{' '}
-            <code>[-32768, 32767]</code>. Encoding systems can be built on top
-            of these values, but all hardware operations are performed on these
-            integers.
+            All GDLK values are 16-bit signed integers, meaning they fall in the
+            range <code>[-32768, 32767]</code>. Encoding systems can be built on
+            top of these values, but all hardware operations are performed on
+            these integers.
           </Typography>
 
           <Typography id="values--overflow-and-underflow" variant="h4">
             Overflow & Underflow
           </Typography>
           <Typography>
-            When an arithmetic instruction causes a value to go above the max to
+            When an arithmetic instruction causes a value to go above the max or
             below the min, the value wraps around. For example,{' '}
             <code>32767 + 1 = -32768</code>, and <code>-32768 - 1 = 32767</code>
             .

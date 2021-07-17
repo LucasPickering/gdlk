@@ -3,7 +3,11 @@
 use anyhow::Context;
 use gdlk::{Compiler, HardwareSpec, ProgramSpec};
 use serde::de::DeserializeOwned;
-use std::{fs, path::PathBuf, process};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process,
+};
 use structopt::StructOpt;
 
 /// The sub-command to execute.
@@ -46,7 +50,7 @@ struct Opt {
     cmd: Command,
 }
 
-fn read_file(path: &PathBuf) -> anyhow::Result<String> {
+fn read_file(path: &Path) -> anyhow::Result<String> {
     fs::read_to_string(path)
         .with_context(|| format!("Failed to read file {:?}", path))
 }

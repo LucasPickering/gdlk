@@ -1,59 +1,25 @@
 import React from 'react';
 import { Switch, Route } from 'react-router-dom';
-import graphql from 'babel-plugin-relay/macro';
 import HomePage from './HomePage';
 import HardwareSpecDetailsView from './hardware/HardwareSpecDetailsView';
-import ProgramSpecView from './programs/ProgramSpecView';
+import PuzzleView from './puzzle/PuzzleView';
 import NotFoundPage from './NotFoundPage';
 import PageContainer from './common/PageContainer';
-import DocsPage from 'components/docs/DocsPage';
-import { UserContext, UserContextType, defaultUserContext } from 'state/user';
-import { useQuery } from 'relay-hooks';
-import { CoreContentQuery } from './__generated__/CoreContentQuery.graphql';
-import InitializeUserDialog from './user/InitializeUserDialog';
+import DocsPage from '@root/components/docs/DocsPage';
+import UserProvider from './UserProvider';
 
 const ProgramIdeView = React.lazy(() => import('./ide/ProgramIdeView'));
 
-const ROOT_QUERY = graphql`
-  query CoreContentQuery {
-    authStatus {
-      authenticated
-      userCreated
-      user {
-        id
-        username
-      }
-    }
-  }
-`;
-
 /**
- * Child of the root component. Expects Relay and Material UI to be set up in
+ * Child of the root component. Expects Material UI to be set up in
  * the parent. Also handles loading of global API content.
  */
 const CoreContent: React.FC = () => {
-  // Query for global data, like auth status
-  const { props, retry } = useQuery<CoreContentQuery>(ROOT_QUERY);
-  const userContext: UserContextType = props
-    ? {
-        loggedInUnsafe: props.authStatus.authenticated,
-        loggedIn: props.authStatus.userCreated,
-        user: props.authStatus.user ?? undefined,
-        refetch: retry,
-      }
-    : defaultUserContext;
-
   return (
-    <UserContext.Provider value={userContext}>
-      {/* If the user is logged in but hasn't finished setup, show the setup
-          modal */}
-      {userContext.loggedInUnsafe && !userContext.loggedIn && (
-        <InitializeUserDialog />
-      )}
-
+    <UserProvider>
       <Switch>
         {/* Full screen routes first */}
-        <Route path="/hardware/:hwSlug/puzzles/:programSlug/:fileName" exact>
+        <Route path="/puzzles/:puzzleSlug/:fileName" exact>
           <ProgramIdeView />
         </Route>
 
@@ -69,12 +35,11 @@ const CoreContent: React.FC = () => {
                 <DocsPage />
               </Route>
 
-              {/* Hardware routes */}
               <Route path="/hardware/:hwSlug" exact>
                 <HardwareSpecDetailsView />
               </Route>
-              <Route path="/hardware/:hwSlug/puzzles/:programSlug" exact>
-                <ProgramSpecView />
+              <Route path="/puzzles/:puzzleSlug" exact>
+                <PuzzleView />
               </Route>
 
               <Route path="*">
@@ -84,7 +49,7 @@ const CoreContent: React.FC = () => {
           </PageContainer>
         </Route>
       </Switch>
-    </UserContext.Provider>
+    </UserProvider>
   );
 };
 

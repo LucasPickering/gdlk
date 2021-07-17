@@ -1,4 +1,4 @@
-import { ScreenSize } from 'util/styles';
+import { ScreenSize } from '@root/util/styles';
 import { useMediaQuery, useTheme } from '@material-ui/core';
 
 /**

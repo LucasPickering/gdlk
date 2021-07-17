@@ -1,36 +1,28 @@
-import { HardwareSpec, ProgramSpec } from 'gdlk_wasm';
-import useStaticValue from 'hooks/useStaticValue';
+import type {
+  HardwareSpec as WasmHardwareSpecType,
+  ProgramSpec as WasmProgramSpecType,
+} from 'gdlk_wasm';
+import useStaticValue from '@root/hooks/useStaticValue';
+import { HardwareSpec, Puzzle } from '@root/util/types';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { CompiledState } from 'state/ide';
-import { CompileResult, CompilerWrapper } from 'util/compile';
-import graphql from 'babel-plugin-relay/macro';
-import { assertIsDefined } from 'util/guards';
-import { ProgramIde_hardwareSpec } from './__generated__/ProgramIde_hardwareSpec.graphql';
-import { useMutation } from 'relay-hooks';
-import { useCompiler_ExecuteMutation } from './__generated__/useCompiler_ExecuteMutation.graphql';
+import { CompiledState } from '@root/state/ide';
+import { CompileResult, Compiler } from '@root/util/compile';
+const { HardwareSpec: WasmHardwareSpec, ProgramSpec: WasmProgramSpec } =
+  await import('gdlk_wasm');
 
 interface Input {
-  hardwareSpec: ProgramIde_hardwareSpec;
+  hardwareSpec: HardwareSpec;
+  puzzle: Puzzle;
   sourceCode: string;
 }
 
 interface Output {
-  wasmHardwareSpec: HardwareSpec;
-  wasmProgramSpec: ProgramSpec;
+  wasmHardwareSpec: WasmHardwareSpecType;
+  wasmProgramSpec: WasmProgramSpecType;
   compiledState: CompiledState | undefined;
   compile: (source: string) => void;
   execute: (executeAll?: boolean) => void;
 }
-
-const executeUserProgramMutation = graphql`
-  mutation useCompiler_ExecuteMutation($id: ID!) {
-    executeUserProgram(input: { id: $id }) {
-      status {
-        __typename
-      }
-    }
-  }
-`;
 
 /**
  * A helper hook that handles a lot of state management for the compiler.
@@ -41,24 +33,14 @@ const executeUserProgramMutation = graphql`
  * @param sourceCode Current source code, as shown in the editor (NOT necessarily
  *  what is saved server-side)
  */
-const useCompiler = ({ hardwareSpec, sourceCode }: Input): Output => {
-  // If the program spec or the user program doesn't exist, freak out!!
-  const programSpec = hardwareSpec.programSpec;
-  assertIsDefined(programSpec);
-  const userProgram = programSpec.userProgram;
-  assertIsDefined(userProgram);
-
-  const [executeMutation] = useMutation<useCompiler_ExecuteMutation>(
-    executeUserProgramMutation
-  );
-
+const useCompiler = ({ hardwareSpec, puzzle, sourceCode }: Input): Output => {
   // These values come from wasm. They're read only, so they're safe to share
   // with the whole component tree. They are pointers and therefore updates
   // won't trigger re-renders, but these values shouldn't be changing while
   // this component tree is mounted anyway.
   const wasmHardwareSpec = useStaticValue(
     () =>
-      new HardwareSpec(
+      new WasmHardwareSpec(
         hardwareSpec.numRegisters,
         hardwareSpec.numStacks,
         hardwareSpec.maxStackLength
@@ -66,9 +48,9 @@ const useCompiler = ({ hardwareSpec, sourceCode }: Input): Output => {
   );
   const wasmProgramSpec = useStaticValue(
     () =>
-      new ProgramSpec(
-        Int32Array.from(programSpec.input),
-        Int32Array.from(programSpec.expectedOutput)
+      new WasmProgramSpec(
+        Int32Array.from(puzzle.input),
+        Int32Array.from(puzzle.expectedOutput)
       )
   );
 
@@ -129,7 +111,7 @@ const useCompiler = ({ hardwareSpec, sourceCode }: Input): Output => {
   const compile = useCallback(
     (source: string): void => {
       updateCompiledState(
-        CompilerWrapper.compile(wasmHardwareSpec, wasmProgramSpec, source)
+        Compiler.compile(wasmHardwareSpec, wasmProgramSpec, source)
       );
     },
     [wasmHardwareSpec, wasmProgramSpec, updateCompiledState]
@@ -157,21 +139,6 @@ const useCompiler = ({ hardwareSpec, sourceCode }: Input): Output => {
     // prevents us wiping out state right after we compile
     return () => updateCompiledState(undefined);
   }, [wasmHardwareSpec, wasmProgramSpec, sourceCode, updateCompiledState]);
-
-  // If we've successfully executed the program in the browser, and the latest
-  // version of the code has been saved to the API, then execute it server-side
-  // to collect stats
-  const hasUnsavedChanges = sourceCode !== userProgram.sourceCode;
-  const machineSuccessful = Boolean(
-    compiledState?.type === 'compiled' && compiledState.machineState.successful
-  );
-  useEffect(() => {
-    if (!hasUnsavedChanges && machineSuccessful) {
-      executeMutation({
-        variables: { id: userProgram.id },
-      });
-    }
-  }, [hasUnsavedChanges, machineSuccessful, userProgram.id, executeMutation]);
 
   return { wasmHardwareSpec, wasmProgramSpec, compiledState, compile, execute };
 };

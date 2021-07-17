@@ -1,7 +1,7 @@
 import React from 'react';
 import { makeStyles, Typography, Theme } from '@material-ui/core';
 import { Link as IconLink } from '@material-ui/icons';
-import Link from 'components/common/Link';
+import Link from '@root/components/common/Link';
 
 type Level = 2 | 3 | 4 | 5;
 
@@ -14,7 +14,7 @@ const HEADER_MAPPINGS: Record<Level, 'h2' | 'h3' | 'h4' | 'h5'> = {
 };
 
 // We need to override the key type to make the dynamic classes work
-const useLocalStyles = makeStyles<Theme, string>(({ spacing }) => ({
+const useLocalStyles = makeStyles<Theme>(({ spacing }) => ({
   docsSection: {},
   'docsSectionContent--3': {
     padding: `0 ${spacing(2)}px`,

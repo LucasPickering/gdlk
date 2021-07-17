@@ -1,43 +1,36 @@
+/**
+ * This file contains context definitions for all of a user's persisted data.
+ * Each category of data is broken into a separate context, and the context
+ * may also contain functions to mutating the state. State values in here should
+ * never be mutated directly! We need to use setters to trigger a re-render in
+ * React.
+ */
+
+import { PuzzleSolution } from '@root/util/types';
 import React from 'react';
-import { noop } from 'lodash-es';
 
-export interface User {
-  id: string;
-  username: string;
+export interface PuzzleSolutionsContextType {
+  getPuzzleSolutions: (puzzleSlug: string) => PuzzleSolution[];
+  getPuzzleSolution: (
+    puzzleSlug: string,
+    fileName: string
+  ) => PuzzleSolution | undefined;
+  createSolution: (puzzleSlug: string, fileName: string) => void;
+  copySolution: (puzzleSlug: string, fileName: string) => void;
+  renameSolution: (
+    puzzleSlug: string,
+    oldFileName: string,
+    newFileName: string
+  ) => void;
+  deleteSolution: (puzzleSlug: string, fileName: string) => void;
+  setSolutionSourceCode: (
+    puzzleSlug: string,
+    fileName: string,
+    sourceCode: string
+  ) => void;
 }
 
-export interface UserContextType {
-  /**
-   * Has the user logged in? This should NOT be used for most user checks.
-   * The user could be logged in but not have initalized their user yet, which
-   * will disallow most API requests that require a user.
-   */
-  loggedInUnsafe: boolean;
-
-  /**
-   * Is the user logged in and initialized? Convenience function to check if
-   * the user field is populated.
-   */
-  loggedIn: boolean;
-
-  /**
-   * The logged-in and initialized user.
-   */
-  user: User | undefined;
-
-  /**
-   * Trigger a re-fetch of this data from the API
-   */
-  refetch: () => void;
-}
-
-export const UserContext = React.createContext<UserContextType>(
-  {} as UserContextType // this default value never gets used so this is "safe"
-);
-
-export const defaultUserContext = {
-  loggedInUnsafe: false,
-  loggedIn: false,
-  user: undefined,
-  refetch: noop,
-};
+export const PuzzleSolutionsContext =
+  React.createContext<PuzzleSolutionsContextType>(
+    {} as PuzzleSolutionsContextType
+  );

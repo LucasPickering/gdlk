@@ -1,23 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { RelayProp, createFragmentContainer } from 'react-relay';
-import graphql from 'babel-plugin-relay/macro';
-import { ProgramIde_hardwareSpec } from './__generated__/ProgramIde_hardwareSpec.graphql';
+import React, { useState, useEffect, useContext } from 'react';
 import { makeStyles } from '@material-ui/core';
 import CodeEditor from './CodeEditor';
 import RegistersInfo from './RegistersInfo';
-import { IdeContextType, IdeContext } from 'state/ide';
+import { IdeContextType, IdeContext } from '@root/state/ide';
 import IoInfo from './IoInfo';
 import StackInfo from './StackInfo';
 import IdeControls from './IdeControls';
-import AutoSaveHandler from './AutoSaveHandler';
 import ProgramStatus from './ProgramStatus';
-import useDebouncedValue from 'hooks/useDebouncedValue';
-import { assertIsDefined } from 'util/guards';
-import NotFoundPage from 'components/NotFoundPage';
-import { StorageHandler } from 'util/storage';
-import useStaticValue from 'hooks/useStaticValue';
-import PromptOnExit from 'components/common/PromptOnExit';
+import useDebouncedValue from '@root/hooks/useDebouncedValue';
+import PromptOnExit from '@root/components/common/PromptOnExit';
 import useCompiler from './useCompiler';
+import { hardware } from '@root/data/hardware';
+import { PuzzleSolution, Puzzle, HardwareSpec } from '@root/util/types';
+import { PuzzleSolutionsContext } from '@root/state/user';
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => {
   const border = `2px solid ${palette.divider}`;
@@ -73,51 +68,51 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => {
  * parent, otherwise an error will be thrown.
  */
 const ProgramIde: React.FC<{
-  hardwareSpec: ProgramIde_hardwareSpec;
-}> = ({ hardwareSpec }) => {
+  puzzle: Puzzle;
+  puzzleSolution: PuzzleSolution;
+}> = ({ puzzle, puzzleSolution }) => {
   const localClasses = useLocalStyles();
+  const { setSolutionSourceCode } = useContext(PuzzleSolutionsContext);
 
-  // If the program spec or the user program doesn't exist, freak out!!
-  const programSpec = hardwareSpec.programSpec;
-  assertIsDefined(programSpec);
-  const userProgram = programSpec.userProgram;
-  assertIsDefined(userProgram);
-
-  // This will be used to read and write source from/to browser local storage
-  const sourceStorageHandler = useStaticValue<StorageHandler<string>>(
-    () =>
-      new StorageHandler(
-        [hardwareSpec.id, programSpec.id, userProgram.id, 'source'].join(':')
-      )
+  // TODO make this selectable via dropdown
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [hardwareSpec, setHardwareSpec] = useState<HardwareSpec>(hardware.k200);
+  const [sourceCode, setSourceCode] = useState<string>(
+    puzzleSolution.sourceCode
   );
-  const [sourceCode, setSourceCode] = useState<string>(() => {
-    // Check local storage for saved source
-    const storedSource = sourceStorageHandler.get();
-    if (
-      storedSource &&
-      // Only use the local copy if it's newer than the remote one
-      storedSource.lastModified > new Date(userProgram.lastModified)
-    ) {
-      return storedSource.value;
-    }
-    return userProgram.sourceCode;
-  });
 
-  const {
-    wasmHardwareSpec,
-    wasmProgramSpec,
-    compiledState,
-    compile,
-    execute,
-  } = useCompiler({ hardwareSpec, sourceCode });
+  const { wasmHardwareSpec, wasmProgramSpec, compiledState, compile, execute } =
+    useCompiler({ hardwareSpec, puzzle, sourceCode });
 
   // When the source changes, save it to local storage and recompile
   // Use a debounce to prevent constant recompilation
   const debouncedSourceCode = useDebouncedValue(sourceCode, 250);
-  useEffect(() => {
-    sourceStorageHandler.set(debouncedSourceCode);
-    compile(debouncedSourceCode);
-  }, [sourceStorageHandler, debouncedSourceCode, compile]);
+  useEffect(
+    () => {
+      // TODO comment this
+      setSolutionSourceCode(
+        puzzle.slug,
+        puzzleSolution.fileName,
+        debouncedSourceCode
+      );
+
+      // Only compile if the source isn't empty. This prevents should an unhelpful
+      // error when the user first loads in
+      if (debouncedSourceCode) {
+        compile(debouncedSourceCode);
+      }
+    },
+    // Excluding setSolutionSourceCode cause it updates on every loop and
+    // memoizing it would just create a mutual recursion loop. Shortcuts!
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      puzzle.slug,
+      puzzleSolution.fileName,
+      debouncedSourceCode,
+      // setSolutionSourceCode,
+      compile,
+    ]
+  );
 
   const contextValue: IdeContextType = {
     wasmHardwareSpec,
@@ -139,10 +134,9 @@ const ProgramIde: React.FC<{
         <StackInfo className={localClasses.stackInfo} />
         <CodeEditor className={localClasses.editor} />
 
-        <AutoSaveHandler userProgram={userProgram} />
         {/* Prompt on exit for unsaved changes */}
         <PromptOnExit
-          when={sourceCode !== userProgram.sourceCode}
+          when={sourceCode !== puzzleSolution.sourceCode}
           message="You have unsaved changes. Are you sure you want to leave?"
         />
       </div>
@@ -150,44 +144,4 @@ const ProgramIde: React.FC<{
   );
 };
 
-/**
- * A thin wrapper around ProgramIde that guarantees that the hardware spec,
- * program spec, and user program are defined before rendering the main
- * component. This makes the logic a lot simpler in the other component.
- */
-const ProgramIdeWrapper: React.FC<{
-  hardwareSpec: ProgramIde_hardwareSpec;
-  relay: RelayProp;
-}> = ({ hardwareSpec }) => {
-  if (hardwareSpec?.programSpec?.userProgram) {
-    return <ProgramIde hardwareSpec={hardwareSpec} />;
-  }
-
-  return <NotFoundPage />;
-};
-
-export default createFragmentContainer(ProgramIdeWrapper, {
-  hardwareSpec: graphql`
-    fragment ProgramIde_hardwareSpec on HardwareSpecNode
-      @argumentDefinitions(
-        programSlug: { type: "String!" }
-        fileName: { type: "String!" }
-      ) {
-      id
-      numRegisters
-      numStacks
-      maxStackLength
-      programSpec(slug: $programSlug) {
-        id
-        input
-        expectedOutput
-        userProgram(fileName: $fileName) {
-          id
-          sourceCode
-          lastModified
-          ...AutoSaveHandler_userProgram
-        }
-      }
-    }
-  `,
-});
+export default ProgramIde;

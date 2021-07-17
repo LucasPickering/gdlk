@@ -6,12 +6,6 @@ on:
       - master
   pull_request:
 
-env:
-  COMPOSE_FILE: docker-compose.ci.yml
-  # Both needed to enable buildkit, which gives us a better build tool
-  COMPOSE_DOCKER_CLI_BUILD: 1
-  DOCKER_BUILDKIT: 1
-
 jobs:
   lint:
     name: "[ALL] Clippy and Rustfmt"
@@ -28,7 +22,6 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
       - name: Install dependencies
         run: |
-          sudo apt-get install -y libpq-dev
           rustup component add rustfmt clippy
       - name: Run rustfmt
         uses: actions-rs/cargo@v1
@@ -81,98 +74,12 @@ jobs:
         # doing any DOM stuff
         run: wasm-pack test --node
 
-  test-api:
-    name: "[API] Test"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@master
-      - name: Cache cargo files
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
-      - name: Build API image
-        run: |-
-          docker-compose pull db api
-          docker-compose build api
-      - name: Test API
-        run: docker-compose run api cargo make -p docker test
-      - name: Push API image
-        if: github.ref == 'refs/heads/master'
-        run: |-
-          docker login -u '${{ github.actor }}' -p '${{ secrets.GITHUB_TOKEN }}' ghcr.io
-          docker-compose push api
-
   test-frontend:
     name: "[FE] Test"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - name: Build Frontend image
-        run: |-
-          docker-compose pull frontend
-          docker-compose build frontend
-      - name: Test Frontend
-        run: docker-compose run frontend ./docker/run_tests.sh
-      - name: Push Frontend image
-        if: github.ref == 'refs/heads/master'
-        run: |-
-          docker login -u '${{ github.actor }}' -p '${{ secrets.GITHUB_TOKEN }}' ghcr.io
-          docker-compose push frontend
-
-  build-db-prd:
-    name: "[DB] Build production image"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@master
-      - name: Build image
+      - name: Lint Frontend
         run: |
-          docker-compose pull db-prd
-          docker-compose build db-prd
-      - name: Push image
-        if: github.ref == 'refs/heads/master'
-        run: |-
-          docker login -u '${{ github.actor }}' -p '${{ secrets.GITHUB_TOKEN }}' ghcr.io
-          docker-compose push db-prd
-
-  build-api-prd:
-    name: "[API] Build production image"
-    runs-on: ubuntu-latest
-    needs:
-      - lint
-      - test-core
-      - test-api
-    steps:
-      - uses: actions/checkout@master
-      - name: Build image
-        run: |
-          docker-compose pull api api-prd
-          docker-compose build api-prd
-      - name: Push image
-        if: github.ref == 'refs/heads/master'
-        run: |-
-          docker login -u '${{ github.actor }}' -p '${{ secrets.GITHUB_TOKEN }}' ghcr.io
-          docker-compose push api-prd
-
-  build-nginx-prd:
-    name: "[NGINX] Build production image"
-    runs-on: ubuntu-latest
-    needs:
-      - lint
-      - test-core
-      - test-wasm
-      - test-frontend
-    steps:
-      - uses: actions/checkout@master
-      - name: Build image
-        run: |
-          docker-compose pull nginx-prd
-          docker-compose build nginx-prd
-      - name: Push image
-        if: github.ref == 'refs/heads/master'
-        run: |-
-          docker login -u '${{ github.actor }}' -p '${{ secrets.GITHUB_TOKEN }}' ghcr.io
-          docker-compose push nginx-prd
+          npm run tsc
+          npm run lint

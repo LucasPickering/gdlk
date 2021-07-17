@@ -1,12 +1,9 @@
 import React from 'react';
-import { RelayProp, createFragmentContainer } from 'react-relay';
-import graphql from 'babel-plugin-relay/macro';
-import { HardwareSpecSummary_hardwareSpec } from './__generated__/HardwareSpecSummary_hardwareSpec.graphql';
-import SimpleTable from 'components/common/SimpleTable';
+import SimpleTable from '@root/components/common/SimpleTable';
+import { HardwareSpec } from '@root/util/types';
 
 const HardwareSpecSummary: React.FC<{
-  hardwareSpec: HardwareSpecSummary_hardwareSpec;
-  relay: RelayProp;
+  hardwareSpec: HardwareSpec;
 }> = ({ hardwareSpec }) => {
   return (
     <SimpleTable
@@ -19,12 +16,4 @@ const HardwareSpecSummary: React.FC<{
   );
 };
 
-export default createFragmentContainer(HardwareSpecSummary, {
-  hardwareSpec: graphql`
-    fragment HardwareSpecSummary_hardwareSpec on HardwareSpecNode {
-      numRegisters
-      numStacks
-      maxStackLength
-    }
-  `,
-});
+export default HardwareSpecSummary;

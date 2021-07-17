@@ -13,6 +13,7 @@ import { debounce } from 'lodash-es';
  */
 const useDebouncedValue = <T>(value: T, wait: number): T => {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedSetter = useCallback(
     debounce((newValue: T) => {
       setDebouncedValue(newValue);

@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react';
 import { Typography } from '@material-ui/core';
-import Link from 'components/common/Link';
+import Link from '@root/components/common/Link';
 import DocsSection from './DocsSection';
 
 type ArgType = 'VAL' | 'REG' | 'STACK' | 'LABEL';

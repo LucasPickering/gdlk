@@ -1,5 +1,7 @@
 import React from 'react';
-import HardwareSpecListView from './hardware/HardwareSpecListView';
+import HardwareSpecListCard from './hardware/HardwareSpecListCard';
+import PuzzleListCard from './puzzle/PuzzleListCard';
+import { puzzles } from '@root/data/puzzles';
 import {
   Grid,
   Card,
@@ -33,7 +35,10 @@ const HomePage: React.FC = () => {
       </Grid>
 
       <Grid item md={4} sm={8} xs={12}>
-        <HardwareSpecListView />
+        <HardwareSpecListCard />
+      </Grid>
+      <Grid item md={4} sm={8} xs={12}>
+        <PuzzleListCard puzzles={Object.values(puzzles)} />
       </Grid>
     </Grid>
   );

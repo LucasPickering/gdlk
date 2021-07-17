@@ -1,7 +1,7 @@
 import { makeStyles, Typography } from '@material-ui/core';
 import React from 'react';
 import Link from './Link';
-import Navigation from 'components/navigation/Navigation';
+import Navigation from '@root/components/navigation/Navigation';
 import clsx from 'clsx';
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
