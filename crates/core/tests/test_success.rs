@@ -391,7 +391,7 @@ fn test_execute_after_termination() {
         ProgramSpec::default(),
         "SET RX0 0",
     );
-    assert_eq!(machine.execute_next().unwrap(), false);
+    assert!(!machine.execute_next().unwrap());
 }
 
 #[test]

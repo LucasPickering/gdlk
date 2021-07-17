@@ -100,7 +100,7 @@ fn test_execute_after_error() {
         "READ RX0",
         "Runtime error at 1:1: Read attempted while input is empty"
     );
-    assert_eq!(machine.execute_next().unwrap(), false);
+    assert!(!machine.execute_next().unwrap());
 }
 
 #[test]
@@ -120,5 +120,5 @@ fn test_no_success_on_error() {
         "Runtime error at 5:9: Read attempted while input is empty"
     );
 
-    assert_eq!(machine.successful(), false);
+    assert!(!machine.successful());
 }

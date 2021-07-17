@@ -35,7 +35,6 @@
 //! ```
 
 #![deny(clippy::all)]
-#![feature(or_patterns)]
 
 pub mod ast;
 mod consts;

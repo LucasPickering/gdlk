@@ -222,10 +222,7 @@ impl<'a> Parse<'a> for Program<Span> {
                 all_consuming(many1(line)),
                 // filter out None lines
                 |lines| {
-                    let body: Vec<_> = lines
-                        .into_iter()
-                        .filter_map(std::convert::identity)
-                        .collect();
+                    let body: Vec<_> = lines.into_iter().flatten().collect();
 
                     // If the program is empty, that's no bueno
                     if body.is_empty() {
@@ -252,7 +249,7 @@ impl<'a> Parse<'a> for Program<Span> {
 fn arg<'a, O, F>(
     context_label: &'static str,
     arg_parser: F,
-) -> impl Fn(RawSpan<'a>) -> ParseResult<'a, O>
+) -> impl FnMut(RawSpan<'a>) -> ParseResult<'a, O>
 where
     F: Fn(RawSpan<'a>) -> ParseResult<'a, O>,
 {
@@ -276,10 +273,10 @@ fn tag_with_args<'a, O, Args, ArgParser, Mapper>(
     instr_name: &'static str,
     arg_parser: ArgParser,
     mapper: Mapper,
-) -> impl Fn(RawSpan<'a>) -> ParseResult<'a, O>
+) -> impl FnMut(RawSpan<'a>) -> ParseResult<'a, O>
 where
-    ArgParser: Fn(RawSpan<'a>) -> ParseResult<'a, Args>,
-    Mapper: Fn(Args) -> O,
+    ArgParser: FnMut(RawSpan<'a>) -> ParseResult<'a, Args>,
+    Mapper: FnMut(Args) -> O,
 {
     map(
         preceded(
