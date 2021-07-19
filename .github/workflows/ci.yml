@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  lint:
+  lint-rust:
     name: "[ALL] Clippy and Rustfmt"
     runs-on: ubuntu-latest
     steps:
@@ -74,12 +74,72 @@ jobs:
         # doing any DOM stuff
         run: wasm-pack test --node
 
-  test-frontend:
-    name: "[FE] Test"
+  build-frontend:
+    name: "[FE] Test & Build"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
-      - name: Lint Frontend
-        run: |
-          npm run tsc
-          npm run lint
+      - name: Checkout
+        uses: actions/checkout@master
+
+      # Caching
+      - name: Cache cargo files
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+            crates/wasm/pkg
+          key: ${{ runner.os }}-cargo-wasm-${{ hashFiles('Cargo.lock') }}
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Install npm dependencies
+        working-directory: frontend
+        run: npm install
+
+      # We have to build *first* so we can get typedefs from the wasm crate
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Typecheck
+        working-directory: frontend
+        run: npm run tsc
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Archive build
+        if: ${{ github.ref == 'refs/heads/master' }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: frontend-build
+          path: frontend/dist
+
+  # Deploy only on master
+  deploy-frontend:
+    name: "Deploy frontend"
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/master' }}
+    needs:
+      - lint-rust
+      - test-core
+      - test-wasm
+      - build-frontend
+    steps:
+      - name: Download build artifact
+        id: download
+        uses: actions/download-artifact@v2
+        with:
+          name: frontend-build
+
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@3.7.1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: gh-pages
+          FOLDER: ${{ steps.download.outputs.download-path }}
+          CLEAN: true
