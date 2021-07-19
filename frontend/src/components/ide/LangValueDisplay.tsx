@@ -1,5 +1,5 @@
 import React from 'react';
-import { LangValue } from 'state/ide';
+import { LangValue } from '@root/state/ide';
 import { makeStyles, Typography } from '@material-ui/core';
 import clsx from 'clsx';
 

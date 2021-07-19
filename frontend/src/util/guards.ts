@@ -1,15 +1,4 @@
 /**
- * Asserts that the given value is not `null` or `undefined`.
- * @param val The value to check
- * @throws Error if the value is `null` or `undefined`
- */
-export function assertIsDefined<T>(val: T): asserts val is NonNullable<T> {
-  if (val === undefined || val === null) {
-    throw new Error(`Expected 'val' to be defined, but received ${val}`);
-  }
-}
-
-/**
  * Type guard for any uniformly typed array. Checks that the input is an array,
  * and that each element is of the specified type.
  *

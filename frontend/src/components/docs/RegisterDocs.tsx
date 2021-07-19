@@ -47,7 +47,7 @@ const REGISTERS: Register[] = [
       <>
         General purpose read-write register. Values can be read and written
         freely. Writing overwrites the existing value in the register. The
-        number of these available is determined by the hardware spec. Starts at{' '}
+        number of these available is determined by the hardware. Starts at{' '}
         <code>RX0</code>.
       </>
     ),
@@ -64,7 +64,7 @@ const RegisterDocs: React.FC = () => {
         Registers are the basic memory unit of a GDLK machine. Some registers
         are read-only and hold special values, while others are general purpose
         and can be written to. The set of registers available to a machine are
-        determined by the hardware specification.
+        determined by the hardware.
       </Typography>
 
       <Typography>

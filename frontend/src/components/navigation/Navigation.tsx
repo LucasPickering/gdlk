@@ -14,9 +14,8 @@ import {
 import React, { useState } from 'react';
 import HeaderLink from './HeaderLink';
 import DrawerLink from './DrawerLink';
-import useScreenSize from 'hooks/useScreenSize';
-import UnstyledLink from 'components/common/UnstyledLink';
-import LoginMenu from 'components/user/LoginMenu';
+import useScreenSize from '@root/hooks/useScreenSize';
+import UnstyledLink from '@root/components/common/UnstyledLink';
 
 const LINKS = [
   {
@@ -113,8 +112,6 @@ const Navigation: React.FC<{
           ))}
 
         <div className={localClasses.grow} />
-
-        <LoginMenu />
       </Toolbar>
     </AppBar>
   );

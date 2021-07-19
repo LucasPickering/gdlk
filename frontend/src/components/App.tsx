@@ -1,9 +1,7 @@
 import { CssBaseline, CircularProgress } from '@material-ui/core';
 import React, { Suspense } from 'react';
 import { ThemeProvider } from '@material-ui/styles';
-import theme from 'util/theme';
-import environment from 'util/environment';
-import { RelayEnvironmentProvider } from 'relay-hooks';
+import theme from '@root/util/theme';
 import CoreContent from './CoreContent';
 import { BrowserRouter } from 'react-router-dom';
 
@@ -12,16 +10,14 @@ import { BrowserRouter } from 'react-router-dom';
  */
 const App: React.FC = () => {
   return (
-    <RelayEnvironmentProvider environment={environment}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <Suspense fallback={<CircularProgress />}>
-          <BrowserRouter>
-            <CoreContent />
-          </BrowserRouter>
-        </Suspense>
-      </ThemeProvider>
-    </RelayEnvironmentProvider>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Suspense fallback={<CircularProgress />}>
+        <BrowserRouter>
+          <CoreContent />
+        </BrowserRouter>
+      </Suspense>
+    </ThemeProvider>
   );
 };
 

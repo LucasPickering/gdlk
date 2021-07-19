@@ -1,13 +1,13 @@
 // Can only use these imports as types, the actual import needs to be async
-import {
+import type {
   HardwareSpec,
   SourceElement,
-  compile,
   ProgramSpec,
   Machine,
 } from 'gdlk_wasm';
-import { LangValue } from 'state/ide';
+import { LangValue } from '@root/state/ide';
 import { isTypedArray } from './guards';
+const gdlk = await import('gdlk_wasm');
 
 export interface CompileErrors {
   errors: SourceElement[];
@@ -19,6 +19,7 @@ export interface CompileErrors {
  * @param value The value to check
  * @returns true if the value is a SourceElement, false if not
  */
+// eslint-disable-next-line @typescript-eslint/ban-types
 function isSourceElement(value: object): value is SourceElement {
   // TODO make this more robust after
   // https://github.com/Microsoft/TypeScript/issues/21732
@@ -100,26 +101,14 @@ export type CompileResult =
   | { type: 'compiled'; instructions: SourceElement[]; machine: MachineWrapper }
   | { type: 'error'; errors: SourceElement[] };
 
-export class CompilerWrapper {
-  static gdlk: {
-    compile: typeof compile;
-  };
-
-  static async init(): Promise<void> {
-    CompilerWrapper.gdlk = await import('gdlk_wasm');
-  }
-
+export class Compiler {
   static compile(
     hardwareSpec: HardwareSpec,
     programSpec: ProgramSpec,
     source: string
   ): CompileResult {
     try {
-      const result = CompilerWrapper.gdlk.compile(
-        hardwareSpec,
-        programSpec,
-        source
-      );
+      const result = gdlk.compile(hardwareSpec, programSpec, source);
 
       return {
         type: 'compiled',

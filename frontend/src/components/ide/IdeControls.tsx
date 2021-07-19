@@ -14,9 +14,9 @@ import {
   SkipNext as IconSkipNext,
 } from '@material-ui/icons';
 import { ToggleButton, ToggleButtonGroup } from '@material-ui/lab';
-import { IdeContext } from 'state/ide';
+import { IdeContext } from '@root/state/ide';
 import clsx from 'clsx';
-import IconButton from 'components/common/IconButton';
+import IconButton from '@root/components/common/IconButton';
 
 const DEFAULT_STEP_INTERVAL = 1000; // ms between steps at 1x speed
 const STEP_SPEED_OPTIONS: number[] = [2, 20];

@@ -11,8 +11,8 @@ repository = "https://github.com/LucasPickering/gdlk"
 version = "0.1.0"
 
 [dependencies]
-anyhow = "1.0"
+anyhow = "1.0.42"
 gdlk = {path = "../core"}
-serde = {version = "1.0", features = ["derive"]}
-serde_json = "1.0"
-structopt = "0.3"
+serde = { version = "1.0.126", features = ["derive"] }
+serde_json = "1.0.64"
+structopt = "0.3.22"

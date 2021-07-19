@@ -23,12 +23,6 @@ const useLocalStyles = makeStyles(({ spacing }) => ({
   },
 }));
 
-interface Props {
-  className?: string;
-  size: 'small' | 'medium';
-  onSubmit: () => void;
-}
-
 const Form: React.FC<{
   className?: string;
   size: 'small' | 'medium';
@@ -39,13 +33,12 @@ const Form: React.FC<{
   return (
     <form
       className={clsx(localClasses[size], className)}
-      onSubmit={
-        onSubmit &&
-        ((event) => {
+      onSubmit={(event) => {
+        if (onSubmit) {
           onSubmit();
-          event.preventDefault(); // Don't reload the page
-        })
-      }
+        }
+        event.preventDefault(); // Don't reload the page
+      }}
     >
       <div className={localClasses.innerBox}>{children}</div>
     </form>

@@ -18,9 +18,9 @@ module.exports = {
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
-    'plugin:react/recommended',
-    'prettier/@typescript-eslint',
     'plugin:prettier/recommended',
+    'plugin:react/recommended',
+    'plugin:react-hooks/recommended',
     'plugin:jsx-a11y/recommended',
   ],
   globals: {
@@ -34,6 +34,19 @@ module.exports = {
     },
   },
   rules: {
+    'no-restricted-syntax': [
+      'error',
+      {
+        // Plain import statements on wasm imports "work", but they create weird
+        // issues with webpack and force us to use React Suspense, so best to
+        // just avoid them
+        selector:
+          'ImportDeclaration[importKind="value"][source.value="gdlk_wasm"]',
+        message:
+          'Use `import type` or `const ... = await import(...)` for Wasm imports',
+      },
+    ],
+
     'no-console': 'warn',
     'no-unused-vars': 'off',
     'react/prop-types': 'off',
@@ -57,9 +70,10 @@ module.exports = {
   overrides: [
     {
       // Special config files
-      files: ['config-overrides.js', 'src/setupProxy.js'],
+      files: ['*.js'],
       parserOptions: {
         ecmaVersion: 3,
+        project: null,
       },
       rules: {
         '@typescript-eslint/no-var-requires': 'off',

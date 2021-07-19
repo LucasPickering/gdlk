@@ -1,6 +1,8 @@
 //! Integration tests for the GDLK Wasm API
 
 #![deny(clippy::all)]
+// Needed for the macro
+#![allow(clippy::bool_assert_comparison)]
 
 use gdlk_wasm::{
     compile, HardwareSpec, LangValue, ProgramSpec, SourceElement, Span,

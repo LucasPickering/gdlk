@@ -1,7 +1,7 @@
 import React from 'react';
 import { makeStyles } from '@material-ui/core';
 import clsx from 'clsx';
-import NavLink from 'components/common/NavLink';
+import NavLink from '@root/components/common/NavLink';
 
 const useLocalStyles = makeStyles(({ palette, transitions, typography }) => {
   const activeStyles = {

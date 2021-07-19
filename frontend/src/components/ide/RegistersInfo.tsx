@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { LangValue, IdeContext } from 'state/ide';
+import { LangValue, IdeContext } from '@root/state/ide';
 import { makeStyles, Typography } from '@material-ui/core';
 import LangValueDisplay from './LangValueDisplay';
 import clsx from 'clsx';

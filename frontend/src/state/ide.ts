@@ -1,6 +1,6 @@
 import React from 'react';
-import { Span, HardwareSpec, ProgramSpec, SourceElement } from 'gdlk_wasm';
-import { MachineState } from 'util/compile';
+import type { Span, HardwareSpec, ProgramSpec, SourceElement } from 'gdlk_wasm';
+import { MachineState } from '@root/util/compile';
 
 export type LangValue = number;
 
