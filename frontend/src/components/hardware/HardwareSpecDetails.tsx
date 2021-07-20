@@ -6,8 +6,8 @@ import {
   Grid,
   CardHeader,
 } from '@material-ui/core';
-import HardwareSpecSummary from './HardwareSpecSummary';
 import { HardwareSpec } from '@root/util/types';
+import SimpleTable from '../common/SimpleTable';
 
 const HardwareSpecDetails: React.FC<{
   hardwareSpec: HardwareSpec;
@@ -21,7 +21,13 @@ const HardwareSpecDetails: React.FC<{
       <Card>
         <CardHeader title={<Typography variant="h2">Hardware</Typography>} />
         <CardContent>
-          <HardwareSpecSummary hardwareSpec={hardwareSpec} />
+          <SimpleTable
+            data={[
+              { label: 'Registers', value: hardwareSpec.numRegisters },
+              { label: 'Stacks', value: hardwareSpec.numStacks },
+              { label: 'Stack Size', value: hardwareSpec.maxStackLength },
+            ]}
+          />
         </CardContent>
       </Card>
     </Grid>

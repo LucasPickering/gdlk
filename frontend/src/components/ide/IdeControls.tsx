@@ -47,11 +47,11 @@ const IdeControls: React.FC<{
   className?: string;
 }> = ({ className }) => {
   const localClasses = useLocalStyles();
-  const { compiledState, execute, reset } = useContext(IdeContext);
+  const { compiledState, stepping, setStepping, execute, reset } =
+    useContext(IdeContext);
   // We use this a few times so let's store it here
   const executeNext = useCallback(() => execute(false), [execute]);
 
-  const [stepping, setStepping] = useState<boolean>(false);
   const [stepSpeed, setStepSpeed] = useState<number>(STEP_SPEED_OPTIONS[0]);
   const intervalIdRef = useRef<number | undefined>();
 
@@ -76,7 +76,7 @@ const IdeControls: React.FC<{
       window.clearInterval(intervalIdRef.current);
       setStepping(false);
     }
-  }, [terminated]);
+  }, [terminated, setStepping]);
 
   return (
     <div className={clsx(localClasses.controls, className)}>

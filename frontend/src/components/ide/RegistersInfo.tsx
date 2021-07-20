@@ -5,11 +5,9 @@ import LangValueDisplay from './LangValueDisplay';
 import clsx from 'clsx';
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
-  registersInfo: {
+  registers: {
     padding: spacing(1),
     backgroundColor: palette.background.default,
-  },
-  registers: {
     display: 'flex',
   },
   register: {
@@ -44,20 +42,16 @@ const RegistersInfo: React.FC<{
     compiledState?.type === 'compiled' ? compiledState.machineState : undefined;
 
   return (
-    <div className={clsx(localClasses.registersInfo, className)}>
-      <Typography variant="h3">Registers</Typography>
-
-      <div className={localClasses.registers}>
-        {wasmHardwareSpec.registers.map((name) => (
-          <RegisterDisplay
-            key={name}
-            name={name}
-            // If we're compiled, use the active values. Otherwise just show
-            // the names with placeholder values.
-            value={machineState?.registers[name]}
-          />
-        ))}
-      </div>
+    <div className={clsx(localClasses.registers, className)}>
+      {wasmHardwareSpec.registers.map((name) => (
+        <RegisterDisplay
+          key={name}
+          name={name}
+          // If we're compiled, use the active values. Otherwise just show
+          // the names with placeholder values.
+          value={machineState?.registers[name]}
+        />
+      ))}
     </div>
   );
 };

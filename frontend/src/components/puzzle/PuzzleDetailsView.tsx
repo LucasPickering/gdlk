@@ -8,7 +8,7 @@ interface RouteParams {
   puzzleSlug: string;
 }
 
-const PuzzleView: React.FC = () => {
+const PuzzleDetailsView: React.FC = () => {
   const { puzzleSlug } = useParams<RouteParams>();
   const puzzle = puzzles[puzzleSlug];
 
@@ -19,4 +19,4 @@ const PuzzleView: React.FC = () => {
   return <NotFoundPage />;
 };
 
-export default PuzzleView;
+export default PuzzleDetailsView;

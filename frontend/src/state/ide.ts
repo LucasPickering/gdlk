@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Dispatch, SetStateAction } from 'react';
 import type { Span, HardwareSpec, ProgramSpec, SourceElement } from 'gdlk_wasm';
 import { MachineState } from '@root/util/compile';
 
@@ -44,6 +44,9 @@ export interface IdeContextType {
   sourceCode: string;
   compiledState: CompiledState | undefined;
   setSourceCode: (newSourceCode: string) => void;
+  // Are we actively stepping through the program?
+  stepping: boolean;
+  setStepping: Dispatch<SetStateAction<boolean>>;
   execute: (executeAll?: boolean) => void;
   reset: () => void;
 }

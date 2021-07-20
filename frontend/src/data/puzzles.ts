@@ -10,6 +10,14 @@ export const puzzles: Record<string, Puzzle> = {
     input: [1],
     expectedOutput: [1],
   },
+  readWrite3: {
+    name: 'Read 3/Write 3',
+    slug: 'readWrite3',
+    description: 'Read three values from input and write them to output',
+    examples: [],
+    input: [1, 1, 1],
+    expectedOutput: [1, 1, 1],
+  },
   inAndOut: {
     name: 'In-N-Out',
     slug: 'inAndOut',

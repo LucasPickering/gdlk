@@ -1,100 +1,45 @@
-import React, { useContext, useState } from 'react';
+import React from 'react';
 import {
   Card,
   CardContent,
   Typography,
-  TableContainer,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  Collapse,
-  IconButton,
   makeStyles,
   CardHeader,
+  List,
+  ListItem,
+  ListItemText,
 } from '@material-ui/core';
-import {
-  ExpandMore as IconExpandMore,
-  ExpandLess as IconExpandLess,
-} from '@material-ui/icons';
-import Link from '@root/components/common/Link';
 import { Puzzle } from '@root/util/types';
-import { PuzzleSolutionsContext } from '@root/state/user';
+import UnstyledLink from '../common/UnstyledLink';
 
-const useLocalStyles = makeStyles(({ spacing }) => ({
-  puzzleRow: {
-    '& > *': {
-      borderBottom: 'none',
-    },
+const useLocalStyles = makeStyles({
+  puzzleList: {
+    padding: 0,
   },
-  puzzleRowExtra: {
-    paddingTop: 0,
-    paddingBottom: 0,
-  },
-  puzzleSummaryWrapper: {
-    margin: spacing(1),
-  },
-}));
-
-const PuzzleListRow: React.FC<{ puzzle: Puzzle }> = ({ puzzle }) => {
-  const localClasses = useLocalStyles();
-  const [open, setOpen] = useState<boolean>(false);
-  const { getPuzzleSolutions } = useContext(PuzzleSolutionsContext);
-
-  return (
-    <>
-      <TableRow className={localClasses.puzzleRow}>
-        <TableCell>
-          <IconButton onClick={() => setOpen((prev) => !prev)}>
-            {open ? <IconExpandLess /> : <IconExpandMore />}
-          </IconButton>
-        </TableCell>
-        <TableCell>
-          <Link to={`/puzzles/${puzzle.slug}`}>{puzzle.name}</Link>
-        </TableCell>
-
-        <TableCell align="right">
-          {getPuzzleSolutions(puzzle.slug).length || '–'}
-        </TableCell>
-      </TableRow>
-      <TableRow>
-        <TableCell className={localClasses.puzzleRowExtra} colSpan={3}>
-          <Collapse in={open} unmountOnExit>
-            <div className={localClasses.puzzleSummaryWrapper}>
-              {puzzle.description}
-            </div>
-          </Collapse>
-        </TableCell>
-      </TableRow>
-    </>
-  );
-};
+});
 
 const PuzzleListCard: React.FC<{
   puzzles: Puzzle[];
 }> = ({ puzzles }) => {
+  const localClasses = useLocalStyles();
+
   return (
     <Card>
       <CardHeader title={<Typography variant="h2">Puzzles</Typography>} />
       <CardContent>
-        <TableContainer>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell />
-                <TableCell>Puzzle</TableCell>
-                <TableCell align="right">Solutions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {/* One row per puzzle */}
-              {puzzles.map((puzzle) => (
-                <PuzzleListRow key={puzzle.slug} puzzle={puzzle} />
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <List className={localClasses.puzzleList} dense>
+          {/* One item per puzzle */}
+          {puzzles.map((puzzle) => (
+            <ListItem
+              key={puzzle.name}
+              button
+              component={UnstyledLink}
+              to={`/puzzles/${puzzle.slug}`}
+            >
+              <ListItemText primary={puzzle.name} />
+            </ListItem>
+          ))}
+        </List>
       </CardContent>
     </Card>
   );

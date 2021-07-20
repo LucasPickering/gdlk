@@ -80,10 +80,10 @@ const DocsPage: React.FC = () => {
       <DocsSection id="language-reference" level={2} title="Language Reference">
         <DocsSection id="values" level={3} title="Values">
           <Typography>
-            All GDLK values are 16-bit signed integers, meaning they fall in the
-            range <code>[-32768, 32767]</code>. Encoding systems can be built on
-            top of these values, but all hardware operations are performed on
-            these integers.
+            All GDLK values are 32-bit signed integers, meaning they fall in the
+            range <code>[-2147483648, 2147483647]</code>. Encoding systems can
+            be built on top of these values, but all hardware operations are
+            performed on these integers.
           </Typography>
 
           <Typography id="values--overflow-and-underflow" variant="h4">

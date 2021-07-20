@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { IdeContext } from '@root/state/ide';
-import { makeStyles, Typography } from '@material-ui/core';
+import { makeStyles } from '@material-ui/core';
 import BufferDisplay from './BufferDisplay';
 import clsx from 'clsx';
 
@@ -12,13 +12,9 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
     backgroundColor: palette.background.default,
     height: '100%',
   },
-  stacks: {
-    display: 'flex',
-    flexGrow: 1,
-    maxHeight: '100%',
-  },
   stack: {
     maxHeight: '100%',
+    paddingLeft: '0 !important',
   },
 }));
 
@@ -30,26 +26,18 @@ const StackInfo: React.FC<{
   const machineState =
     compiledState?.type === 'compiled' ? compiledState.machineState : undefined;
 
-  if (wasmHardwareSpec.num_stacks === 0) {
-    return null;
-  }
-
   return (
     <div className={clsx(localClasses.stackInfo, className)}>
-      <Typography variant="h3">Stacks</Typography>
-
-      <div className={localClasses.stacks}>
-        {wasmHardwareSpec.stacks.map((name) => (
-          <BufferDisplay
-            className={localClasses.stack}
-            key={name}
-            invert
-            label={name}
-            values={machineState?.stacks[name] ?? []}
-            maxLength={wasmHardwareSpec.max_stack_length}
-          />
-        ))}
-      </div>
+      {wasmHardwareSpec.stacks.map((name) => (
+        <BufferDisplay
+          className={localClasses.stack}
+          key={name}
+          invert
+          label={name}
+          values={machineState?.stacks[name] ?? []}
+          maxLength={wasmHardwareSpec.max_stack_length}
+        />
+      ))}
     </div>
   );
 };

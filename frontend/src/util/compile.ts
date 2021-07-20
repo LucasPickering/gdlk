@@ -36,6 +36,7 @@ export interface MachineState {
   terminated: boolean;
   successful: boolean;
   runtimeError: SourceElement | undefined;
+  failureReason: number | undefined;
 }
 
 /**
@@ -68,6 +69,7 @@ export class MachineWrapper {
       terminated: machine.terminated,
       successful: machine.successful,
       runtimeError: machine.error,
+      failureReason: machine.failureReason,
     };
   }
 

@@ -5,6 +5,17 @@ import useStaticValue from '@root/hooks/useStaticValue';
 import { StorageHandler } from '@root/util/storage';
 import { PuzzleSolution, PuzzleSolutions } from '@root/util/types';
 
+const defaultSolutions: PuzzleSolutions = {
+  readWrite: {
+    solution: {
+      fileName: 'solution',
+      sourceCode: `;æMove o¥e v&lue from input to$outpuĶ
+REA& R$0
+WRIæE RX0`,
+    },
+  },
+};
+
 /**
  * Manager for all user-related data storage. This stores data in React state,
  * and will also persistent it into browser local storage. All values can be
@@ -15,7 +26,7 @@ const UserProvider: React.FC = ({ children }) => {
     StorageHandler<PuzzleSolutions>
   >(() => new StorageHandler('puzzleSolutions'));
   const [puzzleSolutions, setPuzzleSolutions] = useState<PuzzleSolutions>(
-    puzzleSolutionsStorageHandler.get()?.value ?? {}
+    puzzleSolutionsStorageHandler.get()?.value ?? defaultSolutions
   );
 
   // Persist solutions in local storage

@@ -73,7 +73,7 @@ const CodeEditor: React.FC<{ className?: string }> = ({ className }) => {
         markers.push({
           ...aceSpan,
           className: localClasses.errorSpan,
-          type: 'screenLine',
+          type: 'text',
         });
         annotations.push({
           row: aceSpan.startRow,

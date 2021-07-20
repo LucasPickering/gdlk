@@ -2,7 +2,7 @@ import React from 'react';
 import { Switch, Route } from 'react-router-dom';
 import HomePage from './HomePage';
 import HardwareSpecDetailsView from './hardware/HardwareSpecDetailsView';
-import PuzzleView from './puzzle/PuzzleView';
+import PuzzleDetailsView from './puzzle/PuzzleDetailsView';
 import NotFoundPage from './NotFoundPage';
 import PageContainer from './common/PageContainer';
 import DocsPage from '@root/components/docs/DocsPage';
@@ -39,7 +39,7 @@ const CoreContent: React.FC = () => {
                 <HardwareSpecDetailsView />
               </Route>
               <Route path="/puzzles/:puzzleSlug" exact>
-                <PuzzleView />
+                <PuzzleDetailsView />
               </Route>
 
               <Route path="*">

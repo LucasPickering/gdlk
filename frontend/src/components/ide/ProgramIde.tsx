@@ -18,6 +18,7 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => {
   const border = `2px solid ${palette.divider}`;
   return {
     programIde: {
+      textTransform: 'uppercase',
       width: '100%',
       height: '100%',
       display: 'grid',
@@ -84,6 +85,8 @@ const ProgramIde: React.FC<{
   const { wasmHardwareSpec, wasmProgramSpec, compiledState, compile, execute } =
     useCompiler({ hardwareSpec, puzzle, sourceCode });
 
+  const [stepping, setStepping] = useState<boolean>(false);
+
   // When the source changes, save it to local storage and recompile
   // Use a debounce to prevent constant recompilation
   const debouncedSourceCode = useDebouncedValue(sourceCode, 250);
@@ -98,7 +101,7 @@ const ProgramIde: React.FC<{
 
       // Only compile if the source isn't empty. This prevents should an unhelpful
       // error when the user first loads in
-      if (debouncedSourceCode) {
+      if (debouncedSourceCode.trim()) {
         compile(debouncedSourceCode);
       }
     },
@@ -120,6 +123,8 @@ const ProgramIde: React.FC<{
     sourceCode,
     compiledState,
     setSourceCode,
+    stepping,
+    setStepping,
     execute,
     reset: () => compile(sourceCode),
   };
@@ -131,7 +136,9 @@ const ProgramIde: React.FC<{
         <IoInfo className={localClasses.ioInfo} />
         <ProgramStatus className={localClasses.programStatus} />
         <IdeControls className={localClasses.controls} />
-        <StackInfo className={localClasses.stackInfo} />
+        {hardwareSpec.numStacks > 0 && (
+          <StackInfo className={localClasses.stackInfo} />
+        )}
         <CodeEditor className={localClasses.editor} />
 
         {/* Prompt on exit for unsaved changes */}
