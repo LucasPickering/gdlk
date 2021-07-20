@@ -46,9 +46,11 @@ const DocsSection: React.FC<{
         variant={HEADER_MAPPINGS[level]}
       >
         {title}
-        <Link className={localClasses.docsSectionLink} to={`#${id}`}>
-          <IconLink />
-        </Link>
+        {id && (
+          <Link className={localClasses.docsSectionLink} to={`#${id}`}>
+            <IconLink />
+          </Link>
+        )}
       </Typography>
       <div className={localClasses[`docsSectionContent--${level}`]}>
         {children}

@@ -58,7 +58,7 @@ const DocsPage: React.FC = () => {
     <Paper className={localClasses.docs}>
       <Typography variant="h1">GDLK Documentation</Typography>
 
-      <DocsSection level={2} title="Introduction">
+      <DocsSection id="introduction" level={2} title="Introduction">
         <Typography>
           GDLK programs execute on a certain machine, whose capabilities are
           determined by a hardware specification. They also execute under
@@ -77,8 +77,8 @@ const DocsPage: React.FC = () => {
         </Typography>
       </DocsSection>
 
-      <DocsSection level={2} title="Language Reference">
-        <DocsSection level={3} title="Values">
+      <DocsSection id="language-reference" level={2} title="Language Reference">
+        <DocsSection id="values" level={3} title="Values">
           <Typography>
             All GDLK values are 16-bit signed integers, meaning they fall in the
             range <code>[-32768, 32767]</code>. Encoding systems can be built on
@@ -155,7 +155,7 @@ const DocsPage: React.FC = () => {
               </li>
               <li>
                 Values are read from the front of <code>INPUT</code>. Once a
-                value has been read, it is remove from the buffer.
+                value has been read, it is removed from the buffer.
               </li>
               <li>
                 Once <code>INPUT</code> is empty, subsequent reads will cause an
