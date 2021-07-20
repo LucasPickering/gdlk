@@ -1,0 +1,13 @@
+.vscode/
+pkg/
+.DS_Store
+**/node_modules/
+**/build/
+**/target/
+**/__generated__/
+**/logs
+dev.json
+backups/
+backups.tar.gz
+frontend/dist/
+frontend/tsc-build/
