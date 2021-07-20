@@ -151,29 +151,30 @@ const INSTRUCTIONS: InstructionReference[] = [
       'CMP RX0 11 10 ; RX0 now holds 1',
     ],
   },
-  {
-    name: 'PUSH',
-    summary: 'Push a value onto the top of a stack.',
-    moreInfo: <>The source value is not modified.</>,
-    args: ['VAL', 'STACK'],
-    errorCases: [
-      <>
-        Pushing to a stack that is already full causes a runtime error.{' '}
-        <Link to="#stacks--capacity">More information on stack capacity</Link>.
-      </>,
-    ],
-    examples: [
-      'PUSH 3 S0   ; Push 3 onto the top of S0',
-      'PUSH RX0 S0 ; Push the value in RX0 onto the top of S0',
-    ],
-  },
-  {
-    name: 'POP',
-    summary: 'Pop a value off the top of a stack into a register.',
-    args: ['STACK', 'REG'],
-    errorCases: [<>Popping from an empty stack causes a runtime error.</>],
-    examples: ['POP S0 RX0 ; Move the top value of S0 into RX0'],
-  },
+  // Commented out for playtesting simple puzzles
+  // {
+  //   name: 'PUSH',
+  //   summary: 'Push a value onto the top of a stack.',
+  //   moreInfo: <>The source value is not modified.</>,
+  //   args: ['VAL', 'STACK'],
+  //   errorCases: [
+  //     <>
+  //       Pushing to a stack that is already full causes a runtime error.{' '}
+  //       <Link to="#stacks--capacity">More information on stack capacity</Link>.
+  //     </>,
+  //   ],
+  //   examples: [
+  //     'PUSH 3 S0   ; Push 3 onto the top of S0',
+  //     'PUSH RX0 S0 ; Push the value in RX0 onto the top of S0',
+  //   ],
+  // },
+  // {
+  //   name: 'POP',
+  //   summary: 'Pop a value off the top of a stack into a register.',
+  //   args: ['STACK', 'REG'],
+  //   errorCases: [<>Popping from an empty stack causes a runtime error.</>],
+  //   examples: ['POP S0 RX0 ; Move the top value of S0 into RX0'],
+  // },
   {
     name: 'JMP',
     summary: 'Jump to a label, unconditionally.',
