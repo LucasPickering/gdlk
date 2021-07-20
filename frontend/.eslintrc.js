@@ -70,20 +70,13 @@ module.exports = {
   overrides: [
     {
       // Special config files
-      files: ['*.js'],
+      files: ['*.js', '*.mjs'],
       parserOptions: {
         ecmaVersion: 3,
         project: null,
       },
       rules: {
         '@typescript-eslint/no-var-requires': 'off',
-      },
-    },
-    {
-      files: ['*.test.ts'],
-      plugins: ['jest'],
-      env: {
-        jest: true,
       },
     },
   ],
