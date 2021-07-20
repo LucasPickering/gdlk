@@ -386,8 +386,7 @@ fn test_runtime_error() {
         },
         stacks = hashmap! {},
         error = Some(SourceElement {
-            text: "Runtime error at 1:1: Read attempted while input is empty"
-                .into(),
+            text: "Runtime error at 1:1: Read attempted on empty input".into(),
             span: Span {
                 offset: 0,
                 length: 8,

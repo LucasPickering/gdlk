@@ -94,10 +94,10 @@ impl Machine {
             output: Vec::new(),
             registers,
             stacks,
+            error: None,
 
             // Performance stats
             cycle_count: 0,
-            error: None,
         }
     }
 
@@ -437,16 +437,33 @@ impl Machine {
 
     /// Checks if this machine has completed successfully. The criteria are:
     /// 1. Program is terminated (all instructions have been executed)
-    /// 2. Program terminated normally (a runtime error did NOT occur)
-    /// 3. Input buffer has been exhausted (all input has been consumed)
-    /// 4. Output buffer matches the expected output, as defined by the
-    /// [ProgramSpec](ProgramSpec)
+    /// 2. No failures occurred (see [FailureReason] for possible failures)
     #[cfg_attr(feature = "wasm", wasm_bindgen(getter, js_name = "successful"))]
     pub fn successful(&self) -> bool {
-        self.terminated()
-            && self.error.is_none()
-            && self.input.is_empty()
-            && self.output == self.expected_output
+        self.terminated() && self.failure_reason().is_none()
+    }
+
+    /// Determine why the executed program failed. **Only returns a value if
+    /// the program actually failed.** Will return `None` if the program
+    /// is still running or it succeeded.
+    #[cfg_attr(
+        feature = "wasm",
+        wasm_bindgen(getter, js_name = "failureReason")
+    )]
+    pub fn failure_reason(&self) -> Option<FailureReason> {
+        if !self.terminated() {
+            // Program is still running, so we haven't failed (yet)
+            None
+        } else if self.error.is_some() {
+            Some(FailureReason::RuntimeError)
+        } else if !self.input.is_empty() {
+            Some(FailureReason::RemainingInput)
+        } else if self.output != self.expected_output {
+            Some(FailureReason::IncorrectOutput)
+        } else {
+            // No failure states were hit, so program was successful!
+            None
+        }
     }
 
     /// A wrapper for [Self::input], to be called from wasm.
@@ -538,4 +555,19 @@ impl Machine {
         // If an error occurred, that means something executed, so return true
         self.execute_all().unwrap_or(true)
     }
+}
+
+/// The reason why a program failed. **These reasons are only applicable for
+/// terminated, unsuccessful programs**. For a program that has yet to
+/// terminate, or did so successfully, none of these cases apply.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+#[derive(Copy, Clone, Debug)]
+pub enum FailureReason {
+    /// An error occurred while trying to execute one of the instructions
+    RuntimeError,
+    /// The input buffer wasn't empty upon terminated
+    RemainingInput,
+    /// The output buffer didn't match the expected output, as defined by the
+    /// program spec
+    IncorrectOutput,
 }

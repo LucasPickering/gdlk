@@ -59,7 +59,7 @@ fn test_empty_input() {
         HardwareSpec::default(),
         ProgramSpec::default(),
         "READ RX0",
-        "Runtime error at 1:1: Read attempted while input is empty",
+        "Runtime error at 1:1: Read attempted on empty input",
     );
 }
 
@@ -98,7 +98,7 @@ fn test_execute_after_error() {
         HardwareSpec::default(),
         ProgramSpec::default(),
         "READ RX0",
-        "Runtime error at 1:1: Read attempted while input is empty"
+        "Runtime error at 1:1: Read attempted on empty input"
     );
     assert!(!machine.execute_next().unwrap());
 }
@@ -117,7 +117,7 @@ fn test_no_success_on_error() {
         ; if we were to exit here, it would be successful
         READ RX0 ; runtime error!
         ",
-        "Runtime error at 5:9: Read attempted while input is empty"
+        "Runtime error at 5:9: Read attempted on empty input"
     );
 
     assert!(!machine.successful());

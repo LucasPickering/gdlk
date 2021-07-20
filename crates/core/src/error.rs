@@ -108,7 +108,7 @@ impl SourceError for RuntimeError {
                 write!(f, "Overflow on stack `{}`", spanned_src)
             }
             Self::EmptyInput => {
-                write!(f, "Read attempted while input is empty")
+                write!(f, "Read attempted on empty input")
             }
             Self::EmptyStack => {
                 write!(f, "Cannot pop from empty stack `{}`", spanned_src)

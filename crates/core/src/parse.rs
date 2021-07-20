@@ -205,8 +205,8 @@ impl<'a> Parse<'a> for Statement<Span> {
         alt((
             map(LabelDecl::parse_node, Statement::Label),
             map(Operator::parse_node, Statement::Operator),
-            // semi-hack, necessary because of how the AST is organized to
-            // share code between source and compiled
+            // semi-hack, necessary because of how the AST is organized
+            // to share code between source and compiled
             map(tuple((Jump::parse_node, label_arg)), |(jmp, lbl)| {
                 Statement::Jump(jmp, lbl)
             }),
@@ -711,7 +711,7 @@ mod tests {
 
     #[test]
     fn test_parse_lang_val_max() {
-        let source = format!("Add RX1 {}", LangValue::max_value());
+        let source = format!("Add RX1 {}", LangValue::MAX);
         assert_eq!(
             parse(&source).unwrap().body,
             vec![Node(
@@ -720,7 +720,7 @@ mod tests {
                         Node(RegisterRef::User(1), span(1, 5, 1, 8)),
                         Node(
                             ValueSource::Const(Node(
-                                LangValue::max_value(),
+                                LangValue::MAX,
                                 span(1, 9, 1, 19)
                             )),
                             span(1, 9, 1, 19)

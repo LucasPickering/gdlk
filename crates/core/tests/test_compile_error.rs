@@ -33,8 +33,7 @@ macro_rules! assert_parse_error {
 }
 
 #[test]
-fn test_parse_errors() {
-    // Register references
+fn test_parse_errors_registers() {
     assert_parse_error!(
         "
         READ RX0
@@ -56,8 +55,10 @@ fn test_parse_errors() {
         "READ RX01",
         "Syntax error at 1:6: Expected register reference"
     );
+}
 
-    // Stack references
+#[test]
+fn test_parse_errors_stacks() {
     assert_parse_error!(
         "PUSH RX0 T0",
         "Syntax error at 1:10: Expected stack reference",
@@ -66,16 +67,21 @@ fn test_parse_errors() {
         "PUSH RX0 S01",
         "Syntax error at 1:10: Expected stack reference",
     );
+}
 
-    // Operators
-    assert_parse_error!("RAD RX0", "Syntax error at 1:1: Expected statement",);
-    assert_parse_error!("READE RX0", "Syntax error at 1:1: Expected statement",);
+#[test]
+fn test_parse_errors_operators() {
+    assert_parse_error!("RAD RX0", "Syntax error at 1:1: Expected statement");
+    assert_parse_error!("READE RX0", "Syntax error at 1:1: Expected statement");
     assert_parse_error!("PUSH STEVE S0", "Syntax error at 1:6: Expected value");
     assert_parse_error!(
         "READ RX1 WRITE RX2",
         "Syntax error at 1:10: Expected end of statement",
     );
+}
 
+#[test]
+fn test_parse_errors_jumps() {
     // Jumps/labels
     assert_parse_error!("JMP", "Syntax error at 1:4: Expected label");
     assert_parse_error!("JEZ", "Syntax error at 1:4: Expected value");
@@ -85,20 +91,27 @@ fn test_parse_errors() {
         "LABEL:JMP LABEL",
         "Syntax error at 1:7: Expected end of statement"
     );
+
     // These errors aren't the best, but eh close enough
     assert_parse_error!("JMP BAD-LABEL", "Syntax error at 1:4: Expected label");
     assert_parse_error!(
         "BAD-LABEL:",
         "Syntax error at 1:1: Expected statement"
     );
+}
 
-    // Invalid constants (out of range)
+#[test]
+fn test_parse_errors_constants() {
+    // Float constants
+    assert_parse_error!("SET RX0 10.5", "Syntax error at 1:8: Expected value");
+
+    // Out-of-range constants
     assert_parse_error!(
-        &format!("SET RX0 {}", LangValue::max_value() as isize + 1),
+        &format!("SET RX0 {}", LangValue::MAX as isize + 1),
         "Syntax error at 1:9: Expected value"
     );
     assert_parse_error!(
-        &format!("SET RX0 {}", LangValue::min_value() as isize - 1),
+        &format!("SET RX0 {}", LangValue::MIN as isize - 1),
         "Syntax error at 1:9: Expected value"
     );
 }
