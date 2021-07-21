@@ -14,14 +14,3 @@ export interface Puzzle {
   input: number[];
   expectedOutput: number[];
 }
-
-export interface PuzzleSolution {
-  sourceCode: string;
-}
-
-/**
- * All of a user's solutions, to all puzzles
- */
-export interface PuzzleSolutions {
-  [puzzleSlug: string]: PuzzleSolution;
-}

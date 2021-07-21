@@ -93,7 +93,7 @@ const ProgramIde: React.FC<{
   // Use a debounce to prevent constant recompilation
   const debouncedSourceCode = useDebouncedValue(sourceCode, 250);
   useEffect(() => {
-    setPuzzleSolution({ sourceCode: debouncedSourceCode });
+    setPuzzleSolution((old) => ({ ...old, sourceCode: debouncedSourceCode }));
 
     // Only compile if the source isn't empty. This prevents should an unhelpful
     // error when the user first loads in
@@ -101,6 +101,16 @@ const ProgramIde: React.FC<{
       compile(debouncedSourceCode);
     }
   }, [debouncedSourceCode, compile, setPuzzleSolution]);
+
+  // If at any point we hit a success state, permanently tag the puzzle as solved
+  const machineState =
+    compiledState?.type === 'compiled' ? compiledState.machineState : undefined;
+  const successful = machineState?.successful ?? false;
+  useEffect(() => {
+    if (successful) {
+      setPuzzleSolution((old) => ({ ...old, solved: true }));
+    }
+  }, [successful, setPuzzleSolution]);
 
   const contextValue: IdeContextType = {
     wasmHardwareSpec,
