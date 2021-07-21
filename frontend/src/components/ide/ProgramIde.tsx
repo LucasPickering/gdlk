@@ -10,10 +10,9 @@ import ProgramStatus from './ProgramStatus';
 import useDebouncedValue from '@root/hooks/useDebouncedValue';
 import PromptOnExit from '@root/components/common/PromptOnExit';
 import useCompiler from './useCompiler';
-import { hardware } from '@root/data/hardware';
-import { Puzzle, HardwareSpec } from '@root/util/types';
-import { useRecoilState } from 'recoil';
-import { puzzleSolutionStateFamily } from '@root/state/user';
+import { Puzzle } from '@root/util/types';
+import { useRecoilState, useRecoilValue } from 'recoil';
+import { hardwareSpecState, puzzleSolutionStateFamily } from '@root/state/user';
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => {
   const border = `2px solid ${palette.divider}`;
@@ -76,10 +75,8 @@ const ProgramIde: React.FC<{
   const [puzzleSolution, setPuzzleSolution] = useRecoilState(
     puzzleSolutionStateFamily({ puzzleSlug: puzzle.slug })
   );
+  const hardwareSpec = useRecoilValue(hardwareSpecState);
 
-  // TODO make this selectable via dropdown
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [hardwareSpec, setHardwareSpec] = useState<HardwareSpec>(hardware.k200);
   const [sourceCode, setSourceCode] = useState<string>(
     puzzleSolution.sourceCode
   );

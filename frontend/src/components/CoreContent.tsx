@@ -1,7 +1,6 @@
 import React from 'react';
 import { Switch, Route } from 'react-router-dom';
 import HomePage from './HomePage';
-import HardwareSpecDetailsView from './hardware/HardwareSpecDetailsView';
 import PuzzleDetailsView from './puzzle/PuzzleDetailsView';
 import NotFoundPage from './NotFoundPage';
 import PageContainer from './common/PageContainer';
@@ -33,9 +32,6 @@ const CoreContent: React.FC = () => {
               <DocsPage />
             </Route>
 
-            <Route path="/hardware/:hwSlug" exact>
-              <HardwareSpecDetailsView />
-            </Route>
             <Route path="/puzzles/:puzzleSlug" exact>
               <PuzzleDetailsView />
             </Route>

@@ -3,24 +3,32 @@
  * user. This stores their solutions, progress, etc.
  */
 
-import { AtomEffect, atomFamily, DefaultValue, selectorFamily } from 'recoil';
+import {
+  HardwareSpec,
+  PuzzleCompletion,
+  PuzzleSolution,
+} from '@root/util/types';
+import {
+  atom,
+  AtomEffect,
+  atomFamily,
+  DefaultValue,
+  selectorFamily,
+} from 'recoil';
 
 /**
- * Data+metadata on a user's solution to a particular puzzle
+ * Track the user's current hardware capabilities, which can be upgraded over
+ * time
  */
-export interface PuzzleSolution {
-  sourceCode: string;
-  solved: boolean;
-}
-
-/**
- * A user's completion level for a particular puzzle:
- * - locked: they can't access it yet (need to complete prereqs)
- * - unlocked: accessible but unsolved
- * - solved: completed *at some point*. If a puzzle has been solved once, it
- *  will always be tagged as solved, even if they delete the solution
- */
-export type PuzzleCompletion = 'locked' | 'unlocked' | 'solved';
+export const hardwareSpecState = atom<HardwareSpec>({
+  key: 'hardwareSpec',
+  default: {
+    numRegisters: 2,
+    numStacks: 0,
+    maxStackLength: 0,
+  },
+  effects_UNSTABLE: [localStorageEffect('hardwareSpec')],
+});
 
 /**
  * The user's solutions for each puzzle. Creates one atom per puzzle.
@@ -69,10 +77,12 @@ REA& R$0
 WRIæE RX0`,
 };
 
-function localStorageEffect(key: string): AtomEffect<PuzzleSolution> {
+function localStorageEffect<T>(key: string): AtomEffect<T> {
   return ({ setSelf, onSet }) => {
     const savedValue = localStorage.getItem(key);
     if (savedValue != null) {
+      // We kinda have to do a trust fall here and just hope that the parsed
+      // value has the correct type
       setSelf(JSON.parse(savedValue));
     }
 

@@ -1,5 +1,4 @@
 import React from 'react';
-import HardwareSpecListCard from './hardware/HardwareSpecListCard';
 import PuzzleListCard from './puzzle/PuzzleListCard';
 import { puzzles } from '@root/data/puzzles';
 import {
@@ -10,6 +9,7 @@ import {
   Typography,
 } from '@material-ui/core';
 import Link from './common/Link';
+import HardwareSpecCard from './hardware/HardwareSpecCard';
 
 const HomePage: React.FC = () => {
   return (
@@ -35,7 +35,7 @@ const HomePage: React.FC = () => {
       </Grid>
 
       <Grid item md={4} sm={8} xs={12}>
-        <HardwareSpecListCard />
+        <HardwareSpecCard />
       </Grid>
       <Grid item md={4} sm={8} xs={12}>
         <PuzzleListCard puzzles={Object.values(puzzles)} />
