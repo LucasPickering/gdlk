@@ -5,9 +5,10 @@ import {
   Typography,
   makeStyles,
   Grid,
+  Button,
 } from '@material-ui/core';
-import PuzzleSolutionsCard from '../puzzleSolution/PuzzleSolutionsCard';
 import { Puzzle } from '@root/util/types';
+import UnstyledLink from '../common/UnstyledLink';
 
 const useLocalStyles = makeStyles(({ spacing }) => ({
   specSection: {
@@ -49,7 +50,14 @@ const PuzzleDetails: React.FC<{
       </Grid>
 
       <Grid item sm={6} xs={12}>
-        <PuzzleSolutionsCard puzzleSlug={puzzle.slug} />
+        <Button
+          variant="contained"
+          color="primary"
+          component={UnstyledLink}
+          to={`/puzzles/${puzzle.slug}/solution`}
+        >
+          Edit Solution
+        </Button>
       </Grid>
     </Grid>
   );

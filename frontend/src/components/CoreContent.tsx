@@ -6,7 +6,6 @@ import PuzzleDetailsView from './puzzle/PuzzleDetailsView';
 import NotFoundPage from './NotFoundPage';
 import PageContainer from './common/PageContainer';
 import DocsPage from '@root/components/docs/DocsPage';
-import UserProvider from './UserProvider';
 
 const ProgramIdeView = React.lazy(() => import('./ide/ProgramIdeView'));
 
@@ -16,40 +15,38 @@ const ProgramIdeView = React.lazy(() => import('./ide/ProgramIdeView'));
  */
 const CoreContent: React.FC = () => {
   return (
-    <UserProvider>
-      <Switch>
-        {/* Full screen routes first */}
-        <Route path="/puzzles/:puzzleSlug/:fileName" exact>
-          <ProgramIdeView />
-        </Route>
+    <Switch>
+      {/* Full screen routes first */}
+      <Route path="/puzzles/:puzzleSlug/solution" exact>
+        <ProgramIdeView />
+      </Route>
 
-        {/* All non-full screen routes */}
-        <Route path="*">
-          <PageContainer>
-            <Switch>
-              <Route path="/" exact>
-                <HomePage />
-              </Route>
+      {/* All non-full screen routes */}
+      <Route path="*">
+        <PageContainer>
+          <Switch>
+            <Route path="/" exact>
+              <HomePage />
+            </Route>
 
-              <Route path="/docs">
-                <DocsPage />
-              </Route>
+            <Route path="/docs">
+              <DocsPage />
+            </Route>
 
-              <Route path="/hardware/:hwSlug" exact>
-                <HardwareSpecDetailsView />
-              </Route>
-              <Route path="/puzzles/:puzzleSlug" exact>
-                <PuzzleDetailsView />
-              </Route>
+            <Route path="/hardware/:hwSlug" exact>
+              <HardwareSpecDetailsView />
+            </Route>
+            <Route path="/puzzles/:puzzleSlug" exact>
+              <PuzzleDetailsView />
+            </Route>
 
-              <Route path="*">
-                <NotFoundPage />
-              </Route>
-            </Switch>
-          </PageContainer>
-        </Route>
-      </Switch>
-    </UserProvider>
+            <Route path="*">
+              <NotFoundPage />
+            </Route>
+          </Switch>
+        </PageContainer>
+      </Route>
+    </Switch>
   );
 };
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { makeStyles } from '@material-ui/core';
 import CodeEditor from './CodeEditor';
 import RegistersInfo from './RegistersInfo';
@@ -11,8 +11,9 @@ import useDebouncedValue from '@root/hooks/useDebouncedValue';
 import PromptOnExit from '@root/components/common/PromptOnExit';
 import useCompiler from './useCompiler';
 import { hardware } from '@root/data/hardware';
-import { PuzzleSolution, Puzzle, HardwareSpec } from '@root/util/types';
-import { PuzzleSolutionsContext } from '@root/state/user';
+import { Puzzle, HardwareSpec } from '@root/util/types';
+import { useRecoilState } from 'recoil';
+import { puzzleSolutionStateFamily } from '@root/state/user';
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => {
   const border = `2px solid ${palette.divider}`;
@@ -70,10 +71,11 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => {
  */
 const ProgramIde: React.FC<{
   puzzle: Puzzle;
-  puzzleSolution: PuzzleSolution;
-}> = ({ puzzle, puzzleSolution }) => {
+}> = ({ puzzle }) => {
   const localClasses = useLocalStyles();
-  const { setSolutionSourceCode } = useContext(PuzzleSolutionsContext);
+  const [puzzleSolution, setPuzzleSolution] = useRecoilState(
+    puzzleSolutionStateFamily({ puzzleSlug: puzzle.slug })
+  );
 
   // TODO make this selectable via dropdown
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -90,32 +92,15 @@ const ProgramIde: React.FC<{
   // When the source changes, save it to local storage and recompile
   // Use a debounce to prevent constant recompilation
   const debouncedSourceCode = useDebouncedValue(sourceCode, 250);
-  useEffect(
-    () => {
-      // TODO comment this
-      setSolutionSourceCode(
-        puzzle.slug,
-        puzzleSolution.fileName,
-        debouncedSourceCode
-      );
+  useEffect(() => {
+    setPuzzleSolution({ sourceCode: debouncedSourceCode });
 
-      // Only compile if the source isn't empty. This prevents should an unhelpful
-      // error when the user first loads in
-      if (debouncedSourceCode.trim()) {
-        compile(debouncedSourceCode);
-      }
-    },
-    // Excluding setSolutionSourceCode cause it updates on every loop and
-    // memoizing it would just create a mutual recursion loop. Shortcuts!
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      puzzle.slug,
-      puzzleSolution.fileName,
-      debouncedSourceCode,
-      // setSolutionSourceCode,
-      compile,
-    ]
-  );
+    // Only compile if the source isn't empty. This prevents should an unhelpful
+    // error when the user first loads in
+    if (debouncedSourceCode.trim()) {
+      compile(debouncedSourceCode);
+    }
+  }, [debouncedSourceCode, compile, setPuzzleSolution]);
 
   const contextValue: IdeContextType = {
     wasmHardwareSpec,

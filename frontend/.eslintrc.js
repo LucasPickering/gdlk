@@ -50,8 +50,12 @@ module.exports = {
     'no-console': 'warn',
     'no-unused-vars': 'off',
     'react/prop-types': 'off',
-    'react-hooks/rules-of-hooks': 'error',
-    'react-hooks/exhaustive-deps': 'error',
+    'react-hooks/exhaustive-deps': [
+      'error',
+      {
+        additionalHooks: 'useRecoilCallback',
+      },
+    ],
     'react/display-name': 'off',
     'jsx-a11y/no-autofocus': 'off',
     '@typescript-eslint/no-unused-vars': 'error',

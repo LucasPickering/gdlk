@@ -16,7 +16,6 @@ export interface Puzzle {
 }
 
 export interface PuzzleSolution {
-  fileName: string;
   sourceCode: string;
 }
 
@@ -24,7 +23,5 @@ export interface PuzzleSolution {
  * All of a user's solutions, to all puzzles
  */
 export interface PuzzleSolutions {
-  [puzzleSlug: string]: {
-    [fileName: string]: PuzzleSolution;
-  };
+  [puzzleSlug: string]: PuzzleSolution;
 }

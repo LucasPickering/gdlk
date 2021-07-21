@@ -11,6 +11,7 @@ const useLocalStyles = makeStyles(({ palette }) => ({
     display: 'flex',
     overflowY: 'auto',
     backgroundColor: palette.background.default,
+    textTransform: 'none',
   },
   errorSpan: {
     position: 'absolute',
