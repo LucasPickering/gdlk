@@ -57,4 +57,12 @@ export const puzzles: Record<string, Puzzle> = {
       0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1,
     ],
   },
+  sort: {
+    name: 'Sort',
+    slug: 'sort',
+    description: 'Sort the input list in ascending order',
+    examples: [{ input: [5, 3, 4, 1, 2], output: [1, 2, 3, 4, 5] }],
+    input: [9, 3, 8, 4, 5, 1, 3, 8, 9, 5, 2, 10, 4, 1, 8],
+    expectedOutput: [1, 1, 2, 3, 3, 4, 4, 5, 5, 8, 8, 8, 9, 9, 10],
+  },
 };
