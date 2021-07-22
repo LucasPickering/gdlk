@@ -11,6 +11,7 @@ const theme: Theme = (() => {
       // These colors are supposed to mimic the ANSI base 8
       type: 'dark',
       primary: {
+        // ANSI cyan
         main: '#5ac2c6',
       },
       error: {
@@ -89,6 +90,9 @@ const theme: Theme = (() => {
         MuiButton: {
           root: {
             borderRadius: 0,
+          },
+          contained: {
+            backgroundColor: theme.palette.common.white,
           },
         },
         MuiListItem: {
