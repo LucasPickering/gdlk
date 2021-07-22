@@ -17,15 +17,7 @@ const ProgramIdeView: React.FC = () => {
   const puzzle = puzzles[puzzleSlug];
 
   return (
-    <PageContainer
-      fullScreen
-      navProps={{
-        backLink: {
-          to: `/puzzles/${puzzleSlug}`,
-          label: 'Back to Puzzle',
-        },
-      }}
-    >
+    <PageContainer fullScreen>
       {puzzle ? <ProgramIde puzzle={puzzle} /> : <NotFoundPage />}
     </PageContainer>
   );

@@ -1,7 +1,6 @@
 import { makeStyles, Typography } from '@material-ui/core';
 import React from 'react';
 import Link from './Link';
-import Navigation from '@root/components/navigation/Navigation';
 import clsx from 'clsx';
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
@@ -41,7 +40,6 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
 
 interface Props {
   fullScreen: boolean;
-  navProps: React.ComponentProps<typeof Navigation>;
 }
 
 /**
@@ -50,15 +48,12 @@ interface Props {
  */
 const PageContainer: React.FC<Props> & { defaultProps: Partial<Props> } = ({
   fullScreen,
-  navProps,
   children,
 }) => {
   const localClasses = useLocalStyles();
 
   return (
     <div className={localClasses.pageContainer}>
-      <Navigation {...navProps} />
-
       <div
         className={clsx(
           localClasses.pageBody,
@@ -85,7 +80,6 @@ const PageContainer: React.FC<Props> & { defaultProps: Partial<Props> } = ({
 
 PageContainer.defaultProps = {
   fullScreen: false,
-  navProps: {},
 };
 
 export default PageContainer;

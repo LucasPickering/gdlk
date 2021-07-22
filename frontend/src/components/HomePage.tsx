@@ -1,6 +1,8 @@
 import React from 'react';
 import { Grid, Typography } from '@material-ui/core';
-import MainMenu from './navigation/MainMenu';
+import { puzzles } from '@root/data/puzzles';
+import NavMenu from './common/NavMenu';
+import PuzzleList from './puzzle/PuzzleList';
 
 const HomePage: React.FC = () => (
   <Grid container>
@@ -9,7 +11,15 @@ const HomePage: React.FC = () => (
     </Grid>
 
     <Grid item md={4} sm={8} xs={12}>
-      <MainMenu />
+      <NavMenu
+        items={[
+          {
+            label: 'Puzzles',
+            children: <PuzzleList puzzles={Object.values(puzzles)} />,
+          },
+          { label: 'GDLK Language Reference', to: '/docs' },
+        ]}
+      />
     </Grid>
   </Grid>
 );
