@@ -5,7 +5,7 @@ export const puzzles: Record<string, Puzzle> = {
   readWrite: {
     name: 'Read/Write',
     slug: 'readWrite',
-    description: 'Read a value from input and write it to output',
+    description: 'Read a value from input and write it to output.',
     examples: [],
     input: [1],
     expectedOutput: [1],
@@ -13,7 +13,7 @@ export const puzzles: Record<string, Puzzle> = {
   readWrite3: {
     name: 'Read 3/Write 3',
     slug: 'readWrite3',
-    description: 'Read three values from input and write them to output',
+    description: 'Read three values from input and write them to output.',
     examples: [],
     input: [1, 1, 1],
     expectedOutput: [1, 1, 1],
@@ -22,7 +22,7 @@ export const puzzles: Record<string, Puzzle> = {
     name: 'In-N-Out',
     slug: 'inAndOut',
     description:
-      'Read a sequence of values from input and write them all to output',
+      'Read a sequence of values from input and write them all to output.',
     examples: [{ input: [1, 2, 3], output: [1, 2, 3] }],
     input: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     expectedOutput: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
@@ -60,7 +60,7 @@ export const puzzles: Record<string, Puzzle> = {
   sort: {
     name: 'Sort',
     slug: 'sort',
-    description: 'Sort the input list in ascending order',
+    description: 'Sort the input list in ascending order.',
     examples: [{ input: [5, 3, 4, 1, 2], output: [1, 2, 3, 4, 5] }],
     input: [9, 3, 8, 4, 5, 1, 3, 8, 9, 5, 2, 10, 4, 1, 8],
     expectedOutput: [1, 1, 2, 3, 3, 4, 4, 5, 5, 8, 8, 8, 9, 9, 10],

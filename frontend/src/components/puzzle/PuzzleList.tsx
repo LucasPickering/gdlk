@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   List,
   ListItem,
@@ -21,17 +21,44 @@ const useLocalStyles = makeStyles(({ palette }) => ({
 const PuzzleList: React.FC<
   {
     puzzles: Puzzle[];
+    link?: boolean;
+    selectedPuzzle?: string;
+    onSelectPuzzle?: (puzzleSlug: string | undefined) => void;
   } & React.ComponentProps<typeof List>
-> = ({ puzzles, ...rest }) => (
-  <List dense {...rest}>
-    {/* One item per puzzle */}
-    {puzzles.map((puzzle) => (
-      <PuzzleListItem key={puzzle.slug} puzzle={puzzle} />
-    ))}
-  </List>
-);
+> = ({ puzzles, link = false, selectedPuzzle, onSelectPuzzle, ...rest }) => {
+  // Un-select current puzzle when this component unmounts
+  useEffect(
+    () => {
+      if (onSelectPuzzle) {
+        return () => onSelectPuzzle(undefined);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
-const PuzzleListItem: React.FC<{ puzzle: Puzzle }> = ({ puzzle }) => {
+  return (
+    <List dense {...rest}>
+      {/* One item per puzzle */}
+      {puzzles.map((puzzle) => (
+        <PuzzleListItem
+          key={puzzle.slug}
+          puzzle={puzzle}
+          link={link}
+          selected={selectedPuzzle === puzzle.slug}
+          onClick={onSelectPuzzle && (() => onSelectPuzzle(puzzle.slug))}
+        />
+      ))}
+    </List>
+  );
+};
+
+const PuzzleListItem: React.FC<
+  {
+    puzzle: Puzzle;
+    link?: boolean;
+  } & Omit<React.ComponentProps<typeof ListItem>, 'button'>
+> = ({ puzzle, link, ...rest }) => {
   const localClasses = useLocalStyles();
   const completion = useRecoilValue(
     puzzleCompletionState({ puzzleSlug: puzzle.slug })
@@ -42,8 +69,13 @@ const PuzzleListItem: React.FC<{ puzzle: Puzzle }> = ({ puzzle }) => {
       key={puzzle.name}
       disabled={completion === 'locked'}
       button
-      component={UnstyledLink}
-      to={`/puzzles/${puzzle.slug}`}
+      {...(link
+        ? {
+            component: UnstyledLink,
+            to: `/puzzles/${puzzle.slug}`,
+          }
+        : {})}
+      {...rest}
     >
       <ListItemText primary={puzzle.name} />
       {completion === 'solved' && (

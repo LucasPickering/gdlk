@@ -19,6 +19,7 @@ const theme: Theme = (() => {
       divider: '#ffffff',
       action: {
         hover: '#ffffff',
+        selected: '#ffffff',
       },
       success: {
         main: '#00ff00',
@@ -85,15 +86,27 @@ const theme: Theme = (() => {
     createTheme({
       ...config,
       overrides: {
+        MuiButton: {
+          root: {
+            borderRadius: 0,
+          },
+        },
         MuiListItem: {
           button: {
             '&:hover': {
               color: theme.palette.getContrastText(theme.palette.action.hover),
-              // Disabled because it makes it a bit jump
-              // '&::before': {
-              //   content: '">"',
-              //   paddingRight: 8,
-              // },
+            },
+            // We _should_ be able to do this as another override for the
+            // component, but that class never got applied so I had to this
+            // as a workaround
+            '&.Mui-selected': {
+              color: theme.palette.getContrastText(
+                theme.palette.action.selected
+              ),
+              '&::before': {
+                content: '">"',
+                paddingRight: 8,
+              },
             },
           },
         },
