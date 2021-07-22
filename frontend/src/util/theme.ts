@@ -1,19 +1,34 @@
 import { Theme, responsiveFontSizes } from '@material-ui/core';
-import { createTheme } from '@material-ui/core/styles';
-import { blue, red } from '@material-ui/core/colors';
+import { createTheme, ThemeOptions } from '@material-ui/core/styles';
 
-const theme: Theme = responsiveFontSizes(
-  createTheme({
+const theme: Theme = (() => {
+  // We have to create theme theme twice:
+  // - First time, with the basic global options
+  // - Second time including component-specific overrides
+  // This allows us to reference the base theme in the overrides
+  const config: ThemeOptions = {
     palette: {
+      // These colors are supposed to mimic the ANSI base 8
       type: 'dark',
-      primary: blue,
-      secondary: red, // for error contexts ONLY
+      primary: {
+        main: '#5ac2c6',
+      },
+      error: {
+        main: '#ff0000',
+      },
       divider: '#ffffff',
+      action: {
+        hover: '#ffffff',
+      },
+      success: {
+        main: '#00ff00',
+      },
       background: {
         default: '#000000',
         paper: '#202020',
       },
     },
+
     typography: {
       // Makes math for `rem` font sizes easy
       // https://www.sitepoint.com/understanding-and-using-rem-units-in-css/
@@ -61,7 +76,30 @@ const theme: Theme = responsiveFontSizes(
         anchorOrigin: { vertical: 'bottom', horizontal: 'left' },
       },
     },
-  })
-);
+  };
+
+  const theme = createTheme(config);
+
+  // Create the real deal now
+  return responsiveFontSizes(
+    createTheme({
+      ...config,
+      overrides: {
+        MuiListItem: {
+          button: {
+            '&:hover': {
+              color: theme.palette.getContrastText(theme.palette.action.hover),
+              // Disabled because it makes it a bit jump
+              // '&::before': {
+              //   content: '">"',
+              //   paddingRight: 8,
+              // },
+            },
+          },
+        },
+      },
+    })
+  );
+})();
 
 export default theme;
