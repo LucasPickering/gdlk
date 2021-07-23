@@ -16,7 +16,7 @@ const useLocalStyles = makeStyles(({ spacing }) => ({
 
 interface TableRow {
   label: string | number;
-  value: string | number;
+  value: React.ReactChild;
 }
 
 /**
