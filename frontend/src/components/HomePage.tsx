@@ -17,7 +17,7 @@ const HomePage: React.FC = () => {
   return (
     <Grid container>
       <Grid item xs={12}>
-        <Typography variant="h1">GDLK Development Language Kit</Typography>
+        <Typography variant="h1">GDLK_OS</Typography>
       </Grid>
 
       <Grid item md={4} sm={8} xs={12}>
@@ -34,7 +34,11 @@ const HomePage: React.FC = () => {
                 />
               ),
             },
-            { id: 'docs', label: 'GDLK Language Reference', to: '/docs' },
+            {
+              id: 'docs',
+              label: 'GDLK Reference Guide',
+              to: '/docs',
+            },
           ]}
           // If a puzzle is defined in the route, pre-expand the puzzle option
           initialExpandedItem={puzzle && 'puzzles'}

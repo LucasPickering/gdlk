@@ -243,7 +243,11 @@ const INSTRUCTIONS: InstructionReference[] = [
  */
 const InstructionDocs: React.FC = () => {
   return (
-    <DocsSection id="instructions" level={3} title="Instructions">
+    <DocsSection id="instructions" level={3} title="Instruction Set">
+      <Typography>
+        A GDLK program consists of a series of instructions, which can perform a
+        variety of operations on your data.
+      </Typography>
       <table>
         <thead>
           <tr>
@@ -266,7 +270,6 @@ const InstructionDocs: React.FC = () => {
           ))}
         </tbody>
       </table>
-
       {INSTRUCTIONS.map(
         ({ name, args, summary, moreInfo, errorCases, examples }) => (
           <DocsSection
