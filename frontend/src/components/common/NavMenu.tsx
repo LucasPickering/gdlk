@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Collapse,
   List,
@@ -7,6 +7,7 @@ import {
   makeStyles,
 } from '@material-ui/core';
 import UnstyledLink from './UnstyledLink';
+import { useRouteMatch } from 'react-router-dom';
 
 const useLocalStyles = makeStyles(({ spacing }) => ({
   nested: {
@@ -26,53 +27,58 @@ interface NavItem {
  * A list of navigation items. Each item can either open a new page/dialog, or
  * it can expand into some sort of subcontent. The subcontent can be any
  * element. To have a nested nav menu, just use another <NavMenu>
- * (with `disablePadding`)
+ * (with `disablePadding`).
+ *
+ * Right now, this menu is controlled entirely via routes. Each item gets a
+ * route and when that route is active, the item will be selected. You can also
+ * have items that don't have an assigned routes, but currently that means they
+ * can't show a selected state. If we need that functionality we can extend the
+ * component.
  */
 const NavMenu: React.FC<
   {
     items: NavItem[];
-    initialExpandedItem?: string;
   } & React.ComponentProps<typeof List>
-> = ({ items, initialExpandedItem, ...rest }) => {
-  const localClasses = useLocalStyles();
-  const [expandedItem, setExpandedItem] = useState<string | undefined>(
-    initialExpandedItem
-  );
-
+> = ({ items, ...rest }) => {
   return (
     <List {...rest}>
       {items.map((item) => (
-        <React.Fragment key={item.id}>
-          <ListItem
-            button
-            selected={item.id === expandedItem}
-            onClick={() => {
-              if (item.children) {
-                setExpandedItem((old) =>
-                  old === item.id ? undefined : item.id
-                );
-              }
-              if (item.onClick) {
-                item.onClick();
-              }
-            }}
-            {...(item.to
-              ? {
-                  component: UnstyledLink,
-                  to: item.to,
-                }
-              : {})}
-          >
-            <ListItemText>{item.label}</ListItemText>
-          </ListItem>
-          {item.children && (
-            <Collapse in={expandedItem === item.id}>
-              <div className={localClasses.nested}>{item.children}</div>
-            </Collapse>
-          )}
-        </React.Fragment>
+        <NavMenuItem key={item.id} item={item} />
       ))}
     </List>
+  );
+};
+
+const NavMenuItem: React.FC<{ item: NavItem }> = ({ item }) => {
+  const localClasses = useLocalStyles();
+  const routeMatch = useRouteMatch(item.to ? item.to.toString() : '');
+  const selected = Boolean(routeMatch);
+
+  return (
+    <>
+      <ListItem
+        button
+        selected={selected}
+        onClick={() => {
+          if (item.onClick) {
+            item.onClick();
+          }
+        }}
+        {...(item.to
+          ? {
+              component: UnstyledLink,
+              to: item.to,
+            }
+          : {})}
+      >
+        <ListItemText>{item.label}</ListItemText>
+      </ListItem>
+      {item.children && (
+        <Collapse in={selected}>
+          <div className={localClasses.nested}>{item.children}</div>
+        </Collapse>
+      )}
+    </>
   );
 };
 

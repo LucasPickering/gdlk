@@ -3,8 +3,9 @@ import { Grid, Typography } from '@material-ui/core';
 import { puzzles } from '@root/data/puzzles';
 import NavMenu from './common/NavMenu';
 import PuzzleList from './puzzle/PuzzleList';
-import PuzzleDetails from './puzzle/PuzzleDetails';
-import { useParams } from 'react-router-dom';
+import { Route, Switch, useParams } from 'react-router-dom';
+import PuzzleDetailsView from './puzzle/PuzzleDetailsView';
+import HardwareSpecCard from './hardware/HardwareSpecCard';
 
 interface RouteParams {
   puzzleSlug: string;
@@ -12,7 +13,6 @@ interface RouteParams {
 
 const HomePage: React.FC = () => {
   const { puzzleSlug } = useParams<RouteParams>();
-  const puzzle = puzzleSlug ? puzzles[puzzleSlug] : undefined;
 
   return (
     <Grid container>
@@ -26,6 +26,7 @@ const HomePage: React.FC = () => {
             {
               id: 'puzzles',
               label: 'Puzzles',
+              to: '/puzzles',
               children: (
                 <PuzzleList
                   puzzles={Object.values(puzzles)}
@@ -35,20 +36,29 @@ const HomePage: React.FC = () => {
               ),
             },
             {
+              id: 'hardware',
+              label: 'Hardware',
+              to: '/hardware',
+            },
+            {
               id: 'docs',
               label: 'GDLK Reference Guide',
               to: '/docs',
             },
           ]}
-          // If a puzzle is defined in the route, pre-expand the puzzle option
-          initialExpandedItem={puzzle && 'puzzles'}
         />
       </Grid>
-      {puzzle && (
-        <Grid item md={8} sm={12}>
-          <PuzzleDetails puzzle={puzzle} />
-        </Grid>
-      )}
+
+      <Grid item md={8} sm={12}>
+        <Switch>
+          <Route path="/hardware" exact>
+            <HardwareSpecCard />
+          </Route>
+          <Route path="/puzzles/:puzzleSlug" exact>
+            <PuzzleDetailsView />
+          </Route>
+        </Switch>
+      </Grid>
     </Grid>
   );
 };

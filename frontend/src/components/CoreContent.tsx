@@ -24,7 +24,7 @@ const CoreContent: React.FC = () => {
       <Route path="*">
         <PageContainer>
           <Switch>
-            <Route path={['/', '/puzzles/:puzzleSlug']} exact>
+            <Route path={['/', '/hardware', '/puzzles/:puzzleSlug?']} exact>
               <HomePage />
             </Route>
 
