@@ -3,7 +3,7 @@ import React, { Suspense } from 'react';
 import { ThemeProvider } from '@material-ui/styles';
 import theme from '@root/util/theme';
 import CoreContent from './CoreContent';
-import { HashRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 import { RecoilRoot } from 'recoil';
 
 /**
@@ -15,9 +15,9 @@ const App: React.FC = () => {
       <CssBaseline />
       <Suspense fallback={<CircularProgress />}>
         <RecoilRoot>
-          <HashRouter>
+          <BrowserRouter>
             <CoreContent />
-          </HashRouter>
+          </BrowserRouter>
         </RecoilRoot>
       </Suspense>
     </ThemeProvider>
