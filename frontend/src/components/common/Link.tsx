@@ -1,4 +1,6 @@
 import React from 'react';
+// We really do want to import the Material UI link here
+// eslint-disable-next-line no-restricted-syntax
 import { Link as MuiLink } from '@material-ui/core';
 import UnstyledLink from './UnstyledLink';
 

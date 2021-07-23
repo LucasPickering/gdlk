@@ -1,4 +1,6 @@
 import React from 'react';
+// We really do want to import the React Router link here
+// eslint-disable-next-line no-restricted-syntax
 import { Link as RouterLink } from 'react-router-dom';
 import { History, Location, LocationDescriptorObject } from 'history';
 
