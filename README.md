@@ -78,6 +78,8 @@ We use nightly Rust. Here's a list of reasons why. If this list every gets empty
 - Rustfmt
   - [imports_granularity](https://github.com/rust-lang/rustfmt/issues/4669)
   - [wrap_comments](https://github.com/rust-lang/rustfmt/issues/3347)
+- Cargo
+  - [per-package-target](https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#per-package-target)
 
 [Here's a helpful site for finding new nightly versions](https://rust-lang.github.io/rustup-components-history/).
 

@@ -250,7 +250,7 @@ pub mod compiled {
 }
 
 // Types that are only needed in wasm.
-#[cfg(feature = "wasm")]
+#[cfg(target_arch = "wasm32")]
 pub mod wasm {
     use crate::Span;
     use serde::{Deserialize, Serialize};

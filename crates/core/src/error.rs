@@ -1,6 +1,6 @@
 //! All error-related GDLK types.
 
-#[cfg(feature = "wasm")]
+#[cfg(target_arch = "wasm32")]
 use crate::ast::wasm::SourceElement;
 use crate::util::{self, Span};
 use serde::Serialize;
@@ -164,7 +164,7 @@ impl<E: SourceError> Display for SourceErrorWrapper<E> {
 }
 
 // This makes it a bit easier to send errors out to wasm
-#[cfg(feature = "wasm")]
+#[cfg(target_arch = "wasm32")]
 impl<E: SourceError> From<&SourceErrorWrapper<E>> for SourceElement {
     fn from(error: &SourceErrorWrapper<E>) -> Self {
         SourceElement {

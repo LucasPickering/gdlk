@@ -1,8 +1,11 @@
+cargo-features = ["per-package-target"]
+
 [package]
 authors = [
   "John Reilly Murray <johnreillymurray@gmail.com>",
   "Lucas Pickering <lucas@lucaspickering.me>",
 ]
+default-target = "wasm32-unknown-unknown"
 description = "Webassembly bindings for the GDLK core crate"
 edition = "2018"
 license = "MIT"
@@ -16,15 +19,14 @@ crate-type = ["cdylib", "rlib"]
 test = false
 
 [dependencies]
-gdlk = {path = "../core", features = ["wasm"]}
+gdlk = {path = "../core"}
 serde = "1.0.126"
 serde_derive = "1.0.126"
-wasm-bindgen = { version = "0.2.74", features = ["serde-serialize"] }
+wasm-bindgen = {version = "0.2.74", features = ["serde-serialize"]}
 
 [dev-dependencies]
 maplit = "1.0.2"
 wasm-bindgen-test = "0.3.24"
-
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = ["-Oz", "--enable-mutable-globals"]

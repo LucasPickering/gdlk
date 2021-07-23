@@ -1,4 +1,4 @@
-#[cfg(feature = "wasm")]
+#[cfg(target_arch = "wasm32")]
 use crate::ast::wasm::{LangValueArrayMap, LangValueMap, SourceElement};
 use crate::{
     ast::{
@@ -15,7 +15,7 @@ use crate::{
 use std::{
     cmp::Ordering, collections::HashMap, convert::TryInto, iter, num::Wrapping,
 };
-#[cfg(feature = "wasm")]
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::*, JsCast};
 
 /// A steppable program executor. Maintains the current state of the program,
@@ -25,7 +25,7 @@ use wasm_bindgen::{prelude::*, JsCast};
 /// a program. The current machine state can be obtained at any time, including
 /// execution stats (e.g. # cycles), which allows for handy visualizations of
 /// execution.
-#[cfg_attr(feature = "wasm", wasm_bindgen)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 #[derive(Clone, Debug)]
 pub struct Machine {
     // Static data - this is copied from the input and shouldn't be included in
@@ -407,11 +407,11 @@ impl Machine {
 }
 
 // Functions that get exported to wasm
-#[cfg_attr(feature = "wasm", wasm_bindgen)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl Machine {
     /// Get the index of the next instruction to be executed.
     #[cfg_attr(
-        feature = "wasm",
+        target_arch = "wasm32",
         wasm_bindgen(getter, js_name = "programCounter")
     )]
     pub fn program_counter(&self) -> usize {
@@ -420,14 +420,20 @@ impl Machine {
 
     /// Get the number of cycles, i.e. the number of instructions that have
     /// been run, during the current program execution.
-    #[cfg_attr(feature = "wasm", wasm_bindgen(getter, js_name = "cycleCount"))]
+    #[cfg_attr(
+        target_arch = "wasm32",
+        wasm_bindgen(getter, js_name = "cycleCount")
+    )]
     pub fn cycle_count(&self) -> usize {
         self.cycle_count
     }
 
     /// Checks if this machine has finished executing. This could be by normal
     /// completion or by runtime error.
-    #[cfg_attr(feature = "wasm", wasm_bindgen(getter, js_name = "terminated"))]
+    #[cfg_attr(
+        target_arch = "wasm32",
+        wasm_bindgen(getter, js_name = "terminated")
+    )]
     pub fn terminated(&self) -> bool {
         // Check for normal complete
         self.program_counter >= self.program.instructions.len()
@@ -438,7 +444,10 @@ impl Machine {
     /// Checks if this machine has completed successfully. The criteria are:
     /// 1. Program is terminated (all instructions have been executed)
     /// 2. No failures occurred (see [FailureReason] for possible failures)
-    #[cfg_attr(feature = "wasm", wasm_bindgen(getter, js_name = "successful"))]
+    #[cfg_attr(
+        target_arch = "wasm32",
+        wasm_bindgen(getter, js_name = "successful")
+    )]
     pub fn successful(&self) -> bool {
         self.terminated() && self.failure_reason().is_none()
     }
@@ -447,7 +456,7 @@ impl Machine {
     /// the program actually failed.** Will return `None` if the program
     /// is still running or it succeeded.
     #[cfg_attr(
-        feature = "wasm",
+        target_arch = "wasm32",
         wasm_bindgen(getter, js_name = "failureReason")
     )]
     pub fn failure_reason(&self) -> Option<FailureReason> {
@@ -465,16 +474,19 @@ impl Machine {
             None
         }
     }
+}
 
+// Wasm-ONLY functions
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen]
+impl Machine {
     /// A wrapper for [Self::input], to be called from wasm.
-    #[cfg(feature = "wasm")]
     #[wasm_bindgen(getter, js_name = "input")]
     pub fn wasm_input(&self) -> Vec<LangValue> {
         self.input.clone()
     }
 
     /// A wrapper for [Self::input], to be called from wasm.
-    #[cfg(feature = "wasm")]
     #[wasm_bindgen(getter, js_name = "output")]
     pub fn wasm_output(&self) -> Vec<LangValue> {
         self.output.clone()
@@ -483,7 +495,6 @@ impl Machine {
     /// A wrapper for [Self::registers], to be called from wasm. We can't send
     /// maps through wasm, so this returns a [JsValue] which is an object
     /// mapping register names (strings) to their values (`LangValue`).
-    #[cfg(feature = "wasm")]
     #[wasm_bindgen(getter, js_name = "registers")]
     pub fn wasm_registers(&self) -> LangValueMap {
         // Convert the keys of the register map to strings
@@ -499,7 +510,6 @@ impl Machine {
     /// A wrapper for [Self::stacks], to be called from wasm. We can't send
     /// maps through wasm, so this returns a [JsValue] which is an object
     /// mapping stacks names (strings) to their values (`Vec<LangValue>`).
-    #[cfg(feature = "wasm")]
     #[wasm_bindgen(getter, js_name = "stacks")]
     pub fn wasm_stacks(&self) -> LangValueArrayMap {
         // Convert the keys of the stacks map to strings
@@ -519,7 +529,6 @@ impl Machine {
     /// A wrapper for [Self::error], to be called from wasm. We can't send
     /// maps through wasm, so this returns a simplified error as a
     /// [SourceElement].
-    #[cfg(feature = "wasm")]
     #[wasm_bindgen(getter, js_name = "error")]
     pub fn wasm_error(&self) -> Option<SourceElement> {
         self.error.as_ref().map(|wrapped_error| {
@@ -537,8 +546,6 @@ impl Machine {
     /// A wrapper for [Self::execute_next], to be called from wasm. We throw
     /// away the error because it simplifies the logic on the TS side. That
     /// error is accessible via [Self::wasm_error] anyway.
-    #[cfg(feature = "wasm")]
-    #[doc(hidden)]
     #[wasm_bindgen(js_name = "executeNext")]
     pub fn wasm_execute_next(&mut self) -> bool {
         // If an error occurred, that means something executed, so return true
@@ -548,8 +555,6 @@ impl Machine {
     /// A wrapper for [Self::execute_all], to be called from wasm. We throw
     /// away the error because it simplifies the logic on the TS side. That
     /// error is accessible via [Self::wasm_error] anyway.
-    #[cfg(feature = "wasm")]
-    #[doc(hidden)]
     #[wasm_bindgen(js_name = "executeAll")]
     pub fn wasm_execute_all(&mut self) -> bool {
         // If an error occurred, that means something executed, so return true
@@ -560,7 +565,7 @@ impl Machine {
 /// The reason why a program failed. **These reasons are only applicable for
 /// terminated, unsuccessful programs**. For a program that has yet to
 /// terminate, or did so successfully, none of these cases apply.
-#[cfg_attr(feature = "wasm", wasm_bindgen)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 #[derive(Copy, Clone, Debug)]
 pub enum FailureReason {
     /// An error occurred while trying to execute one of the instructions

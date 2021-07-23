@@ -5,7 +5,7 @@ use std::{
     fmt::{self, Formatter},
     iter,
 };
-#[cfg(feature = "wasm")]
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
 pub type RawSpan<'a> = LocatedSpan<&'a str>;
@@ -13,7 +13,7 @@ pub type RawSpan<'a> = LocatedSpan<&'a str>;
 /// A definition of a span of source code. This doesn't actually hold the code
 /// itself (or any reference to it), it just defines parameters that can be used
 /// to find the source span.
-#[cfg_attr(feature = "wasm", wasm_bindgen)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Span {
     // TODO make these readonly and camel case in wasm
