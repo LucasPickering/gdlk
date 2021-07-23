@@ -1,7 +1,8 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useContext } from 'react';
 import { Typography } from '@material-ui/core';
 import Link from '@root/components/common/Link';
-import DocsSection from './DocsSection';
+import DocsSection from '../DocsSection';
+import { DocsContextType, DocsContext } from '@root/state/docs';
 
 type ArgType = 'VAL' | 'REG' | 'STACK' | 'LABEL';
 
@@ -13,6 +14,10 @@ interface InstructionReference {
   errorCases?: ReactNode[];
   notes?: ReactNode[];
   examples: string[];
+  /**
+   * Allows us to dynamically hide entries based on capabilities
+   */
+  isVisible?: (context: DocsContextType) => boolean;
 }
 
 const INSTRUCTIONS: InstructionReference[] = [
@@ -151,30 +156,31 @@ const INSTRUCTIONS: InstructionReference[] = [
       'CMP RX0 11 10 ; RX0 now holds 1',
     ],
   },
-  // Commented out for playtesting simple puzzles
-  // {
-  //   name: 'PUSH',
-  //   summary: 'Push a value onto the top of a stack.',
-  //   moreInfo: <>The source value is not modified.</>,
-  //   args: ['VAL', 'STACK'],
-  //   errorCases: [
-  //     <>
-  //       Pushing to a stack that is already full causes a runtime error.{' '}
-  //       <Link to="#stacks--capacity">More information on stack capacity</Link>.
-  //     </>,
-  //   ],
-  //   examples: [
-  //     'PUSH 3 S0   ; Push 3 onto the top of S0',
-  //     'PUSH RX0 S0 ; Push the value in RX0 onto the top of S0',
-  //   ],
-  // },
-  // {
-  //   name: 'POP',
-  //   summary: 'Pop a value off the top of a stack into a register.',
-  //   args: ['STACK', 'REG'],
-  //   errorCases: [<>Popping from an empty stack causes a runtime error.</>],
-  //   examples: ['POP S0 RX0 ; Move the top value of S0 into RX0'],
-  // },
+  {
+    name: 'PUSH',
+    summary: 'Push a value onto the top of a stack.',
+    moreInfo: <>The source value is not modified.</>,
+    args: ['VAL', 'STACK'],
+    errorCases: [
+      <>
+        Pushing to a stack that is already full causes a runtime error.{' '}
+        <Link to="#stacks--capacity">More information on stack capacity</Link>.
+      </>,
+    ],
+    examples: [
+      'PUSH 3 S0   ; Push 3 onto the top of S0',
+      'PUSH RX0 S0 ; Push the value in RX0 onto the top of S0',
+    ],
+    isVisible: (context) => context.showStacks,
+  },
+  {
+    name: 'POP',
+    summary: 'Pop a value off the top of a stack into a register.',
+    args: ['STACK', 'REG'],
+    errorCases: [<>Popping from an empty stack causes a runtime error.</>],
+    examples: ['POP S0 RX0 ; Move the top value of S0 into RX0'],
+    isVisible: (context) => context.showStacks,
+  },
   {
     name: 'JMP',
     summary: 'Jump to a label, unconditionally.',
@@ -242,6 +248,11 @@ const INSTRUCTIONS: InstructionReference[] = [
  * The Instructions section of the docs.
  */
 const InstructionDocs: React.FC = () => {
+  const context = useContext(DocsContext);
+  const visibleInstructions = INSTRUCTIONS.filter(
+    ({ isVisible }) => isVisible?.(context) ?? true
+  );
+
   return (
     <DocsSection id="instructions" level={3} title="Instruction Set">
       <Typography>
@@ -257,7 +268,7 @@ const InstructionDocs: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {INSTRUCTIONS.map(({ name, args, summary }) => (
+          {visibleInstructions.map(({ name, args, summary }) => (
             <tr key={name}>
               <td>
                 <Link to={`#instructions--${name.toLowerCase()}`}>{name}</Link>
@@ -270,7 +281,7 @@ const InstructionDocs: React.FC = () => {
           ))}
         </tbody>
       </table>
-      {INSTRUCTIONS.map(
+      {visibleInstructions.map(
         ({ name, args, summary, moreInfo, errorCases, examples }) => (
           <DocsSection
             key={name}

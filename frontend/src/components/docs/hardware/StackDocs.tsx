@@ -1,7 +1,7 @@
 import React from 'react';
 import { Typography } from '@material-ui/core';
-import DocsSection from './DocsSection';
-import Link from '../common/Link';
+import DocsSection from '../DocsSection';
+import Link from '../../common/Link';
 
 const StackDocs: React.FC = () => (
   <DocsSection id="stacks" level={3} title="Stacks">

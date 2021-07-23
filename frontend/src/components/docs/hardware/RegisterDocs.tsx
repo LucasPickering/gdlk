@@ -1,11 +1,16 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useContext } from 'react';
 import { Typography } from '@material-ui/core';
-import DocsSection from './DocsSection';
+import DocsSection from '../DocsSection';
+import { DocsContext, DocsContextType } from '@root/state/docs';
 
 interface Register {
   name: string;
   writable: boolean;
   summary: ReactNode;
+  /**
+   * Allows us to dynamically hide entries based on capabilities
+   */
+  isVisible?: (context: DocsContextType) => boolean;
 }
 
 const REGISTERS: Register[] = [
@@ -28,18 +33,18 @@ const REGISTERS: Register[] = [
       </>
     ),
   },
-  // Hidden for playtesting simple puzzles
-  // {
-  //   name: 'RSx',
-  //   writable: false,
-  //   summary: (
-  //     <>
-  //       Holds the current number of values in the corresponding stack. There is
-  //       one of these for each stack in the machine. Stacks start at{' '}
-  //       <code>S0</code>, so these start at <code>RS0</code>.
-  //     </>
-  //   ),
-  // },
+  {
+    name: 'RSx',
+    writable: false,
+    summary: (
+      <>
+        Holds the current number of values in the corresponding stack. There is
+        one of these for each stack in the machine. Stacks start at{' '}
+        <code>S0</code>, so these start at <code>RS0</code>.
+      </>
+    ),
+    isVisible: (context) => context.showStacks,
+  },
   {
     name: 'RXx',
     writable: true,
@@ -60,6 +65,11 @@ const REGISTERS: Register[] = [
  * The Registers section of the docs.
  */
 const RegisterDocs: React.FC = () => {
+  const context = useContext(DocsContext);
+  const visibleRegisters = REGISTERS.filter(
+    ({ isVisible }) => isVisible?.(context) ?? true
+  );
+
   return (
     <DocsSection id="registers" level={3} title="Registers">
       <Typography>
@@ -83,7 +93,7 @@ const RegisterDocs: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {REGISTERS.map(({ name, writable, summary }) => (
+          {visibleRegisters.map(({ name, writable, summary }) => (
             <tr key={name} id={`registers--${name.toLowerCase()}`}>
               <td>
                 <code>{name}</code>
