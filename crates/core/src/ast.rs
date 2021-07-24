@@ -96,7 +96,8 @@ impl Display for RegisterRef {
 }
 
 /// Something that can produce a [LangValue] idempotently. The value
-/// can be read (repeatedly if necessary), but cannot be written to.
+/// can be read (repeatedly if necessary), but cannot *necessarily* be written
+/// to.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ValueSource<T> {
     /// A static value, fixed at build time
@@ -105,25 +106,21 @@ pub enum ValueSource<T> {
     Register(Node<RegisterRef, T>),
 }
 
-/// An operator is a special type of instruction that is guaranteed to be the
-/// same in both ASTs. These are pulled into a separate subtype, so that they
-/// can easily be shared between the two ASTs. This simplifies the AST
-/// declarations as well as tree transformations.
-///
-/// An operator should never jump. This allows simplification of execution code,
-/// because we know that each operator will immediately progress to the next
-/// instruction.
+/// An instruction is the basic functional unit of GDLK. Each instruction
+/// performs a single basic operation, and takes 0 or more arguments.
 ///
 /// NOTE: All arithmetic operations are wrapping (for overflow/underflow).
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Operator<T> {
+#[derive(Clone, Debug, PartialEq)]
+pub enum Instruction<T> {
     /// Reads one value from the input buffer to a register. If the input is
     /// empty, triggers a runtime error.
     Read(Node<RegisterRef, T>),
     /// Writes a value to the output buffer.
     Write(Node<ValueSource<T>, T>),
+
     /// Sets a register to a value.
     Set(Node<RegisterRef, T>, Node<ValueSource<T>, T>),
+
     /// Adds two values. Puts the result in the first argument.
     Add(Node<RegisterRef, T>, Node<ValueSource<T>, T>),
     /// Subtracts the second value from the first. Puts the result in the
@@ -135,6 +132,7 @@ pub enum Operator<T> {
     /// argument. Any remainder from the division is thrown away, i.e. the
     /// result is floored. If the divisor is zero, triggers a runtime error.
     Div(Node<RegisterRef, T>, Node<ValueSource<T>, T>),
+
     /// Compares the last two arguments, and stores the comparison result in
     /// the first register. Result is -1 if the first value is less than the
     /// second, 0 if they are equal, and 1 if the first value is greater. The
@@ -144,49 +142,42 @@ pub enum Operator<T> {
         Node<ValueSource<T>, T>,
         Node<ValueSource<T>, T>,
     ),
+
     /// Pushes the value in a register onto the given stack. If the stack is
     /// already at capacity, triggers a runtime error.
     Push(Node<ValueSource<T>, T>, Node<StackRef, T>),
     /// Pops the top value off the given stack into a register. If the stack is
     /// empty, triggers a runtime error.
     Pop(Node<StackRef, T>, Node<RegisterRef, T>),
-}
 
-/// The different types of jumps. This just holds the jump type and conditional
-/// value, not the jump target. That should be held by the parent, because the
-/// target type can vary (label vs offset).
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Jump<T> {
-    /// Jumps unconditionally
-    Jmp,
-    /// Jumps if the value == 0
-    Jez(Node<ValueSource<T>, T>),
-    /// Jumps if the value != 0
-    Jnz(Node<ValueSource<T>, T>),
-    /// Jumps if the value > 0
-    Jlz(Node<ValueSource<T>, T>),
-    /// Jumps if the value < 0
-    Jgz(Node<ValueSource<T>, T>),
+    /// Jumps unconditionally to a label
+    Jmp(Node<Label, T>),
+    /// Jumps to a label if the value == 0
+    Jez(Node<ValueSource<T>, T>, Node<Label, T>),
+    /// Jumps to a label if the value != 0
+    Jnz(Node<ValueSource<T>, T>, Node<Label, T>),
+    /// Jumps to a label if the value > 0
+    Jlz(Node<ValueSource<T>, T>, Node<Label, T>),
+    /// Jumps to a label if the value < 0
+    Jgz(Node<ValueSource<T>, T>, Node<Label, T>),
 }
 
 /// All types unique to the source AST live here.
 pub mod source {
     use super::*;
 
-    /// A label declaration, e.g. "LABEL:".
+    /// A label declaration, e.g. "LABEL:"
     #[derive(Clone, Debug, PartialEq)]
     pub struct LabelDecl(pub Label);
 
     /// A statement is one complete parseable element. Generally, each statement
-    /// goes on its own line in the source.
+    /// goes on its own line in the source (but not necessarily).
     #[derive(Clone, Debug, PartialEq)]
     pub enum Statement<T> {
         /// A label declaration
         Label(Node<LabelDecl, T>),
-        /// See [Operator]
-        Operator(Node<Operator<T>, T>),
-        /// Jump to the given label
-        Jump(Node<Jump<T>, T>, Node<Label, T>),
+        /// See [Instruction]
+        Instruction(Node<Instruction<T>, T>),
     }
 
     /// A parsed and untransformed program.
@@ -198,29 +189,19 @@ pub mod source {
 
 /// All types unique to the compiled AST live here.
 pub mod compiled {
+    use std::collections::HashMap;
+
     use super::*;
     use crate::ProgramStats;
-
-    /// An executable instruction. These are the instructions that machines
-    /// actually execute.
-    #[derive(Copy, Clone, Debug, PartialEq)]
-    pub enum Instruction<T> {
-        /// See [Operator]
-        Operator(Node<Operator<T>, T>),
-        /// These jumps are relative: In `Jmp(n)`, `n` is relative to the
-        /// current program counter.
-        /// - `Jmp(-1)` repeats the previous instruction
-        /// - `Jmp(0)` repeats this instruction (so create an infinite loop)
-        /// - `Jmp(1)` goes to the next instruction (a no-op)
-        /// - `Jmp(2)` skips the next instruction
-        /// - etc...
-        Jump(Node<Jump<T>, T>, isize),
-    }
 
     /// A compiled program, ready to be executed.
     #[derive(Clone, Debug, PartialEq)]
     pub struct Program<T> {
         pub instructions: Vec<Node<Instruction<T>, T>>,
+        /// A mapping of label:instruction index. These indexes are _after_ the
+        /// labels have been removed, so this can be used to index into the
+        /// `instructions` field of this struct.
+        pub symbol_table: HashMap<Label, usize>,
         pub stats: ProgramStats,
     }
 
@@ -259,7 +240,7 @@ pub mod wasm {
     /// Something that can map to source code. This can be some AST node, or
     /// an error, or something similar.
     #[wasm_bindgen]
-    #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Clone, Debug, Serialize, Deserialize)]
     pub struct SourceElement {
         #[wasm_bindgen(skip)]
         pub text: String,

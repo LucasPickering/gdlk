@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         source::{LabelDecl, Program, Statement},
-        Jump, Label, LangValue, Node, Operator, RegisterRef, SpanNode, StackId,
+        Instruction, Label, LangValue, Node, RegisterRef, SpanNode, StackId,
         StackRef, UserRegisterId, ValueSource,
     },
     consts::{
@@ -139,63 +139,72 @@ impl<'a> Parse<'a> for ValueSource<Span> {
     }
 }
 
-impl<'a> Parse<'a> for Operator<Span> {
+impl<'a> Parse<'a> for Instruction<Span> {
     fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
         alt((
-            tag_with_args("READ", register_ref_arg, Operator::Read),
-            tag_with_args("WRITE", value_source_arg, Operator::Write),
+            tag_with_args("READ", register_ref_arg, Instruction::Read),
+            tag_with_args("WRITE", value_source_arg, Instruction::Write),
             tag_with_args(
                 "SET",
                 tuple((register_ref_arg, value_source_arg)),
-                |(dst, src)| Operator::Set(dst, src),
+                |(dst, src)| Instruction::Set(dst, src),
             ),
             tag_with_args(
                 "ADD",
                 tuple((register_ref_arg, value_source_arg)),
-                |(dst, src)| Operator::Add(dst, src),
+                |(dst, src)| Instruction::Add(dst, src),
             ),
             tag_with_args(
                 "SUB",
                 tuple((register_ref_arg, value_source_arg)),
-                |(dst, src)| Operator::Sub(dst, src),
+                |(dst, src)| Instruction::Sub(dst, src),
             ),
             tag_with_args(
                 "MUL",
                 tuple((register_ref_arg, value_source_arg)),
-                |(dst, src)| Operator::Mul(dst, src),
+                |(dst, src)| Instruction::Mul(dst, src),
             ),
             tag_with_args(
                 "DIV",
                 tuple((register_ref_arg, value_source_arg)),
-                |(dst, src)| Operator::Div(dst, src),
+                |(dst, src)| Instruction::Div(dst, src),
             ),
             tag_with_args(
                 "CMP",
                 tuple((register_ref_arg, value_source_arg, value_source_arg)),
-                |(dst, src_1, src_2)| Operator::Cmp(dst, src_1, src_2),
+                |(dst, src_1, src_2)| Instruction::Cmp(dst, src_1, src_2),
             ),
             tag_with_args(
                 "PUSH",
                 tuple((value_source_arg, stack_ref_arg)),
-                |(src, stack)| Operator::Push(src, stack),
+                |(src, stack)| Instruction::Push(src, stack),
             ),
             tag_with_args(
                 "POP",
                 tuple((stack_ref_arg, register_ref_arg)),
-                |(stack, dst)| Operator::Pop(stack, dst),
+                |(stack, dst)| Instruction::Pop(stack, dst),
             ),
-        ))(input)
-    }
-}
-
-impl<'a> Parse<'a> for Jump<Span> {
-    fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
-        alt((
-            map(tag_no_case("JMP"), |_| Jump::Jmp),
-            tag_with_args("JEZ", value_source_arg, Jump::Jez),
-            tag_with_args("JNZ", value_source_arg, Jump::Jnz),
-            tag_with_args("JGZ", value_source_arg, Jump::Jgz),
-            tag_with_args("JLZ", value_source_arg, Jump::Jlz),
+            tag_with_args("JMP", label_arg, Instruction::Jmp),
+            tag_with_args(
+                "JEZ",
+                tuple((value_source_arg, label_arg)),
+                |(val_src, label)| Instruction::Jez(val_src, label),
+            ),
+            tag_with_args(
+                "JNZ",
+                tuple((value_source_arg, label_arg)),
+                |(val_src, label)| Instruction::Jnz(val_src, label),
+            ),
+            tag_with_args(
+                "JGZ",
+                tuple((value_source_arg, label_arg)),
+                |(val_src, label)| Instruction::Jgz(val_src, label),
+            ),
+            tag_with_args(
+                "JLZ",
+                tuple((value_source_arg, label_arg)),
+                |(val_src, label)| Instruction::Jlz(val_src, label),
+            ),
         ))(input)
     }
 }
@@ -204,12 +213,7 @@ impl<'a> Parse<'a> for Statement<Span> {
     fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
         alt((
             map(LabelDecl::parse_node, Statement::Label),
-            map(Operator::parse_node, Statement::Operator),
-            // semi-hack, necessary because of how the AST is organized
-            // to share code between source and compiled
-            map(tuple((Jump::parse_node, label_arg)), |(jmp, lbl)| {
-                Statement::Jump(jmp, lbl)
-            }),
+            map(Instruction::parse_node, Statement::Instruction),
         ))(input)
     }
 }
@@ -266,17 +270,21 @@ where
     )
 }
 
-/// Parses one instruction (operator or jump) keyword and arguments. Uses the
-/// passed parser to parse the arguments, then passes those through the mapper
-/// to get a value.
-fn tag_with_args<'a, O, Args, ArgParser, Mapper>(
+/// Parses one instruction keyword and arguments. Uses the passed parser to
+/// parse the arguments, then passes those through the mapper to get a value.
+/// For single-arg instructions, the arg parser can just be for the argument's
+/// type. For multi-arg instructions, you probably want a `tuple()` parser with
+/// each arg's parser within.
+///
+/// TODO make this take a tuple of arg parsers instead
+fn tag_with_args<'a, O, Arg, ArgParser, Mapper>(
     instr_name: &'static str,
     arg_parser: ArgParser,
     mapper: Mapper,
 ) -> impl FnMut(RawSpan<'a>) -> ParseResult<'a, O>
 where
-    ArgParser: FnMut(RawSpan<'a>) -> ParseResult<'a, Args>,
-    Mapper: FnMut(Args) -> O,
+    ArgParser: FnMut(RawSpan<'a>) -> ParseResult<'a, Arg>,
+    Mapper: FnMut(Arg) -> O,
 {
     map(
         preceded(
@@ -561,18 +569,18 @@ mod tests {
             .body,
             vec![
                 Node(
-                    Statement::Operator(Node(
-                        Operator::Read(Node(
+                    Statement::Instruction(Node(
+                        Instruction::Read(Node(
                             RegisterRef::User(0),
                             span(2, 22, 2, 25)
-                        ),),
+                        )),
                         span(2, 17, 2, 25)
                     )),
                     span(2, 17, 2, 25)
                 ),
                 Node(
-                    Statement::Operator(Node(
-                        Operator::Write(Node(
+                    Statement::Instruction(Node(
+                        Instruction::Write(Node(
                             ValueSource::Register(Node(
                                 RegisterRef::User(0),
                                 span(3, 23, 3, 26)
@@ -602,8 +610,8 @@ mod tests {
             .body,
             vec![
                 Node(
-                    Statement::Operator(Node(
-                        Operator::Set(
+                    Statement::Instruction(Node(
+                        Instruction::Set(
                             Node(RegisterRef::User(1), span(2, 21, 2, 24)),
                             Node(
                                 ValueSource::Const(Node(4, span(2, 25, 2, 26))),
@@ -611,55 +619,55 @@ mod tests {
                             )
                         ),
                         span(2, 17, 2, 26)
-                    ),),
+                    )),
                     span(2, 17, 2, 26)
                 ),
                 Node(
-                    Statement::Operator(Node(
-                        Operator::Set(
+                    Statement::Instruction(Node(
+                        Instruction::Set(
                             Node(RegisterRef::User(1), span(3, 21, 3, 24)),
                             Node(
                                 ValueSource::Register(Node(
                                     RegisterRef::InputLength,
                                     span(3, 25, 3, 28)
-                                ),),
+                                )),
                                 span(3, 25, 3, 28)
                             )
                         ),
                         span(3, 17, 3, 28)
-                    ),),
+                    )),
                     span(3, 17, 3, 28)
                 ),
                 Node(
-                    Statement::Operator(Node(
-                        Operator::Set(
+                    Statement::Instruction(Node(
+                        Instruction::Set(
                             Node(RegisterRef::User(1), span(4, 21, 4, 24)),
                             Node(
                                 ValueSource::Register(Node(
                                     RegisterRef::StackLength(0),
                                     span(4, 25, 4, 28)
-                                ),),
+                                )),
                                 span(4, 25, 4, 28)
                             )
                         ),
                         span(4, 17, 4, 28)
-                    ),),
+                    )),
                     span(4, 17, 4, 28)
                 ),
                 Node(
-                    Statement::Operator(Node(
-                        Operator::Set(
+                    Statement::Instruction(Node(
+                        Instruction::Set(
                             Node(RegisterRef::User(1), span(5, 21, 5, 24)),
                             Node(
                                 ValueSource::Register(Node(
                                     RegisterRef::Null,
                                     span(5, 25, 5, 28)
-                                ),),
+                                )),
                                 span(5, 25, 5, 28)
                             )
                         ),
                         span(5, 17, 5, 28)
-                    ),),
+                    )),
                     span(5, 17, 5, 28)
                 ),
             ]
@@ -671,8 +679,8 @@ mod tests {
         assert_eq!(
             parse("Add RX1 RX4").unwrap().body,
             vec![Node(
-                Statement::Operator(Node(
-                    Operator::Add(
+                Statement::Instruction(Node(
+                    Instruction::Add(
                         Node(RegisterRef::User(1), span(1, 5, 1, 8)),
                         Node(
                             ValueSource::Register(Node(
@@ -694,8 +702,8 @@ mod tests {
         assert_eq!(
             parse("Add RX1 -10").unwrap().body,
             vec![Node(
-                Statement::Operator(Node(
-                    Operator::Add(
+                Statement::Instruction(Node(
+                    Instruction::Add(
                         Node(RegisterRef::User(1), span(1, 5, 1, 8)),
                         Node(
                             ValueSource::Const(Node(-10, span(1, 9, 1, 12))),
@@ -715,8 +723,8 @@ mod tests {
         assert_eq!(
             parse(&source).unwrap().body,
             vec![Node(
-                Statement::Operator(Node(
-                    Operator::Add(
+                Statement::Instruction(Node(
+                    Instruction::Add(
                         Node(RegisterRef::User(1), span(1, 5, 1, 8)),
                         Node(
                             ValueSource::Const(Node(
@@ -739,8 +747,8 @@ mod tests {
         assert_eq!(
             parse(&source).unwrap().body,
             vec![Node(
-                Statement::Operator(Node(
-                    Operator::Add(
+                Statement::Instruction(Node(
+                    Instruction::Add(
                         Node(RegisterRef::User(1), span(1, 5, 1, 8)),
                         Node(
                             ValueSource::Const(Node(
@@ -762,8 +770,8 @@ mod tests {
         assert_eq!(
             parse("Sub RX1 RX4").unwrap().body,
             vec![Node(
-                Statement::Operator(Node(
-                    Operator::Sub(
+                Statement::Instruction(Node(
+                    Instruction::Sub(
                         Node(RegisterRef::User(1), span(1, 5, 1, 8)),
                         Node(
                             ValueSource::Register(Node(
@@ -785,8 +793,8 @@ mod tests {
         assert_eq!(
             parse("Mul RX1 RX4").unwrap().body,
             vec![Node(
-                Statement::Operator(Node(
-                    Operator::Mul(
+                Statement::Instruction(Node(
+                    Instruction::Mul(
                         Node(RegisterRef::User(1), span(1, 5, 1, 8)),
                         Node(
                             ValueSource::Register(Node(
@@ -808,8 +816,8 @@ mod tests {
         assert_eq!(
             parse("CMP RX0 5 10").unwrap().body,
             vec![Node(
-                Statement::Operator(Node(
-                    Operator::Cmp(
+                Statement::Instruction(Node(
+                    Instruction::Cmp(
                         Node(RegisterRef::User(0), span(1, 5, 1, 8)),
                         Node(
                             ValueSource::Const(Node(5, span(1, 9, 1, 10))),
@@ -832,8 +840,8 @@ mod tests {
         assert_eq!(
             parse("Push RX2 S4").unwrap().body,
             vec![Node(
-                Statement::Operator(Node(
-                    Operator::Push(
+                Statement::Instruction(Node(
+                    Instruction::Push(
                         Node(
                             ValueSource::Register(Node(
                                 RegisterRef::User(2),
@@ -855,8 +863,8 @@ mod tests {
         assert_eq!(
             parse("Pop S4 RX2").unwrap().body,
             vec![Node(
-                Statement::Operator(Node(
-                    Operator::Pop(
+                Statement::Instruction(Node(
+                    Instruction::Pop(
                         Node(StackRef(4), span(1, 5, 1, 7)),
                         Node(RegisterRef::User(2), span(1, 8, 1, 11)),
                     ),
@@ -883,74 +891,77 @@ mod tests {
             .body,
             vec![
                 Node(
-                    Statement::Jump(
-                        Node(Jump::Jmp, span(2, 17, 2, 20)),
-                        Node("LBL".into(), span(2, 21, 2, 24)),
-                    ),
+                    Statement::Instruction(Node(
+                        Instruction::Jmp(Node(
+                            "LBL".into(),
+                            span(2, 21, 2, 24)
+                        )),
+                        span(2, 17, 2, 24)
+                    )),
                     span(2, 17, 2, 24)
                 ),
                 Node(
-                    Statement::Jump(
-                        Node(
-                            Jump::Jez(Node(
+                    Statement::Instruction(Node(
+                        Instruction::Jez(
+                            Node(
                                 ValueSource::Register(Node(
                                     RegisterRef::User(0),
                                     span(3, 21, 3, 24)
                                 )),
                                 span(3, 21, 3, 24)
-                            )),
-                            span(3, 17, 3, 24)
+                            ),
+                            Node("LBL".into(), span(3, 25, 3, 28))
                         ),
-                        Node("LBL".into(), span(3, 25, 3, 28)),
-                    ),
+                        span(3, 17, 3, 28)
+                    )),
                     span(3, 17, 3, 28)
                 ),
                 Node(
-                    Statement::Jump(
-                        Node(
-                            Jump::Jnz(Node(
+                    Statement::Instruction(Node(
+                        Instruction::Jnz(
+                            Node(
                                 ValueSource::Register(Node(
                                     RegisterRef::User(0),
                                     span(4, 21, 4, 24)
                                 )),
                                 span(4, 21, 4, 24)
-                            )),
-                            span(4, 17, 4, 24)
+                            ),
+                            Node("LBL".into(), span(4, 25, 4, 28)),
                         ),
-                        Node("LBL".into(), span(4, 25, 4, 28)),
-                    ),
+                        span(4, 17, 4, 28)
+                    )),
                     span(4, 17, 4, 28)
                 ),
                 Node(
-                    Statement::Jump(
-                        Node(
-                            Jump::Jlz(Node(
+                    Statement::Instruction(Node(
+                        Instruction::Jlz(
+                            Node(
                                 ValueSource::Register(Node(
                                     RegisterRef::User(0),
                                     span(5, 21, 5, 24)
                                 )),
                                 span(5, 21, 5, 24)
-                            )),
-                            span(5, 17, 5, 24)
+                            ),
+                            Node("LBL".into(), span(5, 25, 5, 28))
                         ),
-                        Node("LBL".into(), span(5, 25, 5, 28)),
-                    ),
+                        span(5, 17, 5, 28)
+                    )),
                     span(5, 17, 5, 28)
                 ),
                 Node(
-                    Statement::Jump(
-                        Node(
-                            Jump::Jgz(Node(
+                    Statement::Instruction(Node(
+                        Instruction::Jgz(
+                            Node(
                                 ValueSource::Register(Node(
                                     RegisterRef::User(0),
                                     span(6, 21, 6, 24)
                                 )),
                                 span(6, 21, 6, 24)
-                            )),
-                            span(6, 17, 6, 24)
+                            ),
+                            Node("LBL".into(), span(6, 25, 6, 28)),
                         ),
-                        Node("LBL".into(), span(6, 25, 6, 28)),
-                    ),
+                        span(6, 17, 6, 28)
+                    )),
                     span(6, 17, 6, 28)
                 ),
             ]
@@ -969,8 +980,8 @@ mod tests {
             .unwrap()
             .body,
             vec![Node(
-                Statement::Operator(Node(
-                    Operator::Add(
+                Statement::Instruction(Node(
+                    Instruction::Add(
                         Node(RegisterRef::User(1), span(3, 21, 3, 24)),
                         Node(
                             ValueSource::Register(Node(
@@ -1004,8 +1015,8 @@ mod tests {
             .body,
             vec![
                 Node(
-                    Statement::Operator(Node(
-                        Operator::Read(Node(
+                    Statement::Instruction(Node(
+                        Instruction::Read(Node(
                             RegisterRef::User(0),
                             span(3, 22, 3, 25)
                         )),
@@ -1014,8 +1025,8 @@ mod tests {
                     span(3, 17, 3, 25)
                 ),
                 Node(
-                    Statement::Operator(Node(
-                        Operator::Set(
+                    Statement::Instruction(Node(
+                        Instruction::Set(
                             Node(RegisterRef::User(0), span(5, 21, 5, 24)),
                             Node(
                                 ValueSource::Const(Node(2, span(5, 25, 5, 26))),
@@ -1023,12 +1034,12 @@ mod tests {
                             )
                         ),
                         span(5, 17, 5, 26)
-                    ),),
+                    )),
                     span(5, 17, 5, 26)
                 ),
                 Node(
-                    Statement::Operator(Node(
-                        Operator::Write(Node(
+                    Statement::Instruction(Node(
+                        Instruction::Write(Node(
                             ValueSource::Register(Node(
                                 RegisterRef::User(0),
                                 span(6, 23, 6, 26)

@@ -2,9 +2,8 @@
 use crate::ast::wasm::{LangValueArrayMap, LangValueMap, SourceElement};
 use crate::{
     ast::{
-        compiled::{Instruction, Program},
-        Jump, LangValue, Node, Operator, RegisterRef, SpanNode, StackRef,
-        ValueSource,
+        compiled::Program, Instruction, Label, LangValue, Node, RegisterRef,
+        SpanNode, StackRef, ValueSource,
     },
     consts::MAX_CYCLE_COUNT,
     debug,
@@ -191,9 +190,10 @@ impl Machine {
             return Ok(false);
         }
 
-        let instr_node: SpanNode<Instruction<Span>> =
+        let instr_node =
             match self.program.instructions.get(self.program_counter) {
-                Some(instr_node) => *instr_node,
+                // Clone is necessary so we don't maintain a ref to self
+                Some(instr_node) => instr_node.clone(),
                 // out of instructions to execute, just give up
                 None => return Ok(false),
             };
@@ -209,110 +209,140 @@ impl Machine {
         // an error, it still counts.
         self.cycle_count += 1;
 
-        // Execute the instruction. For most instructions, the number of
-        // instructions to consume is just 1. For jumps though, it can vary.
-        let instr = instr_node.value();
-        let instrs_to_consume: isize = match instr {
-            // Operators
-            Instruction::Operator(Node(op, span)) => {
-                match op {
-                    Operator::Read(reg) => {
-                        if self.input.is_empty() {
-                            return Err((RuntimeError::EmptyInput, *span));
-                        } else {
-                            // Remove the first element in the input
-                            let val = self.input.remove(0);
-                            self.set_reg(&reg, val);
-                        }
-                    }
-                    Operator::Write(src) => {
-                        self.output.push(self.get_val_from_src(&src));
-                    }
-                    Operator::Set(dst, src) => {
-                        self.set_reg(&dst, self.get_val_from_src(&src));
-                    }
-                    Operator::Add(dst, src) => {
-                        self.set_reg(
-                            &dst,
-                            (Wrapping(self.get_reg(*dst.value()))
-                                + Wrapping(self.get_val_from_src(&src)))
-                            .0,
-                        );
-                    }
-                    Operator::Sub(dst, src) => {
-                        self.set_reg(
-                            &dst,
-                            (Wrapping(self.get_reg(*dst.value()))
-                                - Wrapping(self.get_val_from_src(&src)))
-                            .0,
-                        );
-                    }
-                    Operator::Mul(dst, src) => {
-                        self.set_reg(
-                            &dst,
-                            (Wrapping(self.get_reg(*dst.value()))
-                                * Wrapping(self.get_val_from_src(&src)))
-                            .0,
-                        );
-                    }
-                    Operator::Div(dst, src) => {
-                        let divisor = self.get_val_from_src(&src);
-                        let dividend = self.get_reg(*dst.value());
-                        if divisor != 0 {
-                            // This does flooring division
-                            self.set_reg(&dst, dividend / divisor);
-                        } else {
-                            return Err((RuntimeError::DivideByZero, *span));
-                        }
-                    }
-                    Operator::Cmp(dst, src_1, src_2) => {
-                        let val_1 = self.get_val_from_src(&src_1);
-                        let val_2 = self.get_val_from_src(&src_2);
-                        let cmp = match val_1.cmp(&val_2) {
-                            Ordering::Less => -1,
-                            Ordering::Equal => 0,
-                            Ordering::Greater => 1,
-                        };
-                        self.set_reg(&dst, cmp);
-                    }
-                    Operator::Push(src, stack_ref) => {
-                        self.push_stack(
-                            &stack_ref,
-                            self.get_val_from_src(&src),
-                        )?;
-                    }
-                    Operator::Pop(stack_ref, dst) => {
-                        let popped = self.pop_stack(&stack_ref)?;
-                        self.set_reg(&dst, popped);
-                    }
+        // Execute the instruction, and get a resulting optional label that we
+        // should jump to. For most instructions there will be no label, only
+        // when the instruction wants to trigger a jump.
+        let instruction = instr_node.value();
+        let span = *instr_node.metadata();
+        let target_label: Option<&Label> = match instruction {
+            Instruction::Read(reg) => {
+                if self.input.is_empty() {
+                    return Err((RuntimeError::EmptyInput, span));
+                } else {
+                    // Remove the first element in the input
+                    let val = self.input.remove(0);
+                    self.set_reg(&reg, val);
                 }
-                1
+                None
+            }
+            Instruction::Write(src) => {
+                self.output.push(self.get_val_from_src(&src));
+                None
+            }
+            Instruction::Set(dst, src) => {
+                self.set_reg(&dst, self.get_val_from_src(&src));
+                None
+            }
+            Instruction::Add(dst, src) => {
+                self.set_reg(
+                    &dst,
+                    (Wrapping(self.get_reg(*dst.value()))
+                        + Wrapping(self.get_val_from_src(&src)))
+                    .0,
+                );
+                None
+            }
+            Instruction::Sub(dst, src) => {
+                self.set_reg(
+                    &dst,
+                    (Wrapping(self.get_reg(*dst.value()))
+                        - Wrapping(self.get_val_from_src(&src)))
+                    .0,
+                );
+                None
+            }
+            Instruction::Mul(dst, src) => {
+                self.set_reg(
+                    &dst,
+                    (Wrapping(self.get_reg(*dst.value()))
+                        * Wrapping(self.get_val_from_src(&src)))
+                    .0,
+                );
+                None
+            }
+            Instruction::Div(dst, src) => {
+                let divisor = self.get_val_from_src(&src);
+                let dividend = self.get_reg(*dst.value());
+                if divisor != 0 {
+                    // This does flooring division
+                    self.set_reg(&dst, dividend / divisor);
+                } else {
+                    return Err((RuntimeError::DivideByZero, span));
+                }
+                None
+            }
+            Instruction::Cmp(dst, src_1, src_2) => {
+                let val_1 = self.get_val_from_src(&src_1);
+                let val_2 = self.get_val_from_src(&src_2);
+                let cmp = match val_1.cmp(&val_2) {
+                    Ordering::Less => -1,
+                    Ordering::Equal => 0,
+                    Ordering::Greater => 1,
+                };
+                self.set_reg(&dst, cmp);
+                None
+            }
+            Instruction::Push(src, stack_ref) => {
+                self.push_stack(&stack_ref, self.get_val_from_src(&src))?;
+                None
+            }
+            Instruction::Pop(stack_ref, dst) => {
+                let popped = self.pop_stack(&stack_ref)?;
+                self.set_reg(&dst, popped);
+                None
             }
 
             // Jumps
-            Instruction::Jump(Node(jump, _), offset) => {
-                let should_jump = match jump {
-                    Jump::Jmp => true,
-                    Jump::Jez(src) => self.get_val_from_src(&src) == 0,
-                    Jump::Jnz(src) => self.get_val_from_src(&src) != 0,
-                    Jump::Jlz(src) => self.get_val_from_src(&src) < 0,
-                    Jump::Jgz(src) => self.get_val_from_src(&src) > 0,
-                };
-                if should_jump {
-                    *offset
+            Instruction::Jmp(Node(label, _)) => Some(label),
+            Instruction::Jez(src, Node(label, _)) => {
+                if self.get_val_from_src(&src) == 0 {
+                    Some(label)
                 } else {
-                    1
+                    None
+                }
+            }
+            Instruction::Jnz(src, Node(label, _)) => {
+                if self.get_val_from_src(&src) != 0 {
+                    Some(label)
+                } else {
+                    None
+                }
+            }
+            Instruction::Jlz(src, Node(label, _)) => {
+                if self.get_val_from_src(&src) < 0 {
+                    Some(label)
+                } else {
+                    None
+                }
+            }
+            Instruction::Jgz(src, Node(label, _)) => {
+                if self.get_val_from_src(&src) > 0 {
+                    Some(label)
+                } else {
+                    None
                 }
             }
         };
 
-        // Advance the pc by the specified number of instructions (for jumps)
-        // or by 1 (for all other instructions). Overflow/underflow _shouldn't_
-        // occur here, but if it does, that should panic in debug mode and
-        // cause all kinds of fuckery in release mode.
-        self.program_counter =
-            (self.program_counter as isize + instrs_to_consume) as usize;
-        debug!(println!("Executed {:?}\n\tState: {:?}", instr, self));
+        // If the instruction wants to jump to a label, look up its
+        // corresponding index and go there. Otherwise, just advance the PC one
+        // instruction
+        match target_label {
+            Some(label) => {
+                let destination = self
+                    .program
+                    .symbol_table
+                    .get(label)
+                    // If this panics, that means there's a bug in the
+                    // compiler pipeline
+                    .unwrap_or_else(|| panic!("unknown label: {}", label));
+                self.program_counter = *destination;
+            }
+            None => {
+                self.program_counter += 1;
+            }
+        }
+        debug!(println!("Executed {:?}\n\tState: {:?}", instruction, self));
         Ok(true)
     }
 

@@ -177,6 +177,7 @@ macro_rules! debug {
 }
 
 // Only needed in tests
+#[cfg(test)]
 impl PartialEq<Span> for Span {
     fn eq(&self, other: &Self) -> bool {
         // Skip offset and length, just to make testing a bit easier

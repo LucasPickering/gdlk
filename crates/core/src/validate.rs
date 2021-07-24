@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         source::{LabelDecl, Program, Statement},
-        Jump, Label, Node, Operator, RegisterRef, SpanNode, StackId, StackRef,
+        Instruction, Label, Node, RegisterRef, SpanNode, StackId, StackRef,
         ValueSource,
     },
     error::{CompileError, SourceErrorWrapper, WithSource},
@@ -112,59 +112,55 @@ impl Validate for SpanNode<StackRef> {
     }
 }
 
-impl Validate for SpanNode<Operator<Span>> {
+impl Validate for SpanNode<Instruction<Span>> {
     fn validate(
         &self,
         context: &mut Context,
         errors: &mut Vec<(CompileError, Span)>,
     ) {
         match self.value() {
-            Operator::Read(reg_ref) => {
+            Instruction::Read(reg_ref) => {
                 reg_ref.validate(context, errors);
                 validate_writable(errors, reg_ref);
             }
-            Operator::Write(val_src) => val_src.validate(context, errors),
-            Operator::Set(reg_ref, val_src)
-            | Operator::Add(reg_ref, val_src)
-            | Operator::Sub(reg_ref, val_src)
-            | Operator::Mul(reg_ref, val_src)
-            | Operator::Div(reg_ref, val_src) => {
+            Instruction::Write(val_src) => val_src.validate(context, errors),
+            Instruction::Set(reg_ref, val_src)
+            | Instruction::Add(reg_ref, val_src)
+            | Instruction::Sub(reg_ref, val_src)
+            | Instruction::Mul(reg_ref, val_src)
+            | Instruction::Div(reg_ref, val_src) => {
                 // Make sure the first reg is valid and writable, and the
                 // second is a valid value source
                 reg_ref.validate(context, errors);
                 validate_writable(errors, reg_ref);
                 val_src.validate(context, errors);
             }
-            Operator::Cmp(reg_ref, val_src_1, val_src_2) => {
+            Instruction::Cmp(reg_ref, val_src_1, val_src_2) => {
                 reg_ref.validate(context, errors);
                 validate_writable(errors, reg_ref);
                 val_src_1.validate(context, errors);
                 val_src_2.validate(context, errors);
             }
-            Operator::Push(val_src, stack_ref) => {
+            Instruction::Push(val_src, stack_ref) => {
                 val_src.validate(context, errors);
                 stack_ref.validate(context, errors);
             }
-            Operator::Pop(stack_ref, reg_ref) => {
+            Instruction::Pop(stack_ref, reg_ref) => {
                 stack_ref.validate(context, errors);
                 reg_ref.validate(context, errors);
             }
-        }
-    }
-}
 
-impl Validate for SpanNode<Jump<Span>> {
-    fn validate(
-        &self,
-        context: &mut Context,
-        errors: &mut Vec<(CompileError, Span)>,
-    ) {
-        match self.value() {
-            Jump::Jmp => {}
-            Jump::Jez(val_src)
-            | Jump::Jnz(val_src)
-            | Jump::Jlz(val_src)
-            | Jump::Jgz(val_src) => val_src.validate(context, errors),
+            // Jumps
+            Instruction::Jmp(label) => {
+                label.validate(context, errors);
+            }
+            Instruction::Jez(val_src, label)
+            | Instruction::Jnz(val_src, label)
+            | Instruction::Jlz(val_src, label)
+            | Instruction::Jgz(val_src, label) => {
+                val_src.validate(context, errors);
+                label.validate(context, errors);
+            }
         }
     }
 }
@@ -177,10 +173,8 @@ impl Validate for SpanNode<Statement<Span>> {
     ) {
         match self.value() {
             Statement::Label(_) => {}
-            Statement::Operator(op) => op.validate(context, errors),
-            Statement::Jump(jump, label) => {
-                jump.validate(context, errors);
-                label.validate(context, errors);
+            Statement::Instruction(instruction) => {
+                instruction.validate(context, errors)
             }
         }
     }

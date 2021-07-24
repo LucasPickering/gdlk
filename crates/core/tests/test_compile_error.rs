@@ -70,7 +70,7 @@ fn test_parse_errors_stacks() {
 }
 
 #[test]
-fn test_parse_errors_operators() {
+fn test_parse_errors_simple_instructions() {
     assert_parse_error!("RAD RX0", "Syntax error at 1:1: Expected statement");
     assert_parse_error!("READE RX0", "Syntax error at 1:1: Expected statement");
     assert_parse_error!("PUSH STEVE S0", "Syntax error at 1:6: Expected value");

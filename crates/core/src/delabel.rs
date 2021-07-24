@@ -1,73 +1,48 @@
 use crate::{
     ast::{
-        compiled::{self, Instruction},
+        compiled::{self},
         source::{self, LabelDecl, Statement},
-        Label, Node, SpanNode,
+        Instruction, Node,
     },
     util::Span,
     Compiler, ProgramStats,
 };
 use std::collections::HashMap;
 
-/// Build a mapping of all labels to the their instruction indexes. The indexes
-/// exclude the labels themselves.
-fn map_labels(body: &[SpanNode<Statement<Span>>]) -> HashMap<Label, isize> {
-    let mut label_map: HashMap<Label, isize> = HashMap::new();
-    for (i, stmt) in body.iter().enumerate() {
-        if let Node(Statement::Label(Node(LabelDecl(label), _)), _) = stmt {
-            // Need subtract 1 for each label above us (because they will be
-            // removed from the list)
-            label_map.insert(label.clone(), (i - label_map.len()) as isize);
-        }
-    }
-    label_map
-}
-
-/// Helper that maps one source instruction to a compiled instruction. Meant
-/// to be passed to a .map() for an iter that has .enumerate() on it.
-fn map_statement(
-    label_map: &HashMap<Label, isize>,
-    i: usize,
-    stmt_node: SpanNode<Statement<Span>>,
-) -> SpanNode<Instruction<Span>> {
-    stmt_node.map(|stmt| match stmt {
-        Statement::Label(_) => unreachable!(),
-        Statement::Operator(op) => Instruction::Operator(op),
-        Statement::Jump(jump, Node(label, _)) => {
-            Instruction::Jump(
-                jump,
-                // Get a relative offset to the label. The program would
-                // have to be VERY big for this to break.
-                *label_map.get(&label).unwrap() - i as isize,
-            )
-        }
-    })
-}
-
 impl Compiler<(source::Program<Span>, ProgramStats)> {
-    /// Removes labels from the source, replacing their references with relative
-    /// index offsets.
+    /// Removes labels from the source, and pull them into a separate symbol
+    /// table. The symbol table will map each label to its location in the
+    /// program. The location will be an index into the vector of instructions
+    /// that this function generates for the new program.
     pub(crate) fn delabel(self) -> Compiler<compiled::Program<Span>> {
         let body = self.ast.0.body;
         let stats = self.ast.1;
-        let label_map = map_labels(&body);
 
-        let instructions: Vec<Node<Instruction<_>, _>> = body
-            .into_iter()
-            // Need to filter FIRST so labels don't get tracked in the
-            // indexes
-            .filter(|stmt_node| {
-                !matches!(stmt_node, Node(Statement::Label(_), _))
-            })
-            .enumerate()
-            .map(|(i, stmt_node)| map_statement(&label_map, i, stmt_node))
-            .collect();
+        // Do a pass over the instructions and collect two things:
+        // 1. A mapping of label:index, showing where a label exists in code
+        // 2. All instructions (i.e. all statements *except* labels)
+        // The label indexes will refer to the resulting list of *instructions*,
+        // NOT the input list of *statements*
+        let mut symbol_table = HashMap::new();
+        let mut instructions: Vec<Node<Instruction<_>, _>> = Vec::new();
+        for statement in body {
+            match statement.0 {
+                Statement::Label(Node(LabelDecl(label), _)) => {
+                    symbol_table.insert(label, instructions.len());
+                }
+                Statement::Instruction(instruction_node) => {
+                    instructions.push(instruction_node);
+                }
+            }
+        }
+
         Compiler {
             source: self.source,
             hardware_spec: self.hardware_spec,
             // Stats won't change at this point, just forward them down
             ast: compiled::Program {
                 instructions,
+                symbol_table,
                 stats,
             },
         }
@@ -78,7 +53,7 @@ impl Compiler<(source::Program<Span>, ProgramStats)> {
 mod tests {
     use super::*;
     use crate::{
-        ast::{Jump, Operator, RegisterRef},
+        ast::{Instruction, RegisterRef},
         models::HardwareSpec,
     };
     use std::collections::HashSet;
@@ -100,36 +75,36 @@ mod tests {
                 span,
             ),
             Node(
-                Statement::Jump(
-                    Node(Jump::Jmp, span),
-                    Node("START".into(), span),
-                ),
-                span,
-            ),
-            Node(
-                Statement::Operator(Node(
-                    Operator::Read(Node(RegisterRef::User(0), span)),
+                Statement::Instruction(Node(
+                    Instruction::Jmp(Node("START".into(), span)),
                     span,
                 )),
                 span,
             ),
             Node(
-                Statement::Jump(
-                    Node(Jump::Jmp, span),
-                    Node("START".into(), span),
-                ),
+                Statement::Instruction(Node(
+                    Instruction::Read(Node(RegisterRef::User(0), span)),
+                    span,
+                )),
                 span,
             ),
             Node(
-                Statement::Jump(
-                    Node(Jump::Jmp, span),
-                    Node("END".into(), span),
-                ),
+                Statement::Instruction(Node(
+                    Instruction::Jmp(Node("START".into(), span)),
+                    span,
+                )),
                 span,
             ),
             Node(
-                Statement::Operator(Node(
-                    Operator::Read(Node(RegisterRef::User(0), span)),
+                Statement::Instruction(Node(
+                    Instruction::Jmp(Node("END".into(), span)),
+                    span,
+                )),
+                span,
+            ),
+            Node(
+                Statement::Instruction(Node(
+                    Instruction::Read(Node(RegisterRef::User(0), span)),
                     span,
                 )),
                 span,
@@ -148,23 +123,14 @@ mod tests {
         assert_eq!(
             compiler.delabel().ast.instructions,
             vec![
-                Node(Instruction::Jump(Node(Jump::Jmp, span), 0), span),
+                Node(Instruction::Jmp(Node("START".into(), span)), span),
+                Node(Instruction::Read(Node(RegisterRef::User(0), span)), span),
+                Node(Instruction::Jmp(Node("START".into(), span)), span),
+                Node(Instruction::Jmp(Node("END".into(), span)), span),
                 Node(
-                    Instruction::Operator(Node(
-                        Operator::Read(Node(RegisterRef::User(0), span)),
-                        span
-                    )),
+                    Instruction::Read(Node(RegisterRef::User(0,), span)),
                     span
-                ),
-                Node(Instruction::Jump(Node(Jump::Jmp, span), -2), span),
-                Node(Instruction::Jump(Node(Jump::Jmp, span), 2,), span),
-                Node(
-                    Instruction::Operator(Node(
-                        Operator::Read(Node(RegisterRef::User(0,), span)),
-                        span
-                    )),
-                    span
-                ),
+                )
             ]
         );
     }
