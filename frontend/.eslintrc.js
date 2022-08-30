@@ -5,9 +5,6 @@ module.exports = {
     es6: true,
   },
   parser: '@typescript-eslint/parser',
-  parserOptions: {
-    project: './tsconfig.json',
-  },
   plugins: [
     '@typescript-eslint',
     'react',

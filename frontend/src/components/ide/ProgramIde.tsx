@@ -88,7 +88,7 @@ const ProgramIde: React.FC<{
 
   // When the source changes, save it to local storage and recompile
   // Use a debounce to prevent constant recompilation
-  const debouncedSourceCode = useDebouncedValue(sourceCode, 250);
+  const debouncedSourceCode = useDebouncedValue(sourceCode, 1000);
   useEffect(() => {
     setPuzzleSolution((old) => ({ ...old, sourceCode: debouncedSourceCode }));
 
