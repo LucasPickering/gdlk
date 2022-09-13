@@ -13,7 +13,7 @@ use wasm_bindgen::{prelude::*, JsCast};
 /// The "hardware" that a program can execute on. This defines computing
 /// constraints. This is needed both at compile time and runtime.
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HardwareSpec {
     // TODO make these readonly and camel case in wasm
     /// Number of registers available
@@ -113,7 +113,7 @@ impl Default for HardwareSpec {
 /// program runs on, and defines the expected output, which is used to determine
 /// if the program is correct. Only needed at runtime.
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProgramSpec {
     /// The input values, where the element at position 0 is the first one that
     /// will be popped off.
@@ -167,20 +167,10 @@ impl ProgramSpec {
     }
 }
 
-// Useful for tests and prototyping
-impl Default for ProgramSpec {
-    fn default() -> Self {
-        Self {
-            input: vec![],
-            expected_output: vec![],
-        }
-    }
-}
-
 /// A record of **static** statistics that can be gathered about a program. We
 /// collect these statistics at compile time. They can be used to rank programs,
 /// e.g. finding the minimal number of references need to solve a problem.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProgramStats {
     /// All the registers that are referenced at least once by the program.
     /// This will include registers even if they don't get used at runtime,

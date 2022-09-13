@@ -26,7 +26,7 @@ pub type Label = String;
 
 /// A generic AST node container. This holds the AST node data itself, as well
 /// as some metadata (e.g. source span).
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Node<T, M>(pub T, pub M);
 
 impl<T, M> Node<T, M> {
@@ -98,7 +98,7 @@ impl Display for RegisterRef {
 /// Something that can produce a [LangValue] idempotently. The value
 /// can be read (repeatedly if necessary), but cannot *necessarily* be written
 /// to.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ValueSource<T> {
     /// A static value, fixed at build time
     Const(Node<LangValue, T>),
@@ -110,7 +110,7 @@ pub enum ValueSource<T> {
 /// performs a single basic operation, and takes 0 or more arguments.
 ///
 /// NOTE: All arithmetic operations are wrapping (for overflow/underflow).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Instruction<T> {
     /// Reads one value from the input buffer to a register. If the input is
     /// empty, triggers a runtime error.
@@ -167,12 +167,12 @@ pub mod source {
     use super::*;
 
     /// A label declaration, e.g. "LABEL:"
-    #[derive(Clone, Debug, PartialEq)]
+    #[derive(Clone, Debug, PartialEq, Eq)]
     pub struct LabelDecl(pub Label);
 
     /// A statement is one complete parseable element. Generally, each statement
     /// goes on its own line in the source (but not necessarily).
-    #[derive(Clone, Debug, PartialEq)]
+    #[derive(Clone, Debug, PartialEq, Eq)]
     pub enum Statement<T> {
         /// A label declaration
         Label(Node<LabelDecl, T>),
@@ -181,7 +181,7 @@ pub mod source {
     }
 
     /// A parsed and untransformed program.
-    #[derive(Clone, Debug, PartialEq)]
+    #[derive(Clone, Debug, PartialEq, Eq)]
     pub struct Program<T> {
         pub body: Vec<Node<Statement<T>, T>>,
     }
@@ -195,7 +195,7 @@ pub mod compiled {
     use crate::ProgramStats;
 
     /// A compiled program, ready to be executed.
-    #[derive(Clone, Debug, PartialEq)]
+    #[derive(Clone, Debug, PartialEq, Eq)]
     pub struct Program<T> {
         pub instructions: Vec<Node<Instruction<T>, T>>,
         /// A mapping of label:instruction index. These indexes are _after_ the
@@ -240,7 +240,7 @@ pub mod wasm {
     /// Something that can map to source code. This can be some AST node, or
     /// an error, or something similar.
     #[wasm_bindgen]
-    #[derive(Clone, Debug, Serialize, Deserialize)]
+    #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
     pub struct SourceElement {
         #[wasm_bindgen(skip)]
         pub text: String,

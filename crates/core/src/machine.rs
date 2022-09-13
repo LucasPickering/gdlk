@@ -221,102 +221,102 @@ impl Machine {
                 } else {
                     // Remove the first element in the input
                     let val = self.input.remove(0);
-                    self.set_reg(&reg, val);
+                    self.set_reg(reg, val);
                 }
                 None
             }
             Instruction::Write(src) => {
-                self.output.push(self.get_val_from_src(&src));
+                self.output.push(self.get_val_from_src(src));
                 None
             }
             Instruction::Set(dst, src) => {
-                self.set_reg(&dst, self.get_val_from_src(&src));
+                self.set_reg(dst, self.get_val_from_src(src));
                 None
             }
             Instruction::Add(dst, src) => {
                 self.set_reg(
-                    &dst,
+                    dst,
                     (Wrapping(self.get_reg(*dst.value()))
-                        + Wrapping(self.get_val_from_src(&src)))
+                        + Wrapping(self.get_val_from_src(src)))
                     .0,
                 );
                 None
             }
             Instruction::Sub(dst, src) => {
                 self.set_reg(
-                    &dst,
+                    dst,
                     (Wrapping(self.get_reg(*dst.value()))
-                        - Wrapping(self.get_val_from_src(&src)))
+                        - Wrapping(self.get_val_from_src(src)))
                     .0,
                 );
                 None
             }
             Instruction::Mul(dst, src) => {
                 self.set_reg(
-                    &dst,
+                    dst,
                     (Wrapping(self.get_reg(*dst.value()))
-                        * Wrapping(self.get_val_from_src(&src)))
+                        * Wrapping(self.get_val_from_src(src)))
                     .0,
                 );
                 None
             }
             Instruction::Div(dst, src) => {
-                let divisor = self.get_val_from_src(&src);
+                let divisor = self.get_val_from_src(src);
                 let dividend = self.get_reg(*dst.value());
                 if divisor != 0 {
                     // This does flooring division
-                    self.set_reg(&dst, dividend / divisor);
+                    self.set_reg(dst, dividend / divisor);
                 } else {
                     return Err((RuntimeError::DivideByZero, span));
                 }
                 None
             }
             Instruction::Cmp(dst, src_1, src_2) => {
-                let val_1 = self.get_val_from_src(&src_1);
-                let val_2 = self.get_val_from_src(&src_2);
+                let val_1 = self.get_val_from_src(src_1);
+                let val_2 = self.get_val_from_src(src_2);
                 let cmp = match val_1.cmp(&val_2) {
                     Ordering::Less => -1,
                     Ordering::Equal => 0,
                     Ordering::Greater => 1,
                 };
-                self.set_reg(&dst, cmp);
+                self.set_reg(dst, cmp);
                 None
             }
             Instruction::Push(src, stack_ref) => {
-                self.push_stack(&stack_ref, self.get_val_from_src(&src))?;
+                self.push_stack(stack_ref, self.get_val_from_src(src))?;
                 None
             }
             Instruction::Pop(stack_ref, dst) => {
-                let popped = self.pop_stack(&stack_ref)?;
-                self.set_reg(&dst, popped);
+                let popped = self.pop_stack(stack_ref)?;
+                self.set_reg(dst, popped);
                 None
             }
 
             // Jumps
             Instruction::Jmp(Node(label, _)) => Some(label),
             Instruction::Jez(src, Node(label, _)) => {
-                if self.get_val_from_src(&src) == 0 {
+                if self.get_val_from_src(src) == 0 {
                     Some(label)
                 } else {
                     None
                 }
             }
             Instruction::Jnz(src, Node(label, _)) => {
-                if self.get_val_from_src(&src) != 0 {
+                if self.get_val_from_src(src) != 0 {
                     Some(label)
                 } else {
                     None
                 }
             }
             Instruction::Jlz(src, Node(label, _)) => {
-                if self.get_val_from_src(&src) < 0 {
+                if self.get_val_from_src(src) < 0 {
                     Some(label)
                 } else {
                     None
                 }
             }
             Instruction::Jgz(src, Node(label, _)) => {
-                if self.get_val_from_src(&src) > 0 {
+                if self.get_val_from_src(src) > 0 {
                     Some(label)
                 } else {
                     None

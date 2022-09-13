@@ -447,18 +447,18 @@ impl Compiler<()> {
 mod tests {
     use super::*;
 
-    // Helper to make it a bit easier to create spans for tests
+    /// Helper to make it a bit terser to create spans for tests
     fn span(
+        offset: usize,
+        length: usize,
         start_line: usize,
         start_col: usize,
         end_line: usize,
         end_col: usize,
     ) -> Span {
         Span {
-            // The test implementation of PartialEq doesn't check these fields
-            offset: 0,
-            length: 0,
-
+            offset,
+            length,
             start_line,
             start_col,
             end_line,
@@ -473,9 +473,9 @@ mod tests {
             vec![Node(
                 Statement::Label(Node(
                     LabelDecl("LBL".into()),
-                    span(1, 1, 1, 5)
+                    span(0, 4, 1, 1, 1, 5)
                 )),
-                span(1, 1, 1, 5)
+                span(0, 4, 1, 1, 1, 5)
             )]
         );
         assert_eq!(
@@ -483,9 +483,9 @@ mod tests {
             vec![Node(
                 Statement::Label(Node(
                     LabelDecl("LBL".into()),
-                    span(3, 1, 3, 5)
+                    span(2, 4, 3, 1, 3, 5)
                 )),
-                span(3, 1, 3, 5)
+                span(2, 4, 3, 1, 3, 5)
             )]
         );
         assert_eq!(
@@ -493,9 +493,9 @@ mod tests {
             vec![Node(
                 Statement::Label(Node(
                     LabelDecl("LBL".into()),
-                    span(1, 3, 1, 7)
+                    span(2, 4, 1, 3, 1, 7)
                 )),
-                span(1, 3, 1, 7)
+                span(2, 4, 1, 3, 1, 7)
             )]
         );
         assert_eq!(
@@ -503,9 +503,9 @@ mod tests {
             vec![Node(
                 Statement::Label(Node(
                     LabelDecl("LBL".into()),
-                    span(2, 3, 2, 7)
+                    span(5, 4, 2, 3, 2, 7)
                 )),
-                span(2, 3, 2, 7)
+                span(5, 4, 2, 3, 2, 7)
             )]
         );
     }
@@ -527,30 +527,30 @@ mod tests {
                 Node(
                     Statement::Label(Node(
                         LabelDecl("LBL".into()),
-                        span(2, 17, 2, 21)
+                        span(17, 4, 2, 17, 2, 21)
                     )),
-                    span(2, 17, 2, 21)
+                    span(17, 4, 2, 17, 2, 21)
                 ),
                 Node(
                     Statement::Label(Node(
                         LabelDecl("LBL1".into()),
-                        span(3, 17, 3, 22)
+                        span(38, 5, 3, 17, 3, 22)
                     )),
-                    span(3, 17, 3, 22)
+                    span(38, 5, 3, 17, 3, 22)
                 ),
                 Node(
                     Statement::Label(Node(
                         LabelDecl("LBL_WITH_UNDERSCORE".into()),
-                        span(4, 17, 4, 37)
+                        span(60, 20, 4, 17, 4, 37)
                     )),
-                    span(4, 17, 4, 37)
+                    span(60, 20, 4, 17, 4, 37)
                 ),
                 Node(
                     Statement::Label(Node(
                         LabelDecl("1LBL".into()),
-                        span(5, 17, 5, 22)
+                        span(97, 5, 5, 17, 5, 22)
                     )),
-                    span(5, 17, 5, 22)
+                    span(97, 5, 5, 17, 5, 22)
                 ),
             ]
         );
@@ -572,24 +572,24 @@ mod tests {
                     Statement::Instruction(Node(
                         Instruction::Read(Node(
                             RegisterRef::User(0),
-                            span(2, 22, 2, 25)
+                            span(22, 3, 2, 22, 2, 25)
                         )),
-                        span(2, 17, 2, 25)
+                        span(17, 8, 2, 17, 2, 25)
                     )),
-                    span(2, 17, 2, 25)
+                    span(17, 8, 2, 17, 2, 25)
                 ),
                 Node(
                     Statement::Instruction(Node(
                         Instruction::Write(Node(
                             ValueSource::Register(Node(
                                 RegisterRef::User(0),
-                                span(3, 23, 3, 26)
+                                span(48, 3, 3, 23, 3, 26)
                             )),
-                            span(3, 23, 3, 26)
+                            span(48, 3, 3, 23, 3, 26)
                         )),
-                        span(3, 17, 3, 26)
+                        span(42, 9, 3, 17, 3, 26)
                     )),
-                    span(3, 17, 3, 26)
+                    span(42, 9, 3, 17, 3, 26)
                 )
             ]
         );
@@ -612,88 +612,80 @@ mod tests {
                 Node(
                     Statement::Instruction(Node(
                         Instruction::Set(
-                            Node(RegisterRef::User(1), span(2, 21, 2, 24)),
                             Node(
-                                ValueSource::Const(Node(4, span(2, 25, 2, 26))),
-                                span(2, 25, 2, 26)
+                                RegisterRef::User(1),
+                                span(21, 3, 2, 21, 2, 24)
+                            ),
+                            Node(
+                                ValueSource::Const(Node(
+                                    4,
+                                    span(25, 1, 2, 25, 2, 26)
+                                )),
+                                span(25, 1, 2, 25, 2, 26)
                             )
                         ),
-                        span(2, 17, 2, 26)
+                        span(17, 9, 2, 17, 2, 26)
                     )),
-                    span(2, 17, 2, 26)
+                    span(17, 9, 2, 17, 2, 26)
                 ),
                 Node(
                     Statement::Instruction(Node(
                         Instruction::Set(
-                            Node(RegisterRef::User(1), span(3, 21, 3, 24)),
+                            Node(
+                                RegisterRef::User(1),
+                                span(47, 3, 3, 21, 3, 24)
+                            ),
                             Node(
                                 ValueSource::Register(Node(
                                     RegisterRef::InputLength,
-                                    span(3, 25, 3, 28)
+                                    span(51, 3, 3, 25, 3, 28)
                                 )),
-                                span(3, 25, 3, 28)
+                                span(51, 3, 3, 25, 3, 28)
                             )
                         ),
-                        span(3, 17, 3, 28)
+                        span(43, 11, 3, 17, 3, 28)
                     )),
-                    span(3, 17, 3, 28)
+                    span(43, 11, 3, 17, 3, 28)
                 ),
                 Node(
                     Statement::Instruction(Node(
                         Instruction::Set(
-                            Node(RegisterRef::User(1), span(4, 21, 4, 24)),
+                            Node(
+                                RegisterRef::User(1),
+                                span(75, 3, 4, 21, 4, 24)
+                            ),
                             Node(
                                 ValueSource::Register(Node(
                                     RegisterRef::StackLength(0),
-                                    span(4, 25, 4, 28)
+                                    span(79, 3, 4, 25, 4, 28)
                                 )),
-                                span(4, 25, 4, 28)
+                                span(79, 3, 4, 25, 4, 28)
                             )
                         ),
-                        span(4, 17, 4, 28)
+                        span(71, 11, 4, 17, 4, 28)
                     )),
-                    span(4, 17, 4, 28)
+                    span(71, 11, 4, 17, 4, 28)
                 ),
                 Node(
                     Statement::Instruction(Node(
                         Instruction::Set(
-                            Node(RegisterRef::User(1), span(5, 21, 5, 24)),
+                            Node(
+                                RegisterRef::User(1),
+                                span(103, 3, 5, 21, 5, 24)
+                            ),
                             Node(
                                 ValueSource::Register(Node(
                                     RegisterRef::Null,
-                                    span(5, 25, 5, 28)
+                                    span(107, 3, 5, 25, 5, 28)
                                 )),
-                                span(5, 25, 5, 28)
+                                span(107, 3, 5, 25, 5, 28)
                             )
                         ),
-                        span(5, 17, 5, 28)
+                        span(99, 11, 5, 17, 5, 28)
                     )),
-                    span(5, 17, 5, 28)
+                    span(99, 11, 5, 17, 5, 28)
                 ),
             ]
-        );
-    }
-
-    #[test]
-    fn test_add() {
-        assert_eq!(
-            parse("Add RX1 RX4").unwrap().body,
-            vec![Node(
-                Statement::Instruction(Node(
-                    Instruction::Add(
-                        Node(RegisterRef::User(1), span(1, 5, 1, 8)),
-                        Node(
-                            ValueSource::Register(Node(
-                                RegisterRef::User(4),
-                                span(1, 9, 1, 12)
-                            )),
-                            span(1, 9, 1, 12)
-                        )
-                    ),
-                    span(1, 1, 1, 12)
-                )),
-                span(1, 1, 1, 12)
-            )]
         );
     }
 
@@ -704,15 +696,18 @@ mod tests {
             vec![Node(
                 Statement::Instruction(Node(
                     Instruction::Add(
-                        Node(RegisterRef::User(1), span(1, 5, 1, 8)),
+                        Node(RegisterRef::User(1), span(4, 3, 1, 5, 1, 8)),
                         Node(
-                            ValueSource::Const(Node(-10, span(1, 9, 1, 12))),
-                            span(1, 9, 1, 12)
+                            ValueSource::Const(Node(
+                                -10,
+                                span(8, 3, 1, 9, 1, 12)
+                            )),
+                            span(8, 3, 1, 9, 1, 12)
                         )
                     ),
-                    span(1, 1, 1, 12)
+                    span(0, 11, 1, 1, 1, 12)
                 )),
-                span(1, 1, 1, 12)
+                span(0, 11, 1, 1, 1, 12)
             )]
         );
     }
@@ -725,18 +720,18 @@ mod tests {
             vec![Node(
                 Statement::Instruction(Node(
                     Instruction::Add(
-                        Node(RegisterRef::User(1), span(1, 5, 1, 8)),
+                        Node(RegisterRef::User(1), span(4, 3, 1, 5, 1, 8)),
                         Node(
                             ValueSource::Const(Node(
                                 LangValue::MAX,
-                                span(1, 9, 1, 19)
+                                span(8, 10, 1, 9, 1, 19)
                             )),
-                            span(1, 9, 1, 19)
+                            span(8, 10, 1, 9, 1, 19)
                         )
                     ),
-                    span(1, 1, 1, 19)
+                    span(0, 18, 1, 1, 1, 19)
                 )),
-                span(1, 1, 1, 19)
+                span(0, 18, 1, 1, 1, 19)
             )]
         );
     }
@@ -749,18 +744,41 @@ mod tests {
             vec![Node(
                 Statement::Instruction(Node(
                     Instruction::Add(
-                        Node(RegisterRef::User(1), span(1, 5, 1, 8)),
+                        Node(RegisterRef::User(1), span(4, 3, 1, 5, 1, 8)),
                         Node(
                             ValueSource::Const(Node(
                                 LangValue::min_value(),
-                                span(1, 9, 1, 20)
+                                span(8, 11, 1, 9, 1, 20)
                             )),
-                            span(1, 9, 1, 20)
+                            span(8, 11, 1, 9, 1, 20)
                         )
                     ),
-                    span(1, 1, 1, 20)
+                    span(0, 19, 1, 1, 1, 20)
                 )),
-                span(1, 1, 1, 20)
+                span(0, 19, 1, 1, 1, 20)
+            )]
+        );
+    }
+
+    #[test]
+    fn test_add() {
+        assert_eq!(
+            parse("Add RX1 RX4").unwrap().body,
+            vec![Node(
+                Statement::Instruction(Node(
+                    Instruction::Add(
+                        Node(RegisterRef::User(1), span(4, 3, 1, 5, 1, 8)),
+                        Node(
+                            ValueSource::Register(Node(
+                                RegisterRef::User(4),
+                                span(8, 3, 1, 9, 1, 12)
+                            )),
+                            span(8, 3, 1, 9, 1, 12)
+                        )
+                    ),
+                    span(0, 11, 1, 1, 1, 12)
+                )),
+                span(0, 11, 1, 1, 1, 12)
             )]
         );
     }
@@ -772,18 +790,18 @@ mod tests {
             vec![Node(
                 Statement::Instruction(Node(
                     Instruction::Sub(
-                        Node(RegisterRef::User(1), span(1, 5, 1, 8)),
+                        Node(RegisterRef::User(1), span(4, 3, 1, 5, 1, 8)),
                         Node(
                             ValueSource::Register(Node(
                                 RegisterRef::User(4),
-                                span(1, 9, 1, 12)
+                                span(8, 3, 1, 9, 1, 12)
                             )),
-                            span(1, 9, 1, 12)
+                            span(8, 3, 1, 9, 1, 12)
                         )
                     ),
-                    span(1, 1, 1, 12)
+                    span(0, 11, 1, 1, 1, 12)
                 )),
-                span(1, 1, 1, 12)
+                span(0, 11, 1, 1, 1, 12)
             )]
         );
     }
@@ -795,18 +813,18 @@ mod tests {
             vec![Node(
                 Statement::Instruction(Node(
                     Instruction::Mul(
-                        Node(RegisterRef::User(1), span(1, 5, 1, 8)),
+                        Node(RegisterRef::User(1), span(4, 3, 1, 5, 1, 8)),
                         Node(
                             ValueSource::Register(Node(
                                 RegisterRef::User(4),
-                                span(1, 9, 1, 12)
+                                span(8, 3, 1, 9, 1, 12)
                             )),
-                            span(1, 9, 1, 12)
+                            span(8, 3, 1, 9, 1, 12)
                         )
                     ),
-                    span(1, 1, 1, 12)
+                    span(0, 11, 1, 1, 1, 12)
                 )),
-                span(1, 1, 1, 12)
+                span(0, 11, 1, 1, 1, 12)
             )]
         );
     }
@@ -818,19 +836,25 @@ mod tests {
             vec![Node(
                 Statement::Instruction(Node(
                     Instruction::Cmp(
-                        Node(RegisterRef::User(0), span(1, 5, 1, 8)),
+                        Node(RegisterRef::User(0), span(4, 3, 1, 5, 1, 8)),
                         Node(
-                            ValueSource::Const(Node(5, span(1, 9, 1, 10))),
-                            span(1, 9, 1, 10)
+                            ValueSource::Const(Node(
+                                5,
+                                span(8, 1, 1, 9, 1, 10)
+                            )),
+                            span(8, 1, 1, 9, 1, 10)
                         ),
                         Node(
-                            ValueSource::Const(Node(10, span(1, 11, 1, 13))),
-                            span(1, 11, 1, 13)
+                            ValueSource::Const(Node(
+                                10,
+                                span(10, 2, 1, 11, 1, 13)
+                            )),
+                            span(10, 2, 1, 11, 1, 13)
                         )
                     ),
-                    span(1, 1, 1, 13)
+                    span(0, 12, 1, 1, 1, 13)
                 )),
-                span(1, 1, 1, 13)
+                span(0, 12, 1, 1, 1, 13)
             )]
         );
     }
@@ -845,15 +869,15 @@ mod tests {
                         Node(
                             ValueSource::Register(Node(
                                 RegisterRef::User(2),
-                                span(1, 6, 1, 9)
+                                span(5, 3, 1, 6, 1, 9)
                             )),
-                            span(1, 6, 1, 9)
+                            span(5, 3, 1, 6, 1, 9)
                         ),
-                        Node(StackRef(4), span(1, 10, 1, 12))
+                        Node(StackRef(4), span(9, 2, 1, 10, 1, 12))
                     ),
-                    span(1, 1, 1, 12)
+                    span(0, 11, 1, 1, 1, 12)
                 )),
-                span(1, 1, 1, 12)
+                span(0, 11, 1, 1, 1, 12)
             )]
         );
     }
@@ -865,12 +889,12 @@ mod tests {
             vec![Node(
                 Statement::Instruction(Node(
                     Instruction::Pop(
-                        Node(StackRef(4), span(1, 5, 1, 7)),
-                        Node(RegisterRef::User(2), span(1, 8, 1, 11)),
+                        Node(StackRef(4), span(4, 2, 1, 5, 1, 7)),
+                        Node(RegisterRef::User(2), span(7, 3, 1, 8, 1, 11)),
                     ),
-                    span(1, 1, 1, 11)
+                    span(0, 10, 1, 1, 1, 11)
                 )),
-                span(1, 1, 1, 11)
+                span(0, 10, 1, 1, 1, 11)
             )]
         );
     }
@@ -894,11 +918,11 @@ mod tests {
                     Statement::Instruction(Node(
                         Instruction::Jmp(Node(
                             "LBL".into(),
-                            span(2, 21, 2, 24)
+                            span(21, 3, 2, 21, 2, 24)
                         )),
-                        span(2, 17, 2, 24)
+                        span(17, 7, 2, 17, 2, 24)
                     )),
-                    span(2, 17, 2, 24)
+                    span(17, 7, 2, 17, 2, 24)
                 ),
                 Node(
                     Statement::Instruction(Node(
@@ -906,15 +930,15 @@ mod tests {
                             Node(
                                 ValueSource::Register(Node(
                                     RegisterRef::User(0),
-                                    span(3, 21, 3, 24)
+                                    span(45, 3, 3, 21, 3, 24)
                                 )),
-                                span(3, 21, 3, 24)
+                                span(45, 3, 3, 21, 3, 24)
                             ),
-                            Node("LBL".into(), span(3, 25, 3, 28))
+                            Node("LBL".into(), span(49, 3, 3, 25, 3, 28))
                         ),
-                        span(3, 17, 3, 28)
+                        span(41, 11, 3, 17, 3, 28)
                     )),
-                    span(3, 17, 3, 28)
+                    span(41, 11, 3, 17, 3, 28)
                 ),
                 Node(
                     Statement::Instruction(Node(
@@ -922,15 +946,15 @@ mod tests {
                             Node(
                                 ValueSource::Register(Node(
                                     RegisterRef::User(0),
-                                    span(4, 21, 4, 24)
+                                    span(73, 3, 4, 21, 4, 24)
                                 )),
-                                span(4, 21, 4, 24)
+                                span(73, 3, 4, 21, 4, 24)
                             ),
-                            Node("LBL".into(), span(4, 25, 4, 28)),
+                            Node("LBL".into(), span(77, 3, 4, 25, 4, 28)),
                         ),
-                        span(4, 17, 4, 28)
+                        span(69, 11, 4, 17, 4, 28)
                     )),
-                    span(4, 17, 4, 28)
+                    span(69, 11, 4, 17, 4, 28)
                 ),
                 Node(
                     Statement::Instruction(Node(
@@ -938,15 +962,15 @@ mod tests {
                             Node(
                                 ValueSource::Register(Node(
                                     RegisterRef::User(0),
-                                    span(5, 21, 5, 24)
+                                    span(101, 3, 5, 21, 5, 24)
                                 )),
-                                span(5, 21, 5, 24)
+                                span(101, 3, 5, 21, 5, 24)
                             ),
-                            Node("LBL".into(), span(5, 25, 5, 28))
+                            Node("LBL".into(), span(105, 3, 5, 25, 5, 28))
                         ),
-                        span(5, 17, 5, 28)
+                        span(97, 11, 5, 17, 5, 28)
                     )),
-                    span(5, 17, 5, 28)
+                    span(97, 11, 5, 17, 5, 28)
                 ),
                 Node(
                     Statement::Instruction(Node(
@@ -954,15 +978,15 @@ mod tests {
                             Node(
                                 ValueSource::Register(Node(
                                     RegisterRef::User(0),
-                                    span(6, 21, 6, 24)
+                                    span(129, 3, 6, 21, 6, 24)
                                 )),
-                                span(6, 21, 6, 24)
+                                span(129, 3, 6, 21, 6, 24)
                             ),
-                            Node("LBL".into(), span(6, 25, 6, 28)),
+                            Node("LBL".into(), span(133, 3, 6, 25, 6, 28)),
                         ),
-                        span(6, 17, 6, 28)
+                        span(125, 11, 6, 17, 6, 28)
                     )),
-                    span(6, 17, 6, 28)
+                    span(125, 11, 6, 17, 6, 28)
                 ),
             ]
         )
@@ -982,18 +1006,18 @@ mod tests {
             vec![Node(
                 Statement::Instruction(Node(
                     Instruction::Add(
-                        Node(RegisterRef::User(1), span(3, 21, 3, 24)),
+                        Node(RegisterRef::User(1), span(57, 3, 3, 21, 3, 24)),
                         Node(
                             ValueSource::Register(Node(
                                 RegisterRef::User(4),
-                                span(3, 25, 3, 28)
+                                span(61, 3, 3, 25, 3, 28)
                             )),
-                            span(3, 25, 3, 28)
+                            span(61, 3, 3, 25, 3, 28)
                         )
                     ),
-                    span(3, 17, 3, 28)
+                    span(53, 11, 3, 17, 3, 28)
                 )),
-                span(3, 17, 3, 28)
+                span(53, 11, 3, 17, 3, 28)
             )]
         );
     }
@@ -1018,37 +1042,43 @@ mod tests {
                     Statement::Instruction(Node(
                         Instruction::Read(Node(
                             RegisterRef::User(0),
-                            span(3, 22, 3, 25)
+                            span(53, 3, 3, 22, 3, 25)
                         )),
-                        span(3, 17, 3, 25)
+                        span(48, 8, 3, 17, 3, 25)
                     )),
-                    span(3, 17, 3, 25)
+                    span(48, 8, 3, 17, 3, 25)
                 ),
                 Node(
                     Statement::Instruction(Node(
                         Instruction::Set(
-                            Node(RegisterRef::User(0), span(5, 21, 5, 24)),
                             Node(
-                                ValueSource::Const(Node(2, span(5, 25, 5, 26))),
-                                span(5, 25, 5, 26)
+                                RegisterRef::User(0),
+                                span(108, 3, 5, 21, 5, 24)
+                            ),
+                            Node(
+                                ValueSource::Const(Node(
+                                    2,
+                                    span(112, 1, 5, 25, 5, 26)
+                                )),
+                                span(112, 1, 5, 25, 5, 26)
                             )
                         ),
-                        span(5, 17, 5, 26)
+                        span(104, 9, 5, 17, 5, 26)
                     )),
-                    span(5, 17, 5, 26)
+                    span(104, 9, 5, 17, 5, 26)
                 ),
                 Node(
                     Statement::Instruction(Node(
                         Instruction::Write(Node(
                             ValueSource::Register(Node(
                                 RegisterRef::User(0),
-                                span(6, 23, 6, 26)
+                                span(155, 3, 6, 23, 6, 26)
                             )),
-                            span(6, 23, 6, 26)
+                            span(155, 3, 6, 23, 6, 26)
                         )),
-                        span(6, 17, 6, 26)
+                        span(149, 9, 6, 17, 6, 26)
                     )),
-                    span(6, 17, 6, 26)
+                    span(149, 9, 6, 17, 6, 26)
                 )
             ]
         );

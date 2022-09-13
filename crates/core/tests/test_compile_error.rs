@@ -107,11 +107,11 @@ fn test_parse_errors_constants() {
 
     // Out-of-range constants
     assert_parse_error!(
-        &format!("SET RX0 {}", LangValue::MAX as isize + 1),
+        &format!("SET RX0 {}", LangValue::MAX as i64 + 1),
         "Syntax error at 1:9: Expected value"
     );
     assert_parse_error!(
-        &format!("SET RX0 {}", LangValue::MIN as isize - 1),
+        &format!("SET RX0 {}", LangValue::MIN as i64 - 1),
         "Syntax error at 1:9: Expected value"
     );
 }

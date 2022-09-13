@@ -63,7 +63,7 @@ fn load_spec<T: Default + DeserializeOwned>(
     match path_opt {
         None => Ok(T::default()),
         Some(path) => {
-            let spec_str = read_file(&path)?;
+            let spec_str = read_file(path)?;
             Ok(serde_json::from_str(&spec_str)?)
         }
     }
