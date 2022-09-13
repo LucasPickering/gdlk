@@ -1,20 +1,20 @@
-import React, { useContext } from 'react';
-import { LangValue, IdeContext } from '@root/state/ide';
-import { makeStyles, Typography } from '@material-ui/core';
-import LangValueDisplay from './LangValueDisplay';
-import clsx from 'clsx';
+import React, { useContext } from "react";
+import { LangValue, IdeContext } from "@root/state/ide";
+import { makeStyles, Typography } from "@material-ui/core";
+import LangValueDisplay from "./LangValueDisplay";
+import clsx from "clsx";
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   registers: {
     padding: spacing(1),
     backgroundColor: palette.background.default,
-    display: 'flex',
+    display: "flex",
   },
   register: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-end',
-    '&:not(:first-child)': {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-end",
+    "&:not(:first-child)": {
       paddingLeft: spacing(2),
     },
   },
@@ -39,7 +39,7 @@ const RegistersInfo: React.FC<{
   const localClasses = useLocalStyles();
   const { wasmHardwareSpec, compiledState } = useContext(IdeContext);
   const machineState =
-    compiledState?.type === 'compiled' ? compiledState.machineState : undefined;
+    compiledState?.type === "compiled" ? compiledState.machineState : undefined;
 
   return (
     <div className={clsx(localClasses.registers, className)}>

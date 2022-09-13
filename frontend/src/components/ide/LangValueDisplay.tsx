@@ -1,12 +1,12 @@
-import React from 'react';
-import { LangValue } from '@root/state/ide';
-import { makeStyles, Typography } from '@material-ui/core';
-import clsx from 'clsx';
+import React from "react";
+import { LangValue } from "@root/state/ide";
+import { makeStyles, Typography } from "@material-ui/core";
+import clsx from "clsx";
 
 const useLocalStyles = makeStyles(() => ({
   langValueDisplay: {
     minWidth: 60, // Based on the min/max value
-    textAlign: 'right',
+    textAlign: "right",
     lineHeight: 1.1,
   },
 }));
@@ -23,7 +23,7 @@ const LangValueDisplay: React.FC<{ className?: string; value?: LangValue }> = ({
   const localClasses = useLocalStyles();
   return (
     <Typography className={clsx(className, localClasses.langValueDisplay)}>
-      {value ?? '-'}
+      {value ?? "-"}
     </Typography>
   );
 };

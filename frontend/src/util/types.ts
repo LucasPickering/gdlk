@@ -34,4 +34,4 @@ export interface PuzzleSolution {
  * - solved: completed *at some point*. If a puzzle has been solved once, it
  *  will always be tagged as solved, even if they delete the solution
  */
-export type PuzzleCompletion = 'locked' | 'unlocked' | 'solved';
+export type PuzzleCompletion = "locked" | "unlocked" | "solved";

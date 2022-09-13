@@ -1,17 +1,17 @@
-import { makeStyles, Typography } from '@material-ui/core';
-import React from 'react';
-import Link from './Link';
-import clsx from 'clsx';
+import { makeStyles, Typography } from "@material-ui/core";
+import React from "react";
+import Link from "./Link";
+import clsx from "clsx";
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   pageContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    height: '100%',
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    height: "100%",
   },
   pageBody: {
-    width: '100%',
+    width: "100%",
   },
   pageBodyNotFullScreen: {
     maxWidth: 1280,
@@ -19,20 +19,20 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
     paddingBottom: 0,
   },
   pageBodyFullScreen: {
-    height: '100%',
-    overflowY: 'hidden',
+    height: "100%",
+    overflowY: "hidden",
   },
   pageFooter: {
-    marginTop: 'auto',
+    marginTop: "auto",
     padding: spacing(2),
-    display: 'flex',
-    justifyContent: 'center',
-    '& > *': {
+    display: "flex",
+    justifyContent: "center",
+    "& > *": {
       padding: `0px ${spacing(0.5)}px`,
     },
-    '& > * + *': {
+    "& > * + *": {
       borderLeftWidth: 1,
-      borderLeftStyle: 'solid',
+      borderLeftStyle: "solid",
       borderLeftColor: palette.divider,
     },
   },
@@ -68,7 +68,7 @@ const PageContainer: React.FC<Props> & { defaultProps: Partial<Props> } = ({
       {!fullScreen && (
         <footer className={localClasses.pageFooter}>
           <Typography variant="body2">
-            Created by <Link to="https://github.com/JRMurr">John Murray</Link>{' '}
+            Created by <Link to="https://github.com/JRMurr">John Murray</Link>{" "}
             and <Link to="https://lucaspickering.me">Lucas Pickering</Link>
           </Typography>
           <Link to="https://github.com/LucasPickering/gdlk">GitHub</Link>

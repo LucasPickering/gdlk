@@ -1,8 +1,8 @@
-import React from 'react';
+import React from "react";
 // We really do want to import the React Router link here
 // eslint-disable-next-line no-restricted-syntax
-import { Link as RouterLink } from 'react-router-dom';
-import { History, Location, LocationDescriptorObject } from 'history';
+import { Link as RouterLink } from "react-router-dom";
+import { History, Location, LocationDescriptorObject } from "history";
 
 type Props = React.ComponentProps<typeof RouterLink>;
 
@@ -20,15 +20,15 @@ function getHashFragment(
     | ((location: Location<unknown>) => History.LocationDescriptor<unknown>)
 ): string {
   let s: string;
-  if (typeof to === 'string') {
+  if (typeof to === "string") {
     s = to;
-  } else if (typeof to === 'object' && typeof to.hash === 'string') {
+  } else if (typeof to === "object" && typeof to.hash === "string") {
     s = to.hash;
   } else {
-    s = '';
+    s = "";
   }
   // Get everything after the first #
-  return s.substring(s.indexOf('#') + 1);
+  return s.substring(s.indexOf("#") + 1);
 }
 
 /**
@@ -57,8 +57,8 @@ const UnstyledLink = React.forwardRef(
           href={destString}
           {...(external
             ? {
-                target: '_blank',
-                rel: 'noopener noreferrer',
+                target: "_blank",
+                rel: "noopener noreferrer",
               }
             : {})}
           {...rest}
@@ -99,6 +99,6 @@ const UnstyledLink = React.forwardRef(
   }
 );
 
-UnstyledLink.displayName = 'UnstyledLink';
+UnstyledLink.displayName = "UnstyledLink";
 
 export default UnstyledLink;

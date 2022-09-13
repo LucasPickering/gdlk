@@ -1,5 +1,5 @@
-import { ScreenSize } from '@root/util/styles';
-import { useMediaQuery, useTheme } from '@material-ui/core';
+import { ScreenSize } from "@root/util/styles";
+import { useMediaQuery, useTheme } from "@material-ui/core";
 
 /**
  * Gets the current screen size.
@@ -7,7 +7,7 @@ import { useMediaQuery, useTheme } from '@material-ui/core';
 const useScreenSize = (): ScreenSize => {
   // If you update the logic here, make sure to change it in styles.ts too
   const { breakpoints } = useTheme();
-  return useMediaQuery(breakpoints.up('sm')) ? 'large' : 'small';
+  return useMediaQuery(breakpoints.up("sm")) ? "large" : "small";
 };
 
 export default useScreenSize;

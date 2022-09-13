@@ -1,24 +1,24 @@
-import React, { useContext } from 'react';
-import { makeStyles } from '@material-ui/core';
-import clsx from 'clsx';
-import { IdeContext, gdlkSpanToAce } from '@root/state/ide';
-import AceEditor, { IAnnotation, IMarker, IEditorProps } from 'react-ace';
-import 'ace-builds/src-noconflict/theme-terminal';
-import GDLKMode from '@root/util/ace_mode';
+import React, { useContext } from "react";
+import { makeStyles } from "@material-ui/core";
+import clsx from "clsx";
+import { IdeContext, gdlkSpanToAce } from "@root/state/ide";
+import AceEditor, { IAnnotation, IMarker, IEditorProps } from "react-ace";
+import "ace-builds/src-noconflict/theme-terminal";
+import GDLKMode from "@root/util/ace_mode";
 
 const useLocalStyles = makeStyles(({ palette }) => ({
   codeEditor: {
-    display: 'flex',
-    overflowY: 'auto',
+    display: "flex",
+    overflowY: "auto",
     backgroundColor: palette.background.default,
-    textTransform: 'none',
+    textTransform: "none",
   },
   errorSpan: {
-    position: 'absolute',
+    position: "absolute",
     backgroundColor: palette.error.dark,
   },
   activeInstruction: {
-    position: 'absolute', // Don't remove this!
+    position: "absolute", // Don't remove this!
     backgroundColor: palette.grey[600],
   },
 }));
@@ -35,7 +35,7 @@ const CodeEditor: React.FC<{ className?: string }> = ({ className }) => {
   const annotations: IAnnotation[] = [];
 
   switch (compiledState?.type) {
-    case 'compiled':
+    case "compiled":
       {
         // Highlight the NEXT instruction to be executed
         const {
@@ -47,7 +47,7 @@ const CodeEditor: React.FC<{ className?: string }> = ({ className }) => {
           markers.push({
             ...gdlkSpanToAce(nextInstruction.span),
             className: localClasses.activeInstruction,
-            type: 'fullLine',
+            type: "fullLine",
           });
         }
 
@@ -56,31 +56,31 @@ const CodeEditor: React.FC<{ className?: string }> = ({ className }) => {
           markers.push({
             ...aceSpan,
             className: localClasses.activeInstruction,
-            type: 'fullLine',
+            type: "fullLine",
           });
           annotations.push({
             row: aceSpan.startRow,
             column: aceSpan.startCol,
             text: runtimeError.text,
-            type: 'error',
+            type: "error",
           });
         }
       }
       break;
 
-    case 'error':
+    case "error":
       compiledState.errors.forEach((error) => {
         const aceSpan = gdlkSpanToAce(error.span);
         markers.push({
           ...aceSpan,
           className: localClasses.errorSpan,
-          type: 'text',
+          type: "text",
         });
         annotations.push({
           row: aceSpan.startRow,
           column: aceSpan.startCol,
           text: error.text,
-          type: 'error',
+          type: "error",
         });
       });
       break;

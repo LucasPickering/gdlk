@@ -4,10 +4,10 @@ import type {
   SourceElement,
   ProgramSpec,
   Machine,
-} from 'gdlk_wasm';
-import { LangValue } from '@root/state/ide';
-import { isTypedArray } from './guards';
-const gdlk = await import('gdlk_wasm');
+} from "gdlk_wasm";
+import { LangValue } from "@root/state/ide";
+import { isTypedArray } from "./guards";
+const gdlk = await import("gdlk_wasm");
 
 export interface CompileErrors {
   errors: SourceElement[];
@@ -23,7 +23,7 @@ export interface CompileErrors {
 function isSourceElement(value: object): value is SourceElement {
   // TODO make this more robust after
   // https://github.com/Microsoft/TypeScript/issues/21732
-  return 'text' in value && 'span' in value;
+  return "text" in value && "span" in value;
 }
 
 export interface MachineState {
@@ -100,8 +100,8 @@ export class MachineWrapper {
 }
 
 export type CompileResult =
-  | { type: 'compiled'; instructions: SourceElement[]; machine: MachineWrapper }
-  | { type: 'error'; errors: SourceElement[] };
+  | { type: "compiled"; instructions: SourceElement[]; machine: MachineWrapper }
+  | { type: "error"; errors: SourceElement[] };
 
 export class Compiler {
   static compile(
@@ -113,14 +113,14 @@ export class Compiler {
       const result = gdlk.compile(hardwareSpec, programSpec, source);
 
       return {
-        type: 'compiled',
+        type: "compiled",
         instructions: result.instructions,
         machine: new MachineWrapper(result.machine),
       };
     } catch (e) {
       // Check that the error value matches the expected compile error format
       if (isTypedArray(isSourceElement, e)) {
-        return { type: 'error', errors: e };
+        return { type: "error", errors: e };
       }
       // Unknown error, blow up!
       throw e;

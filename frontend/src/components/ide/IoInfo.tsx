@@ -1,14 +1,14 @@
-import React, { useContext } from 'react';
-import { IdeContext } from '@root/state/ide';
-import { makeStyles } from '@material-ui/core';
-import BufferDisplay from './BufferDisplay';
-import clsx from 'clsx';
+import React, { useContext } from "react";
+import { IdeContext } from "@root/state/ide";
+import { makeStyles } from "@material-ui/core";
+import BufferDisplay from "./BufferDisplay";
+import clsx from "clsx";
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   ioBuffers: {
     backgroundColor: palette.background.default,
     padding: spacing(1),
-    display: 'flex',
+    display: "flex",
   },
 }));
 
@@ -21,7 +21,7 @@ const IoInfo: React.FC<{
   const input = Array.from(wasmProgramSpec.input);
   const expectedOutput = Array.from(wasmProgramSpec.expectedOutput);
   const machineState =
-    compiledState?.type === 'compiled' ? compiledState.machineState : undefined;
+    compiledState?.type === "compiled" ? compiledState.machineState : undefined;
 
   return (
     <div className={clsx(localClasses.ioBuffers, className)}>

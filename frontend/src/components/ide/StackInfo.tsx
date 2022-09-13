@@ -1,20 +1,20 @@
-import React, { useContext } from 'react';
-import { IdeContext } from '@root/state/ide';
-import { makeStyles } from '@material-ui/core';
-import BufferDisplay from './BufferDisplay';
-import clsx from 'clsx';
+import React, { useContext } from "react";
+import { IdeContext } from "@root/state/ide";
+import { makeStyles } from "@material-ui/core";
+import BufferDisplay from "./BufferDisplay";
+import clsx from "clsx";
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   stackInfo: {
-    display: 'flex',
-    flexDirection: 'column',
+    display: "flex",
+    flexDirection: "column",
     padding: spacing(1),
     backgroundColor: palette.background.default,
-    height: '100%',
+    height: "100%",
   },
   stack: {
-    maxHeight: '100%',
-    paddingLeft: '0 !important',
+    maxHeight: "100%",
+    paddingLeft: "0 !important",
   },
 }));
 
@@ -24,7 +24,7 @@ const StackInfo: React.FC<{
   const localClasses = useLocalStyles();
   const { wasmHardwareSpec, compiledState } = useContext(IdeContext);
   const machineState =
-    compiledState?.type === 'compiled' ? compiledState.machineState : undefined;
+    compiledState?.type === "compiled" ? compiledState.machineState : undefined;
 
   return (
     <div className={clsx(localClasses.stackInfo, className)}>

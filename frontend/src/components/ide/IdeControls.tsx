@@ -4,28 +4,28 @@ import React, {
   useContext,
   useEffect,
   useRef,
-} from 'react';
-import { makeStyles } from '@material-ui/core';
+} from "react";
+import { makeStyles } from "@material-ui/core";
 import {
   Pause as IconPause,
   PlayArrow as IconPlayArrow,
   Refresh as IconRefresh,
   NavigateNext as IconNavigateNext,
   SkipNext as IconSkipNext,
-} from '@material-ui/icons';
-import { ToggleButton, ToggleButtonGroup } from '@material-ui/lab';
-import { IdeContext } from '@root/state/ide';
-import clsx from 'clsx';
-import IconButton from '@root/components/common/IconButton';
+} from "@material-ui/icons";
+import { ToggleButton, ToggleButtonGroup } from "@material-ui/lab";
+import { IdeContext } from "@root/state/ide";
+import clsx from "clsx";
+import IconButton from "@root/components/common/IconButton";
 
 const DEFAULT_STEP_INTERVAL = 1000; // ms between steps at 1x speed
 const STEP_SPEED_OPTIONS: number[] = [2, 20];
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   controls: {
-    display: 'flex',
-    justifyContent: 'end',
-    alignItems: 'center',
+    display: "flex",
+    justifyContent: "end",
+    alignItems: "center",
 
     backgroundColor: palette.background.default,
   },
@@ -56,7 +56,7 @@ const IdeControls: React.FC<{
   const intervalIdRef = useRef<number | undefined>();
 
   const machineState =
-    compiledState?.type === 'compiled' ? compiledState.machineState : undefined;
+    compiledState?.type === "compiled" ? compiledState.machineState : undefined;
 
   useEffect(() => {
     window.clearInterval(intervalIdRef.current);
@@ -90,7 +90,7 @@ const IdeControls: React.FC<{
         </IconButton>
 
         <IconButton
-          title={stepping ? 'Pause Execution' : 'Execute Program'}
+          title={stepping ? "Pause Execution" : "Execute Program"}
           disabled={!machineState || machineState.terminated}
           onClick={() => setStepping((prev) => !prev)}
         >
@@ -106,7 +106,7 @@ const IdeControls: React.FC<{
         </IconButton>
 
         <IconButton
-          title={'Reset Program'}
+          title={"Reset Program"}
           // Disable if the program hasn't started yet
           disabled={!machineState || machineState.cycleCount === 0}
           onClick={() => {
@@ -136,7 +136,7 @@ const IdeControls: React.FC<{
             value={speed}
             aria-label={`${speed} times speed`}
           >
-            {'>'.repeat(i + 1)}
+            {">".repeat(i + 1)}
           </ToggleButton>
         ))}
       </ToggleButtonGroup>

@@ -1,7 +1,7 @@
-import React, { ReactNode, useContext } from 'react';
-import { Typography } from '@material-ui/core';
-import DocsSection from '../DocsSection';
-import { DocsContext, DocsContextType } from '@root/state/docs';
+import React, { ReactNode, useContext } from "react";
+import { Typography } from "@material-ui/core";
+import DocsSection from "../DocsSection";
+import { DocsContext, DocsContextType } from "@root/state/docs";
 
 interface Register {
   name: string;
@@ -15,7 +15,7 @@ interface Register {
 
 const REGISTERS: Register[] = [
   {
-    name: 'RZR',
+    name: "RZR",
     writable: true,
     summary: (
       <>
@@ -25,7 +25,7 @@ const REGISTERS: Register[] = [
     ),
   },
   {
-    name: 'RLI',
+    name: "RLI",
     writable: false,
     summary: (
       <>
@@ -34,19 +34,19 @@ const REGISTERS: Register[] = [
     ),
   },
   {
-    name: 'RSx',
+    name: "RSx",
     writable: false,
     summary: (
       <>
         Holds the current number of values in the corresponding stack. There is
-        one of these for each stack in the machine. Stacks start at{' '}
+        one of these for each stack in the machine. Stacks start at{" "}
         <code>S0</code>, so these start at <code>RS0</code>.
       </>
     ),
     isVisible: (context) => context.showStacks,
   },
   {
-    name: 'RXx',
+    name: "RXx",
     writable: true,
     summary: (
       <>
@@ -54,7 +54,7 @@ const REGISTERS: Register[] = [
         freely. Writing overwrites the existing value in the register. The
         number of <code>RXx</code> registers available depends on how many are
         installed in your GDLKx PC. Register IDs start at 0 and increment from
-        there. For example, a PC with two general-purpose registers will have{' '}
+        there. For example, a PC with two general-purpose registers will have{" "}
         <code>RX0</code> and <code>RX1</code>.
       </>
     ),
@@ -98,7 +98,7 @@ const RegisterDocs: React.FC = () => {
               <td>
                 <code>{name}</code>
               </td>
-              <td>{writable ? 'Yes' : 'No'}</td>
+              <td>{writable ? "Yes" : "No"}</td>
               <td>{summary}</td>
             </tr>
           ))}

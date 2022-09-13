@@ -1,16 +1,16 @@
-import React, { useEffect } from 'react';
+import React, { useEffect } from "react";
 import {
   List,
   ListItem,
   ListItemText,
   ListItemIcon,
   makeStyles,
-} from '@material-ui/core';
-import { Puzzle } from '@root/util/types';
-import UnstyledLink from '../common/UnstyledLink';
-import { Done as IconDone } from '@material-ui/icons';
-import { useRecoilValue } from 'recoil';
-import { puzzleCompletionState } from '@root/state/user';
+} from "@material-ui/core";
+import { Puzzle } from "@root/util/types";
+import UnstyledLink from "../common/UnstyledLink";
+import { Done as IconDone } from "@material-ui/icons";
+import { useRecoilValue } from "recoil";
+import { puzzleCompletionState } from "@root/state/user";
 
 const useLocalStyles = makeStyles(({ palette }) => ({
   solvedIcon: {
@@ -57,7 +57,7 @@ const PuzzleListItem: React.FC<
   {
     puzzle: Puzzle;
     link?: boolean;
-  } & Omit<React.ComponentProps<typeof ListItem>, 'button'>
+  } & Omit<React.ComponentProps<typeof ListItem>, "button">
 > = ({ puzzle, link, ...rest }) => {
   const localClasses = useLocalStyles();
   const completion = useRecoilValue(
@@ -67,7 +67,7 @@ const PuzzleListItem: React.FC<
   return (
     <ListItem
       key={puzzle.name}
-      disabled={completion === 'locked'}
+      disabled={completion === "locked"}
       button
       {...(link
         ? {
@@ -78,7 +78,7 @@ const PuzzleListItem: React.FC<
       {...rest}
     >
       <ListItemText primary={puzzle.name} />
-      {completion === 'solved' && (
+      {completion === "solved" && (
         <ListItemIcon className={localClasses.solvedIcon}>
           <IconDone />
         </ListItemIcon>

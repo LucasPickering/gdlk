@@ -1,29 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { makeStyles } from '@material-ui/core';
-import CodeEditor from './CodeEditor';
-import RegistersInfo from './RegistersInfo';
-import { IdeContextType, IdeContext } from '@root/state/ide';
-import IoInfo from './IoInfo';
-import StackInfo from './StackInfo';
-import IdeControls from './IdeControls';
-import ProgramStatus from './ProgramStatus';
-import useDebouncedValue from '@root/hooks/useDebouncedValue';
-import PromptOnExit from '@root/components/common/PromptOnExit';
-import useCompiler from './useCompiler';
-import { Puzzle } from '@root/util/types';
-import { useRecoilState, useRecoilValue } from 'recoil';
-import { hardwareSpecState, puzzleSolutionStateFamily } from '@root/state/user';
+import React, { useState, useEffect } from "react";
+import { makeStyles } from "@material-ui/core";
+import CodeEditor from "./CodeEditor";
+import RegistersInfo from "./RegistersInfo";
+import { IdeContextType, IdeContext } from "@root/state/ide";
+import IoInfo from "./IoInfo";
+import StackInfo from "./StackInfo";
+import IdeControls from "./IdeControls";
+import ProgramStatus from "./ProgramStatus";
+import useDebouncedValue from "@root/hooks/useDebouncedValue";
+import PromptOnExit from "@root/components/common/PromptOnExit";
+import useCompiler from "./useCompiler";
+import { Puzzle } from "@root/util/types";
+import { useRecoilState, useRecoilValue } from "recoil";
+import { hardwareSpecState, puzzleSolutionStateFamily } from "@root/state/user";
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => {
   const border = `2px solid ${palette.divider}`;
   return {
     programIde: {
-      textTransform: 'uppercase',
-      width: '100%',
-      height: '100%',
-      display: 'grid',
-      gridTemplateRows: 'auto auto 1fr 1fr',
-      gridTemplateColumns: 'auto 1fr auto auto',
+      textTransform: "uppercase",
+      width: "100%",
+      height: "100%",
+      display: "grid",
+      gridTemplateRows: "auto auto 1fr 1fr",
+      gridTemplateColumns: "auto 1fr auto auto",
       gridTemplateAreas: `
       'io rg rg sk'
       'io st ct sk'
@@ -33,30 +33,30 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => {
       border,
     },
     registersInfo: {
-      gridArea: 'rg',
+      gridArea: "rg",
       borderBottom: border,
       borderRight: border,
     },
     ioInfo: {
-      gridArea: 'io',
+      gridArea: "io",
       borderRight: border,
     },
     programStatus: {
-      gridArea: 'st',
+      gridArea: "st",
       borderBottom: border,
     },
     controls: {
-      gridArea: 'ct',
+      gridArea: "ct",
       borderBottom: border,
       borderRight: border,
     },
     editor: {
-      gridArea: 'ed',
+      gridArea: "ed",
       borderRight: border,
     },
 
     stackInfo: {
-      gridArea: 'sk',
+      gridArea: "sk",
       padding: spacing(1),
     },
   };
@@ -101,7 +101,7 @@ const ProgramIde: React.FC<{
 
   // If at any point we hit a success state, permanently tag the puzzle as solved
   const machineState =
-    compiledState?.type === 'compiled' ? compiledState.machineState : undefined;
+    compiledState?.type === "compiled" ? compiledState.machineState : undefined;
   const successful = machineState?.successful ?? false;
   useEffect(() => {
     if (successful) {

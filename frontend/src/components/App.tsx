@@ -1,10 +1,10 @@
-import { CssBaseline, CircularProgress } from '@material-ui/core';
-import React, { Suspense } from 'react';
-import { ThemeProvider } from '@material-ui/styles';
-import theme from '@root/util/theme';
-import CoreContent from './CoreContent';
-import { BrowserRouter } from 'react-router-dom';
-import { RecoilRoot } from 'recoil';
+import { CssBaseline, CircularProgress } from "@material-ui/core";
+import React, { Suspense } from "react";
+import { ThemeProvider } from "@material-ui/styles";
+import theme from "@root/util/theme";
+import CoreContent from "./CoreContent";
+import { BrowserRouter } from "react-router-dom";
+import { RecoilRoot } from "recoil";
 
 /**
  * Root component in the app

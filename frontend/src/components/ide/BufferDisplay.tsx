@@ -1,37 +1,37 @@
-import React from 'react';
-import { LangValue } from '@root/state/ide';
-import { makeStyles, Typography } from '@material-ui/core';
-import { range } from 'lodash-es';
-import clsx from 'clsx';
-import LangValueDisplay from './LangValueDisplay';
+import React from "react";
+import { LangValue } from "@root/state/ide";
+import { makeStyles, Typography } from "@material-ui/core";
+import { range } from "lodash-es";
+import clsx from "clsx";
+import LangValueDisplay from "./LangValueDisplay";
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   bufferDisplay: {
-    display: 'flex',
-    flexDirection: 'column',
+    display: "flex",
+    flexDirection: "column",
 
     // Spacing between multiple buffers
-    '&:not(:first-child)': {
+    "&:not(:first-child)": {
       paddingLeft: spacing(1),
     },
   },
 
   buffer: {
-    display: 'flex',
+    display: "flex",
   },
   bufferCells: {
-    display: 'flex',
-    flexDirection: 'column',
+    display: "flex",
+    flexDirection: "column",
     padding: spacing(0.5),
     border: `2px solid ${palette.divider}`,
-    overflowY: 'auto',
+    overflowY: "auto",
 
-    '& + &': {
+    "& + &": {
       borderLeft: 0,
     },
   },
   bufferCellsInverted: {
-    flexDirection: 'column-reverse',
+    flexDirection: "column-reverse",
   },
 }));
 

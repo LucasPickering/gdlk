@@ -1,27 +1,27 @@
-import React from 'react';
-import { makeStyles, Typography, Theme } from '@material-ui/core';
-import { Link as IconLink } from '@material-ui/icons';
-import Link from '@root/components/common/Link';
+import React from "react";
+import { makeStyles, Typography, Theme } from "@material-ui/core";
+import { Link as IconLink } from "@material-ui/icons";
+import Link from "@root/components/common/Link";
 
 type Level = 2 | 3 | 4 | 5;
 
 // We need to statically map these so that TS can handle the types
-const HEADER_MAPPINGS: Record<Level, 'h2' | 'h3' | 'h4' | 'h5'> = {
-  2: 'h2',
-  3: 'h3',
-  4: 'h4',
-  5: 'h5',
+const HEADER_MAPPINGS: Record<Level, "h2" | "h3" | "h4" | "h5"> = {
+  2: "h2",
+  3: "h3",
+  4: "h4",
+  5: "h5",
 };
 
 // We need to override the key type to make the dynamic classes work
 const useLocalStyles = makeStyles<Theme>(({ spacing }) => ({
   docsSection: {},
-  'docsSectionContent--3': {
+  "docsSectionContent--3": {
     padding: `0 ${spacing(2)}px`,
   },
   docsSectionHeader: {
-    display: 'flex',
-    alignItems: 'center',
+    display: "flex",
+    alignItems: "center",
   },
   docsSectionLink: {
     fontSize: 0,

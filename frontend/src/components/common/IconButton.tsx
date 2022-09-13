@@ -1,16 +1,16 @@
-import React from 'react';
+import React from "react";
 import {
   IconButton as MuiIconButton,
   Tooltip,
   CircularProgress,
   makeStyles,
-} from '@material-ui/core';
+} from "@material-ui/core";
 
 const useLocalStyles = makeStyles({
   loading: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
+    position: "absolute",
+    top: "50%",
+    left: "50%",
     marginTop: -12,
     marginLeft: -12,
   },
@@ -39,13 +39,13 @@ const IconButton = ({
     <MuiIconButton
       aria-label={title}
       color={color}
-      {...(loading ? { 'aria-busy': 'true', 'aria-live': 'polite' } : {})}
+      {...(loading ? { "aria-busy": "true", "aria-live": "polite" } : {})}
       {...rest}
     >
       {loading ? (
         <CircularProgress
           className={localClasses.loading}
-          color={color === 'default' ? 'inherit' : color}
+          color={color === "default" ? "inherit" : color}
           size={24}
         />
       ) : (

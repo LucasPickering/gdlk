@@ -1,7 +1,7 @@
-import React from 'react';
-import { Typography } from '@material-ui/core';
-import DocsSection from '../DocsSection';
-import InstructionDocs from './InstructionDocs';
+import React from "react";
+import { Typography } from "@material-ui/core";
+import DocsSection from "../DocsSection";
+import InstructionDocs from "./InstructionDocs";
 
 const MIN_LANG_VALUE = -2147483648;
 const MAX_LANG_VALUE = 2147483647;
@@ -15,7 +15,7 @@ const LanguageDocs: React.FC = () => (
     <DocsSection id="values" level={3} title="Values">
       <Typography>
         All GDLK values are 32-bit signed integers, meaning they fall in the
-        range{' '}
+        range{" "}
         <code>
           [{MIN_LANG_VALUE}, {MAX_LANG_VALUE}]
         </code>
@@ -28,11 +28,11 @@ const LanguageDocs: React.FC = () => (
       </Typography>
       <Typography>
         When an arithmetic instruction causes a value to go above the max or
-        below the min, the value wraps around. For example,{' '}
+        below the min, the value wraps around. For example,{" "}
         <code>
           {MAX_LANG_VALUE} + 1 = {MIN_LANG_VALUE}
         </code>
-        , and{' '}
+        , and{" "}
         <code>
           {MIN_LANG_VALUE} - 1 = {MAX_LANG_VALUE}
         </code>

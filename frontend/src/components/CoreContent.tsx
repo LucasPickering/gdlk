@@ -1,12 +1,12 @@
-import React from 'react';
-import { Switch, Route } from 'react-router-dom';
-import HomePage from './HomePage';
-import PuzzleDetailsView from './puzzle/PuzzleDetailsView';
-import NotFoundPage from './NotFoundPage';
-import PageContainer from './common/PageContainer';
-import DocsPage from '@root/components/docs/DocsPage';
+import React from "react";
+import { Switch, Route } from "react-router-dom";
+import HomePage from "./HomePage";
+import PuzzleDetailsView from "./puzzle/PuzzleDetailsView";
+import NotFoundPage from "./NotFoundPage";
+import PageContainer from "./common/PageContainer";
+import DocsPage from "@root/components/docs/DocsPage";
 
-const ProgramIdeView = React.lazy(() => import('./ide/ProgramIdeView'));
+const ProgramIdeView = React.lazy(() => import("./ide/ProgramIdeView"));
 
 /**
  * Child of the root component. Expects Material UI to be set up in
@@ -24,7 +24,7 @@ const CoreContent: React.FC = () => {
       <Route path="*">
         <PageContainer>
           <Switch>
-            <Route path={['/', '/hardware', '/puzzles/:puzzleSlug?']} exact>
+            <Route path={["/", "/hardware", "/puzzles/:puzzleSlug?"]} exact>
               <HomePage />
             </Route>
 

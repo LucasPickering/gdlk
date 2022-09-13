@@ -1,16 +1,16 @@
-import React from 'react';
-import { makeStyles, Typography } from '@material-ui/core';
+import React from "react";
+import { makeStyles, Typography } from "@material-ui/core";
 
 const useLocalStyles = makeStyles(({ spacing }) => ({
   simpleTable: {
-    borderCollapse: 'collapse',
+    borderCollapse: "collapse",
   },
   simpleTableLabel: {
-    textAlign: 'left',
+    textAlign: "left",
     paddingRight: spacing(4),
   },
   simpleTableValue: {
-    textAlign: 'right',
+    textAlign: "right",
   },
 }));
 

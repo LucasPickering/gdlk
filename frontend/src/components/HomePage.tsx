@@ -1,11 +1,11 @@
-import React from 'react';
-import { Grid, Typography } from '@material-ui/core';
-import { puzzles } from '@root/data/puzzles';
-import NavMenu from './common/NavMenu';
-import PuzzleList from './puzzle/PuzzleList';
-import { Route, Switch, useParams } from 'react-router-dom';
-import PuzzleDetailsView from './puzzle/PuzzleDetailsView';
-import HardwareSpecCard from './hardware/HardwareSpecCard';
+import React from "react";
+import { Grid, Typography } from "@material-ui/core";
+import { puzzles } from "@root/data/puzzles";
+import NavMenu from "./common/NavMenu";
+import PuzzleList from "./puzzle/PuzzleList";
+import { Route, Switch, useParams } from "react-router-dom";
+import PuzzleDetailsView from "./puzzle/PuzzleDetailsView";
+import HardwareSpecCard from "./hardware/HardwareSpecCard";
 
 interface RouteParams {
   puzzleSlug: string;
@@ -24,9 +24,9 @@ const HomePage: React.FC = () => {
         <NavMenu
           items={[
             {
-              id: 'puzzles',
-              label: 'Puzzles',
-              to: '/puzzles',
+              id: "puzzles",
+              label: "Puzzles",
+              to: "/puzzles",
               children: (
                 <PuzzleList
                   puzzles={Object.values(puzzles)}
@@ -36,14 +36,14 @@ const HomePage: React.FC = () => {
               ),
             },
             {
-              id: 'hardware',
-              label: 'Hardware',
-              to: '/hardware',
+              id: "hardware",
+              label: "Hardware",
+              to: "/hardware",
             },
             {
-              id: 'docs',
-              label: 'GDLK Reference Guide',
-              to: '/docs',
+              id: "docs",
+              label: "GDLK Reference Guide",
+              to: "/docs",
             },
           ]}
         />

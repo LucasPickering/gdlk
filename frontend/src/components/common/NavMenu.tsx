@@ -1,13 +1,13 @@
-import React from 'react';
+import React from "react";
 import {
   Collapse,
   List,
   ListItem,
   ListItemText,
   makeStyles,
-} from '@material-ui/core';
-import UnstyledLink from './UnstyledLink';
-import { useRouteMatch } from 'react-router-dom';
+} from "@material-ui/core";
+import UnstyledLink from "./UnstyledLink";
+import { useRouteMatch } from "react-router-dom";
 
 const useLocalStyles = makeStyles(({ spacing }) => ({
   nested: {
@@ -18,7 +18,7 @@ const useLocalStyles = makeStyles(({ spacing }) => ({
 interface NavItem {
   id: string;
   label: string;
-  to?: React.ComponentProps<typeof UnstyledLink>['to'];
+  to?: React.ComponentProps<typeof UnstyledLink>["to"];
   onClick?: () => void;
   children?: React.ReactChild | React.ReactChildren;
 }
@@ -51,7 +51,7 @@ const NavMenu: React.FC<
 
 const NavMenuItem: React.FC<{ item: NavItem }> = ({ item }) => {
   const localClasses = useLocalStyles();
-  const routeMatch = useRouteMatch(item.to ? item.to.toString() : '');
+  const routeMatch = useRouteMatch(item.to ? item.to.toString() : "");
   const selected = Boolean(routeMatch);
 
   return (

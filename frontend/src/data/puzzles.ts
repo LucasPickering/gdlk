@@ -1,40 +1,40 @@
-import { Puzzle } from '@root/util/types';
+import { Puzzle } from "@root/util/types";
 
 export const puzzles: Record<string, Puzzle> = {
   // TODO de-dupe key+slug
   readWrite: {
-    name: 'Read/Write',
-    slug: 'readWrite',
-    description: 'Read a value from input and write it to output.',
+    name: "Read/Write",
+    slug: "readWrite",
+    description: "Read a value from input and write it to output.",
     currencyValue: 1,
     examples: [],
     input: [1],
     expectedOutput: [1],
   },
   readWrite3: {
-    name: 'Read 3/Write 3',
-    slug: 'readWrite3',
-    description: 'Read three values from input and write them to output.',
+    name: "Read 3/Write 3",
+    slug: "readWrite3",
+    description: "Read three values from input and write them to output.",
     currencyValue: 2,
     examples: [],
     input: [1, 1, 1],
     expectedOutput: [1, 1, 1],
   },
   inAndOut: {
-    name: 'In-N-Out',
-    slug: 'inAndOut',
+    name: "In-N-Out",
+    slug: "inAndOut",
     description:
-      'Read a sequence of values from input and write them all to output.',
+      "Read a sequence of values from input and write them all to output.",
     currencyValue: 2,
     examples: [{ input: [1, 2, 3], output: [1, 2, 3] }],
     input: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     expectedOutput: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   },
   oddEven: {
-    name: 'Odd/Even',
-    slug: 'oddEven',
+    name: "Odd/Even",
+    slug: "oddEven",
     description:
-      'Given an input of positive integers, determine if each one is even or odd. If even, output 0, if odd, output 1.',
+      "Given an input of positive integers, determine if each one is even or odd. If even, output 0, if odd, output 1.",
     currencyValue: 3,
     examples: [{ input: [1, 2, 3, 4], output: [1, 0, 1, 0] }],
     input: [
@@ -48,10 +48,10 @@ export const puzzles: Record<string, Puzzle> = {
     ],
   },
   divisible: {
-    name: 'Divisible',
-    slug: 'divisible',
+    name: "Divisible",
+    slug: "divisible",
     description:
-      'Given an input of `(a, b)` pairs, determine if `b` is divisible by `a`. Output 0 if not divisible, 1 if divisible.',
+      "Given an input of `(a, b)` pairs, determine if `b` is divisible by `a`. Output 0 if not divisible, 1 if divisible.",
     currencyValue: 5,
     examples: [{ input: [3, 12, 3, 10, 5, 10], output: [1, 0, 1] }],
     input: [
@@ -63,9 +63,9 @@ export const puzzles: Record<string, Puzzle> = {
     ],
   },
   sort: {
-    name: 'Sort',
-    slug: 'sort',
-    description: 'Sort the input list in ascending order.',
+    name: "Sort",
+    slug: "sort",
+    description: "Sort the input list in ascending order.",
     currencyValue: 10,
     examples: [{ input: [5, 3, 4, 1, 2], output: [1, 2, 3, 4, 5] }],
     input: [9, 3, 8, 4, 5, 1, 3, 8, 9, 5, 2, 10, 4, 1, 8],

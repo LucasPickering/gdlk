@@ -1,11 +1,11 @@
-import React from 'react';
+import React from "react";
 // We really do want to import the Material UI link here
 // eslint-disable-next-line no-restricted-syntax
-import { Link as MuiLink } from '@material-ui/core';
-import UnstyledLink from './UnstyledLink';
+import { Link as MuiLink } from "@material-ui/core";
+import UnstyledLink from "./UnstyledLink";
 
-type Props = Pick<React.ComponentProps<typeof UnstyledLink>, 'to'> &
-  Omit<React.ComponentProps<typeof MuiLink>, 'component'>;
+type Props = Pick<React.ComponentProps<typeof UnstyledLink>, "to"> &
+  Omit<React.ComponentProps<typeof MuiLink>, "component">;
 
 /**
  * A component that merges the styles of Material UI's Link with the functionality

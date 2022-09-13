@@ -1,49 +1,49 @@
-import React from 'react';
-import { makeStyles, Typography } from '@material-ui/core';
-import IntroductionDocs from './IntroductionDocs';
-import HardwareDocs from './hardware/HardwareDocs';
-import LanguageDocs from './language/LanguageDocs';
-import { DocsContext } from '@root/state/docs';
-import { hardwareSpecState } from '@root/state/user';
-import { useRecoilValue } from 'recoil';
+import React from "react";
+import { makeStyles, Typography } from "@material-ui/core";
+import IntroductionDocs from "./IntroductionDocs";
+import HardwareDocs from "./hardware/HardwareDocs";
+import LanguageDocs from "./language/LanguageDocs";
+import { DocsContext } from "@root/state/docs";
+import { hardwareSpecState } from "@root/state/user";
+import { useRecoilValue } from "recoil";
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   docs: {
     padding: spacing(2),
 
-    '& code': {
+    "& code": {
       color: palette.text.secondary,
     },
-    '& pre': {
+    "& pre": {
       backgroundColor: palette.background.paper,
       padding: spacing(1),
     },
 
     // Text styles
-    '& h2': {
+    "& h2": {
       marginTop: spacing(4),
     },
-    '& h3': {
+    "& h3": {
       marginTop: spacing(3),
     },
-    '& h4': {
+    "& h4": {
       marginTop: spacing(2),
     },
-    '& h5, p': {
+    "& h5, p": {
       marginTop: spacing(1),
     },
 
-    '& ul': {
+    "& ul": {
       margin: 0,
     },
 
     // Table styles
-    '& table': {
+    "& table": {
       marginTop: spacing(2),
       border: `2px solid ${palette.divider}`,
-      borderCollapse: 'collapse',
+      borderCollapse: "collapse",
     },
-    '& th, td': {
+    "& th, td": {
       border: `1px solid ${palette.divider}`,
       padding: spacing(0.5),
     },

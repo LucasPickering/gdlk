@@ -1,5 +1,5 @@
-import { Theme, responsiveFontSizes } from '@material-ui/core';
-import { createTheme, ThemeOptions } from '@material-ui/core/styles';
+import { Theme, responsiveFontSizes } from "@material-ui/core";
+import { createTheme, ThemeOptions } from "@material-ui/core/styles";
 
 const theme: Theme = (() => {
   // We have to create theme theme twice:
@@ -9,25 +9,25 @@ const theme: Theme = (() => {
   const config: ThemeOptions = {
     palette: {
       // These colors are supposed to mimic the ANSI base 8
-      type: 'dark',
+      type: "dark",
       primary: {
         // ANSI cyan
-        main: '#5ac2c6',
+        main: "#5ac2c6",
       },
       error: {
-        main: '#ff0000',
+        main: "#ff0000",
       },
-      divider: '#ffffff',
+      divider: "#ffffff",
       action: {
-        hover: '#ffffff',
-        selected: '#ffffff',
+        hover: "#ffffff",
+        selected: "#ffffff",
       },
       success: {
-        main: '#00ff00',
+        main: "#00ff00",
       },
       background: {
-        default: '#000000',
-        paper: '#202020',
+        default: "#000000",
+        paper: "#202020",
       },
     },
 
@@ -35,35 +35,35 @@ const theme: Theme = (() => {
       // Makes math for `rem` font sizes easy
       // https://www.sitepoint.com/understanding-and-using-rem-units-in-css/
       htmlFontSize: 10,
-      fontFamily: 'Consolas, monospace',
+      fontFamily: "Consolas, monospace",
       fontWeightLight: 400,
       fontWeightRegular: 600,
       fontWeightMedium: 600,
       fontWeightBold: 900,
 
       h1: {
-        fontSize: '3.2rem',
+        fontSize: "3.2rem",
       },
       h2: {
-        fontSize: '2.8rem',
+        fontSize: "2.8rem",
       },
       h3: {
-        fontSize: '2.4rem',
+        fontSize: "2.4rem",
       },
       h4: {
-        fontSize: '2.0rem',
+        fontSize: "2.0rem",
       },
       h5: {
-        fontSize: '1.6rem',
+        fontSize: "1.6rem",
       },
       h6: {
-        fontSize: '1.2rem',
+        fontSize: "1.2rem",
       },
     },
 
     props: {
       MuiCard: {
-        component: 'section',
+        component: "section",
       },
       MuiCardHeader: {
         // CardHeader enforces that the component is always 'span' which is shit
@@ -75,7 +75,7 @@ const theme: Theme = (() => {
       },
       MuiSnackbar: {
         autoHideDuration: 3000,
-        anchorOrigin: { vertical: 'bottom', horizontal: 'left' },
+        anchorOrigin: { vertical: "bottom", horizontal: "left" },
       },
     },
   };
@@ -97,17 +97,17 @@ const theme: Theme = (() => {
         },
         MuiListItem: {
           button: {
-            '&:hover': {
+            "&:hover": {
               color: theme.palette.getContrastText(theme.palette.action.hover),
             },
             // We _should_ be able to do this as another override for the
             // component, but that class never got applied so I had to this
             // as a workaround
-            '&.Mui-selected': {
+            "&.Mui-selected": {
               color: theme.palette.getContrastText(
                 theme.palette.action.selected
               ),
-              '&::before': {
+              "&::before": {
                 content: '">"',
                 paddingRight: 8,
               },

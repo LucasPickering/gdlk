@@ -9,13 +9,7 @@ import {
   PuzzleCompletion,
   PuzzleSolution,
 } from "@root/util/types";
-import {
-  atom,
-  AtomEffect,
-  atomFamily,
-  DefaultValue,
-  selectorFamily,
-} from "recoil";
+import { atom, AtomEffect, atomFamily, selectorFamily } from "recoil";
 
 /**
  * Track how much money the user has

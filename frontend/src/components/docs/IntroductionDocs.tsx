@@ -1,6 +1,6 @@
-import React from 'react';
-import { Typography } from '@material-ui/core';
-import DocsSection from './DocsSection';
+import React from "react";
+import { Typography } from "@material-ui/core";
+import DocsSection from "./DocsSection";
 
 const IntroductionDocs: React.FC = () => (
   <DocsSection id="introduction" level={2} title="Introduction">

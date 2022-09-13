@@ -1,7 +1,7 @@
-import { Typography } from '@material-ui/core';
-import React from 'react';
-import Link from '../../common/Link';
-import DocsSection from '../DocsSection';
+import { Typography } from "@material-ui/core";
+import React from "react";
+import Link from "../../common/Link";
+import DocsSection from "../DocsSection";
 
 const InputOutputDocs: React.FC = () => (
   <DocsSection id="input-and-output" level={3} title="Input & Output">

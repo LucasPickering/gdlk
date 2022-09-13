@@ -23,9 +23,9 @@ export class StorageHandler<T> {
 
         // If we get an unexpected value, just return undefined
         if (
-          typeof objValue === 'object' &&
+          typeof objValue === "object" &&
           typeof objValue.value !== undefined &&
-          typeof objValue.lastModified === 'string'
+          typeof objValue.lastModified === "string"
         ) {
           return {
             value: objValue.value as T,

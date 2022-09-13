@@ -1,9 +1,9 @@
-import React from 'react';
-import { useParams } from 'react-router-dom';
-import ProgramIde from './ProgramIde';
-import NotFoundPage from '@root/components/NotFoundPage';
-import PageContainer from '@root/components/common/PageContainer';
-import { puzzles } from '@root/data/puzzles';
+import React from "react";
+import { useParams } from "react-router-dom";
+import ProgramIde from "./ProgramIde";
+import NotFoundPage from "@root/components/NotFoundPage";
+import PageContainer from "@root/components/common/PageContainer";
+import { puzzles } from "@root/data/puzzles";
 
 interface RouteParams {
   puzzleSlug: string;

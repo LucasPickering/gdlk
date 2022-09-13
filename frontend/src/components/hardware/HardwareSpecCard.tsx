@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Typography,
   Card,
   CardHeader,
   CardContent,
   IconButton,
-} from '@material-ui/core';
-import { Done as IconDone, Edit as IconEdit } from '@material-ui/icons';
-import SimpleTable from '../common/SimpleTable';
-import HardwareSpecField from './HardwareSpecField';
+} from "@material-ui/core";
+import { Done as IconDone, Edit as IconEdit } from "@material-ui/icons";
+import SimpleTable from "../common/SimpleTable";
+import HardwareSpecField from "./HardwareSpecField";
 
 /**
  * Show details on the user's current hardware capabilities
@@ -30,7 +30,7 @@ const HardwareSpecCard: React.FC = () => {
         <SimpleTable
           data={[
             {
-              label: 'Registers',
+              label: "Registers",
               value: (
                 <HardwareSpecField
                   field="numRegisters"
@@ -41,7 +41,7 @@ const HardwareSpecCard: React.FC = () => {
               ),
             },
             {
-              label: 'Stacks',
+              label: "Stacks",
               value: (
                 <HardwareSpecField
                   field="numStacks"
@@ -52,7 +52,7 @@ const HardwareSpecCard: React.FC = () => {
               ),
             },
             {
-              label: 'Stack Size',
+              label: "Stack Size",
               value: (
                 <HardwareSpecField
                   field="maxStackLength"

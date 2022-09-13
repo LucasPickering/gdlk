@@ -1,8 +1,8 @@
-import React, { useContext } from 'react';
-import { CompiledState, IdeContext } from '@root/state/ide';
-import clsx from 'clsx';
-import { makeStyles } from '@material-ui/core';
-const { FailureReason } = await import('gdlk_wasm');
+import React, { useContext } from "react";
+import { CompiledState, IdeContext } from "@root/state/ide";
+import clsx from "clsx";
+import { makeStyles } from "@material-ui/core";
+const { FailureReason } = await import("gdlk_wasm");
 
 const useLocalStyles = makeStyles(({ spacing }) => ({
   programStatus: {
@@ -16,28 +16,28 @@ function getStatusText(
 ): string {
   // Compilation hasn't been attempted, so the source is probably empty
   if (!compiledState) {
-    return '';
+    return "";
   }
 
   // Program failed to compile
-  if (compiledState.type === 'error') {
-    return 'Error - Compilation failure';
+  if (compiledState.type === "error") {
+    return "Error - Compilation failure";
   }
 
   const machineState = compiledState.machineState;
 
   // Compiled, ready to execute
   if (!machineState.terminated && !stepping) {
-    return 'Ready';
+    return "Ready";
   }
   // Compiled and executing
   if (!machineState.terminated && stepping) {
-    return 'Running...';
+    return "Running...";
   }
 
   // Terminated successfully!
   if (machineState.successful) {
-    return 'Success';
+    return "Success";
   }
 
   // Give some detail on why the program failed
@@ -56,7 +56,7 @@ function getStatusText(
       console.error(
         `Unexpected program failure state: ${machineState.failureReason}`
       );
-      return 'Failure';
+      return "Failure";
   }
 }
 
@@ -65,11 +65,11 @@ const ProgramStatus: React.FC<{ className?: string }> = ({ className }) => {
   const { stepping, compiledState } = useContext(IdeContext);
 
   const machineState =
-    compiledState?.type === 'compiled' ? compiledState.machineState : undefined;
+    compiledState?.type === "compiled" ? compiledState.machineState : undefined;
 
   return (
     <div className={clsx(className, localClasses.programStatus)}>
-      <div>CPU Cycles: {machineState?.cycleCount ?? '–'}</div>
+      <div>CPU Cycles: {machineState?.cycleCount ?? "–"}</div>
       <div>{getStatusText(compiledState, stepping)}</div>
     </div>
   );

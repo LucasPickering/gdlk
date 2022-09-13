@@ -1,6 +1,6 @@
-import React, { Dispatch, SetStateAction } from 'react';
-import type { Span, HardwareSpec, ProgramSpec, SourceElement } from 'gdlk_wasm';
-import { MachineState } from '@root/util/compile';
+import React, { Dispatch, SetStateAction } from "react";
+import type { Span, HardwareSpec, ProgramSpec, SourceElement } from "gdlk_wasm";
+import { MachineState } from "@root/util/compile";
 
 export type LangValue = number;
 
@@ -26,11 +26,11 @@ export function gdlkSpanToAce(span: Span): AceSpan {
 
 export type CompiledState =
   | {
-      type: 'compiled';
+      type: "compiled";
       instructions: SourceElement[];
       machineState: MachineState;
     }
-  | { type: 'error'; errors: SourceElement[] };
+  | { type: "error"; errors: SourceElement[] };
 
 /**
  * The context data that gets shared throughout the IDE. This is designed in

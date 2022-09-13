@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Prompt } from 'react-router-dom';
+import React, { useEffect } from "react";
+import { Prompt } from "react-router-dom";
 
 /**
  * Show a prompt when the user navigates away from the current page. This covers
@@ -22,13 +22,13 @@ const PromptOnExit = ({
     if (when) {
       const prompt = (event: BeforeUnloadEvent): void => {
         event.preventDefault();
-        event.returnValue = ''; // Needed for chrome
+        event.returnValue = ""; // Needed for chrome
       };
 
-      window.addEventListener('beforeunload', prompt);
+      window.addEventListener("beforeunload", prompt);
 
       return () => {
-        window.removeEventListener('beforeunload', prompt);
+        window.removeEventListener("beforeunload", prompt);
       };
     }
   }, [when]);

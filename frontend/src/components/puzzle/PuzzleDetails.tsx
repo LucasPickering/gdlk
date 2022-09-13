@@ -1,7 +1,7 @@
-import React from 'react';
-import { Typography, Grid, Button } from '@material-ui/core';
-import { Puzzle } from '@root/util/types';
-import UnstyledLink from '../common/UnstyledLink';
+import React from "react";
+import { Typography, Grid, Button } from "@material-ui/core";
+import { Puzzle } from "@root/util/types";
+import UnstyledLink from "../common/UnstyledLink";
 
 const PuzzleDetails: React.FC<{
   puzzle: Puzzle;

@@ -1,8 +1,8 @@
-import React from 'react';
-import { useParams } from 'react-router-dom';
-import PuzzleDetails from './PuzzleDetails';
-import NotFoundPage from '@root/components/NotFoundPage';
-import { puzzles } from '@root/data/puzzles';
+import React from "react";
+import { useParams } from "react-router-dom";
+import PuzzleDetails from "./PuzzleDetails";
+import NotFoundPage from "@root/components/NotFoundPage";
+import { puzzles } from "@root/data/puzzles";
 
 interface RouteParams {
   puzzleSlug: string;

@@ -1,11 +1,11 @@
-import React, { useContext } from 'react';
-import { Typography } from '@material-ui/core';
-import DocsSection from '../DocsSection';
-import InputOutputDocs from './InputOutputDocs';
-import RegisterDocs from './RegisterDocs';
-import Link from '../../common/Link';
-import { DocsContext } from '@root/state/docs';
-import StackDocs from './StackDocs';
+import React, { useContext } from "react";
+import { Typography } from "@material-ui/core";
+import DocsSection from "../DocsSection";
+import InputOutputDocs from "./InputOutputDocs";
+import RegisterDocs from "./RegisterDocs";
+import Link from "../../common/Link";
+import { DocsContext } from "@root/state/docs";
+import StackDocs from "./StackDocs";
 
 const HardwareDocs: React.FC = () => {
   const { showStacks } = useContext(DocsContext);

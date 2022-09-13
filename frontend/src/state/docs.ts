@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 /**
  * This context tells different sections of the docs which capabilities are

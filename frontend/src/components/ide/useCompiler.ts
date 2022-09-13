@@ -1,14 +1,14 @@
 import type {
   HardwareSpec as WasmHardwareSpecType,
   ProgramSpec as WasmProgramSpecType,
-} from 'gdlk_wasm';
-import useStaticValue from '@root/hooks/useStaticValue';
-import { HardwareSpec, Puzzle } from '@root/util/types';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { CompiledState } from '@root/state/ide';
-import { CompileResult, Compiler } from '@root/util/compile';
+} from "gdlk_wasm";
+import useStaticValue from "@root/hooks/useStaticValue";
+import { HardwareSpec, Puzzle } from "@root/util/types";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CompiledState } from "@root/state/ide";
+import { CompileResult, Compiler } from "@root/util/compile";
 const { HardwareSpec: WasmHardwareSpec, ProgramSpec: WasmProgramSpec } =
-  await import('gdlk_wasm');
+  await import("gdlk_wasm");
 
 interface Input {
   hardwareSpec: HardwareSpec;
@@ -81,16 +81,16 @@ const useCompiler = ({ hardwareSpec, puzzle, sourceCode }: Input): Output => {
       compileResult.current = newCompileResult;
 
       switch (newCompileResult?.type) {
-        case 'compiled':
+        case "compiled":
           setCompiledState({
-            type: 'compiled',
+            type: "compiled",
             instructions: newCompileResult.instructions,
             machineState: newCompileResult.machine.state,
           });
           break;
-        case 'error':
+        case "error":
           setCompiledState({
-            type: 'error',
+            type: "error",
             errors: newCompileResult.errors,
           });
           break;
@@ -119,14 +119,14 @@ const useCompiler = ({ hardwareSpec, puzzle, sourceCode }: Input): Output => {
 
   const execute = useCallback(
     (executeAll: boolean = false): void => {
-      if (compileResult.current?.type === 'compiled') {
+      if (compileResult.current?.type === "compiled") {
         compileResult.current.machine.execute(executeAll);
         // We need to manually refresh since the wasm pointers won't change
         updateCompiledState(compileResult.current);
       } else {
         // This indicates an FE bug, where we tried to step when not allowed
         throw new Error(
-          'Program is not compiled, cannot execute next instruction.'
+          "Program is not compiled, cannot execute next instruction."
         );
       }
     },
