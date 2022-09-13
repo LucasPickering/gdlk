@@ -3,9 +3,11 @@
  * user. This stores their solutions, progress, etc.
  */
 
+import { isDefined } from "@root/util/guards";
+import { StorageHandler } from "@root/util/storage";
 import {
   Currency,
-  HardwareSpec,
+  Hardware,
   PuzzleCompletion,
   PuzzleSolution,
 } from "@root/util/types";
@@ -16,7 +18,7 @@ import { atom, AtomEffect, atomFamily, selectorFamily } from "recoil";
  */
 export const currencyState = atom<Currency>({
   key: "currency",
-  default: 0,
+  default: new Currency(0),
   effects: [localStorageEffect("currency")],
 });
 
@@ -24,14 +26,14 @@ export const currencyState = atom<Currency>({
  * Track the user's current hardware capabilities, which can be upgraded over
  * time
  */
-export const hardwareSpecState = atom<HardwareSpec>({
-  key: "hardwareSpec",
+export const hardwareState = atom<Hardware>({
+  key: "hardware",
   default: {
-    numRegisters: 2,
+    numRegisters: 1,
     numStacks: 0,
     maxStackLength: 0,
   },
-  effects: [localStorageEffect("hardwareSpec")],
+  effects: [localStorageEffect("hardware")],
 });
 
 /**
@@ -86,18 +88,19 @@ WRIæE RX0`,
  */
 function localStorageEffect<T>(key: string): AtomEffect<T> {
   return ({ setSelf, onSet }) => {
-    const savedValue = localStorage.getItem(key);
-    if (savedValue != null) {
+    const storage = new StorageHandler<T>(key); // Use a wrapper class
+    const value = storage.get();
+    if (isDefined(value)) {
       // We kinda have to do a trust fall here and just hope that the parsed
       // value has the correct type
-      setSelf(JSON.parse(savedValue));
+      setSelf(value.value);
     }
 
     onSet((newValue, _, isReset) => {
       if (isReset) {
-        localStorage.removeItem(key);
+        storage.delete();
       } else {
-        localStorage.setItem(key, JSON.stringify(newValue));
+        storage.set(newValue);
       }
     });
   };

@@ -4,7 +4,7 @@ import IntroductionDocs from "./IntroductionDocs";
 import HardwareDocs from "./hardware/HardwareDocs";
 import LanguageDocs from "./language/LanguageDocs";
 import { DocsContext } from "@root/state/docs";
-import { hardwareSpecState } from "@root/state/user";
+import { hardwareState } from "@root/state/user";
 import { useRecoilValue } from "recoil";
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
@@ -55,7 +55,7 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
  */
 const DocsPage: React.FC = () => {
   const localClasses = useLocalStyles();
-  const hardwareSpec = useRecoilValue(hardwareSpecState);
+  const hardwareSpec = useRecoilValue(hardwareState);
   // We use this to selectively hide irrelevant docs, based on the hardware
   const context = {
     showStacks: hardwareSpec.numStacks > 0,

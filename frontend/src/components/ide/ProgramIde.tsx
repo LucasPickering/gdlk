@@ -12,7 +12,7 @@ import PromptOnExit from "@root/components/common/PromptOnExit";
 import useCompiler from "./useCompiler";
 import { Puzzle } from "@root/util/types";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { hardwareSpecState, puzzleSolutionStateFamily } from "@root/state/user";
+import { hardwareState, puzzleSolutionStateFamily } from "@root/state/user";
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => {
   const border = `2px solid ${palette.divider}`;
@@ -75,7 +75,7 @@ const ProgramIde: React.FC<{
   const [puzzleSolution, setPuzzleSolution] = useRecoilState(
     puzzleSolutionStateFamily({ puzzleSlug: puzzle.slug })
   );
-  const hardwareSpec = useRecoilValue(hardwareSpecState);
+  const hardwareSpec = useRecoilValue(hardwareState);
 
   const [sourceCode, setSourceCode] = useState<string>(
     puzzleSolution.sourceCode
