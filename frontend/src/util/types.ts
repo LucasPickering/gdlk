@@ -1,3 +1,8 @@
+/**
+ * The currency that the player earns and spends.
+ */
+export type Currency = number;
+
 export interface HardwareSpec {
   numRegisters: number;
   numStacks: number;
@@ -8,6 +13,7 @@ export interface Puzzle {
   name: string;
   slug: string;
   description: string;
+  currencyValue: Currency;
   examples: Array<{ input: number[]; output: number[] }>;
   input: number[];
   expectedOutput: number[];

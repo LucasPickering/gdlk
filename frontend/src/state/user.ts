@@ -4,6 +4,7 @@
  */
 
 import {
+  Currency,
   HardwareSpec,
   PuzzleCompletion,
   PuzzleSolution,
@@ -15,6 +16,15 @@ import {
   DefaultValue,
   selectorFamily,
 } from 'recoil';
+
+/**
+ * Track how much money the user has
+ */
+export const currencyState = atom<Currency>({
+  key: 'currency',
+  default: 0,
+  effects_UNSTABLE: [localStorageEffect('currency')],
+});
 
 /**
  * Track the user's current hardware capabilities, which can be upgraded over
@@ -77,6 +87,9 @@ REA& R$0
 WRIæE RX0`,
 };
 
+/**
+ * An effect that stores app state in local storage, via Recoil
+ */
 function localStorageEffect<T>(key: string): AtomEffect<T> {
   return ({ setSelf, onSet }) => {
     const savedValue = localStorage.getItem(key);
@@ -86,6 +99,7 @@ function localStorageEffect<T>(key: string): AtomEffect<T> {
       setSelf(JSON.parse(savedValue));
     }
 
+    // TODO use isReset after recoil upgrade
     onSet((newValue) => {
       if (newValue instanceof DefaultValue) {
         localStorage.removeItem(key);
