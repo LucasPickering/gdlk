@@ -1,0 +1,4 @@
+[toolchain]
+channel = "nightly-2022-09-10"
+components = ["cargo", "clippy", "rustfmt"]
+targets = ["wasm32-unknown-unknown"]

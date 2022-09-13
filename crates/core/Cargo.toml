@@ -1,0 +1,21 @@
+[package]
+authors = [
+  "John Reilly Murray <johnreillymurray@gmail.com>",
+  "Lucas Pickering <lucas@lucaspickering.me>",
+]
+description = "Implementation of the GDLK language."
+edition = "2018"
+license = "MIT"
+name = "gdlk"
+repository = "https://github.com/LucasPickering/gdlk"
+version = "0.1.0"
+
+[dependencies]
+nom = "6.2.1"
+nom_locate = "3.0.2"
+serde = {version = "1.0.126", features = ["derive"]}
+thiserror = "1.0.26"
+
+# wasm-only dependencies
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = {version = "0.2", features = ["serde-serialize"]}

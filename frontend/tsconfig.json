@@ -1,0 +1,12 @@
+{
+  "extends": "@lucaspickering/tsconfig",
+  "compilerOptions": {
+    "target": "es2017",
+    "noEmit": false,
+    "paths": {
+      "@root/*": ["./src/*"]
+    },
+    "outDir": "tsc-build/"
+  },
+  "include": ["./src/"]
+}

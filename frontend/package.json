@@ -1,0 +1,74 @@
+{
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "dependencies": {
+    "@material-ui/core": "4.12.4",
+    "@material-ui/icons": "4.11.3",
+    "@material-ui/lab": "4.0.0-alpha.61",
+    "@material-ui/styles": "4.11.5",
+    "ace-builds": "1.10.1",
+    "clsx": "1.2.1",
+    "gdlk_wasm": "file:../crates/wasm/pkg",
+    "lodash-es": "4.17.21",
+    "query-string": "7.1.1",
+    "react": "17.0.2",
+    "react-ace": "10.1.0",
+    "react-dom": "17.0.2",
+    "react-router-dom": "5.2.0",
+    "recoil": "0.7.5"
+  },
+  "devDependencies": {
+    "@lucaspickering/eslint-config": "1.0.3",
+    "@lucaspickering/tsconfig": "1.0.0",
+    "@types/lodash-es": "4.17.6",
+    "@types/node": "18.7.17",
+    "@types/react": "17.0.14",
+    "@types/react-dom": "17.0.9",
+    "@types/react-router-dom": "5.1.8",
+    "@typescript-eslint/eslint-plugin": "^5.37.0",
+    "@typescript-eslint/parser": "^5.37.0",
+    "@wasm-tool/wasm-pack-plugin": "1.6.0",
+    "copy-webpack-plugin": "11.0.0",
+    "css-loader": "6.7.1",
+    "eslint": "8.23.1",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-config-react": "^1.1.7",
+    "eslint-plugin-jest": "^27.0.1",
+    "eslint-plugin-jsx-a11y": "^6.6.1",
+    "eslint-plugin-prettier": "^4.2.1",
+    "eslint-plugin-react": "^7.31.7",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "html-webpack-plugin": "5.5.0",
+    "prettier": "2.7.1",
+    "source-map-loader": "4.0.0",
+    "style-loader": "3.3.1",
+    "ts-loader": "9.3.1",
+    "typescript": "4.8.3",
+    "wasm-loader": "1.3.0",
+    "webpack": "5.74.0",
+    "webpack-bundle-analyzer": "4.6.1",
+    "webpack-cli": "4.10.0",
+    "webpack-dev-server": "4.11.0"
+  },
+  "scripts": {
+    "start": "webpack serve",
+    "build": "NODE_ENV=production webpack",
+    "analyze": "NODE_ENV=production WEBPACK_BUNDLE_ANALYZER_MODE=server webpack",
+    "lint": "eslint '**/*.{js,ts,tsx}'",
+    "tsc": "tsc",
+    "deploy": "./scripts/deploy.sh"
+  }
+}
