@@ -1,4 +1,11 @@
 /**
+ * Check if a value is not null/undefined
+ */
+export function isDefined<T>(value: T): value is NonNullable<T> {
+  return value !== null && value !== undefined;
+}
+
+/**
  * Type guard for any uniformly typed array. Checks that the input is an array,
  * and that each element is of the specified type.
  *

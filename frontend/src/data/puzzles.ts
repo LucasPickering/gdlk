@@ -1,4 +1,4 @@
-import { Puzzle } from "@root/util/types";
+import { Currency, Puzzle } from "@root/util/types";
 
 export const puzzles: Record<string, Puzzle> = {
   // TODO de-dupe key+slug
@@ -6,7 +6,7 @@ export const puzzles: Record<string, Puzzle> = {
     name: "Read/Write",
     slug: "readWrite",
     description: "Read a value from input and write it to output.",
-    currencyValue: 1,
+    currencyValue: new Currency(1),
     examples: [],
     input: [1],
     expectedOutput: [1],
@@ -15,7 +15,7 @@ export const puzzles: Record<string, Puzzle> = {
     name: "Read 3/Write 3",
     slug: "readWrite3",
     description: "Read three values from input and write them to output.",
-    currencyValue: 2,
+    currencyValue: new Currency(2),
     examples: [],
     input: [1, 1, 1],
     expectedOutput: [1, 1, 1],
@@ -25,7 +25,7 @@ export const puzzles: Record<string, Puzzle> = {
     slug: "inAndOut",
     description:
       "Read a sequence of values from input and write them all to output.",
-    currencyValue: 2,
+    currencyValue: new Currency(2),
     examples: [{ input: [1, 2, 3], output: [1, 2, 3] }],
     input: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     expectedOutput: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
@@ -35,7 +35,7 @@ export const puzzles: Record<string, Puzzle> = {
     slug: "oddEven",
     description:
       "Given an input of positive integers, determine if each one is even or odd. If even, output 0, if odd, output 1.",
-    currencyValue: 3,
+    currencyValue: new Currency(3),
     examples: [{ input: [1, 2, 3, 4], output: [1, 0, 1, 0] }],
     input: [
       43, 48, 62, 70, 69, 91, 78, 46, 72, 21, 67, 49, 49, 5, 3, 18, 26, 52, 94,
@@ -52,7 +52,7 @@ export const puzzles: Record<string, Puzzle> = {
     slug: "divisible",
     description:
       "Given an input of `(a, b)` pairs, determine if `b` is divisible by `a`. Output 0 if not divisible, 1 if divisible.",
-    currencyValue: 5,
+    currencyValue: new Currency(5),
     examples: [{ input: [3, 12, 3, 10, 5, 10], output: [1, 0, 1] }],
     input: [
       5, 68, 5, 91, 7, 78, 6, 15, 4, 2, 7, 100, 7, 75, 4, 38, 7, 84, 5, 47, 7,
@@ -66,7 +66,7 @@ export const puzzles: Record<string, Puzzle> = {
     name: "Sort",
     slug: "sort",
     description: "Sort the input list in ascending order.",
-    currencyValue: 10,
+    currencyValue: new Currency(10),
     examples: [{ input: [5, 3, 4, 1, 2], output: [1, 2, 3, 4, 5] }],
     input: [9, 3, 8, 4, 5, 1, 3, 8, 9, 5, 2, 10, 4, 1, 8],
     expectedOutput: [1, 1, 2, 3, 3, 4, 4, 5, 5, 8, 8, 8, 9, 9, 10],

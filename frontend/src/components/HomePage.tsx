@@ -5,7 +5,7 @@ import NavMenu from "./common/NavMenu";
 import PuzzleList from "./puzzle/PuzzleList";
 import { Route, Switch, useParams } from "react-router-dom";
 import PuzzleDetailsView from "./puzzle/PuzzleDetailsView";
-import HardwareSpecCard from "./hardware/HardwareSpecCard";
+import HardwareCard from "./hardware/HardwareCard";
 
 interface RouteParams {
   puzzleSlug: string;
@@ -52,7 +52,7 @@ const HomePage: React.FC = () => {
       <Grid item md={8} sm={12}>
         <Switch>
           <Route path="/hardware" exact>
-            <HardwareSpecCard />
+            <HardwareCard />
           </Route>
           <Route path="/puzzles/:puzzleSlug" exact>
             <PuzzleDetailsView />

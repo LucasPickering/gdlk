@@ -3,7 +3,7 @@ import type {
   ProgramSpec as WasmProgramSpecType,
 } from "gdlk_wasm";
 import useStaticValue from "@root/hooks/useStaticValue";
-import { HardwareSpec, Puzzle } from "@root/util/types";
+import { Hardware, Puzzle } from "@root/util/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CompiledState } from "@root/state/ide";
 import { CompileResult, Compiler } from "@root/util/compile";
@@ -11,7 +11,7 @@ const { HardwareSpec: WasmHardwareSpec, ProgramSpec: WasmProgramSpec } =
   await import("gdlk_wasm");
 
 interface Input {
-  hardwareSpec: HardwareSpec;
+  hardwareSpec: Hardware;
   puzzle: Puzzle;
   sourceCode: string;
 }
