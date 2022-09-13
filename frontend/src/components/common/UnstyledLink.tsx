@@ -99,4 +99,6 @@ const UnstyledLink = React.forwardRef(
   }
 );
 
+UnstyledLink.displayName = 'UnstyledLink';
+
 export default UnstyledLink;
