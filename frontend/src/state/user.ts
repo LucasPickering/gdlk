@@ -8,22 +8,22 @@ import {
   HardwareSpec,
   PuzzleCompletion,
   PuzzleSolution,
-} from '@root/util/types';
+} from "@root/util/types";
 import {
   atom,
   AtomEffect,
   atomFamily,
   DefaultValue,
   selectorFamily,
-} from 'recoil';
+} from "recoil";
 
 /**
  * Track how much money the user has
  */
 export const currencyState = atom<Currency>({
-  key: 'currency',
+  key: "currency",
   default: 0,
-  effects_UNSTABLE: [localStorageEffect('currency')],
+  effects: [localStorageEffect("currency")],
 });
 
 /**
@@ -31,13 +31,13 @@ export const currencyState = atom<Currency>({
  * time
  */
 export const hardwareSpecState = atom<HardwareSpec>({
-  key: 'hardwareSpec',
+  key: "hardwareSpec",
   default: {
     numRegisters: 2,
     numStacks: 0,
     maxStackLength: 0,
   },
-  effects_UNSTABLE: [localStorageEffect('hardwareSpec')],
+  effects: [localStorageEffect("hardwareSpec")],
 });
 
 /**
@@ -47,13 +47,13 @@ export const puzzleSolutionStateFamily = atomFamily<
   PuzzleSolution,
   { puzzleSlug: string }
 >({
-  key: 'puzzleSolutions',
+  key: "puzzleSolutions",
   default: ({ puzzleSlug }) => ({
-    sourceCode: defaultSolutionSourceCode[puzzleSlug] ?? '',
+    sourceCode: defaultSolutionSourceCode[puzzleSlug] ?? "",
     solved: false,
   }),
   // Persist solutions to local storage
-  effects_UNSTABLE: ({ puzzleSlug }) => [
+  effects: ({ puzzleSlug }) => [
     localStorageEffect(`puzzleSolutions_${puzzleSlug}`),
   ],
 });
@@ -65,16 +65,16 @@ export const puzzleCompletionState = selectorFamily<
   PuzzleCompletion,
   { puzzleSlug: string }
 >({
-  key: 'puzzleCompletion',
+  key: "puzzleCompletion",
   get:
     (param) =>
     ({ get }) => {
       const { solved } = get(puzzleSolutionStateFamily(param));
       if (solved) {
-        return 'solved';
+        return "solved";
       }
       // TODO implement puzzle locking
-      return 'unlocked';
+      return "unlocked";
     },
 });
 
@@ -99,9 +99,8 @@ function localStorageEffect<T>(key: string): AtomEffect<T> {
       setSelf(JSON.parse(savedValue));
     }
 
-    // TODO use isReset after recoil upgrade
-    onSet((newValue) => {
-      if (newValue instanceof DefaultValue) {
+    onSet((newValue, _, isReset) => {
+      if (isReset) {
         localStorage.removeItem(key);
       } else {
         localStorage.setItem(key, JSON.stringify(newValue));

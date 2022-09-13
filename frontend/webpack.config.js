@@ -1,42 +1,42 @@
-const path = require('path');
-const CopyPlugin = require('copy-webpack-plugin');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const WasmPackPlugin = require('@wasm-tool/wasm-pack-plugin');
-const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+const path = require("path");
+const CopyPlugin = require("copy-webpack-plugin");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
+const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
+const { BundleAnalyzerPlugin } = require("webpack-bundle-analyzer");
 
-const coreCrateDir = path.resolve(__dirname, '../crates/core');
-const wasmCrateDir = path.resolve(__dirname, '../crates/wasm');
+const coreCrateDir = path.resolve(__dirname, "../crates/core");
+const wasmCrateDir = path.resolve(__dirname, "../crates/wasm");
 
 module.exports = {
-  mode: process.env.NODE_ENV || 'development',
-  entry: './src/index.tsx',
-  target: 'web',
+  mode: process.env.NODE_ENV || "development",
+  entry: "./src/index.tsx",
+  target: "web",
   output: {
-    path: path.resolve(__dirname, 'dist'),
-    publicPath: '/',
-    filename: '[name].bundle.js',
+    path: path.resolve(__dirname, "dist"),
+    publicPath: "/",
+    filename: "[name].bundle.js",
   },
 
   module: {
     rules: [
       {
         test: /\.tsx?$/,
-        use: 'ts-loader',
+        use: "ts-loader",
         exclude: /node_modules/,
       },
       {
         test: /\.wasm$/,
-        include: path.resolve(__dirname, 'src'),
-        use: 'wasm-loader',
+        include: path.resolve(__dirname, "src"),
+        use: "wasm-loader",
       },
       {
         test: /\.css$/i,
-        use: ['style-loader', 'css-loader'],
+        use: ["style-loader", "css-loader"],
       },
       {
         test: /\.js$/,
-        enforce: 'pre',
-        use: ['source-map-loader'],
+        enforce: "pre",
+        use: ["source-map-loader"],
       },
     ],
   },
@@ -48,44 +48,44 @@ module.exports = {
 
   plugins: [
     new HtmlWebpackPlugin({
-      template: 'public/index.html',
-      favicon: 'public/favicon.ico',
+      template: "public/index.html",
+      favicon: "public/favicon.ico",
     }),
     new CopyPlugin({
       patterns: [
         {
-          context: 'public/',
-          from: './*',
+          context: "public/",
+          from: "./*",
           globOptions: {
-            ignore: ['**/index.html', '**/favicon.ico'],
+            ignore: ["**/index.html", "**/favicon.ico"],
           },
         },
       ],
     }),
     new WasmPackPlugin({
-      outName: 'gdlk_wasm',
+      outName: "gdlk_wasm",
       crateDirectory: wasmCrateDir,
       watchDirectories: [
-        path.resolve(coreCrateDir, 'Cargo.toml'),
-        path.resolve(coreCrateDir, 'src'),
-        path.resolve(wasmCrateDir, 'Cargo.toml'),
-        path.resolve(wasmCrateDir, 'src'),
+        path.resolve(coreCrateDir, "Cargo.toml"),
+        path.resolve(coreCrateDir, "src"),
+        path.resolve(wasmCrateDir, "Cargo.toml"),
+        path.resolve(wasmCrateDir, "src"),
       ],
-      outDir: path.resolve(wasmCrateDir, 'pkg'),
+      outDir: path.resolve(wasmCrateDir, "pkg"),
     }),
     new BundleAnalyzerPlugin({
-      analyzerMode: process.env.WEBPACK_BUNDLE_ANALYZER_MODE || 'disabled',
+      analyzerMode: process.env.WEBPACK_BUNDLE_ANALYZER_MODE || "disabled",
     }),
   ],
 
   resolve: {
-    modules: ['node_modules'],
+    modules: ["node_modules"],
     alias: {
       // Root files are only available via this alias, to prevent collisions
       // between our top-level folders and external deps
-      '@root': path.resolve(__dirname, 'src'),
+      "@root": path.resolve(__dirname, "src"),
     },
-    extensions: ['.tsx', '.ts', '.js'],
+    extensions: [".tsx", ".ts", ".js"],
   },
 
   optimization: {
@@ -94,9 +94,9 @@ module.exports = {
         vendors: {
           test: /[\\/]node_modules[\\/]/,
           priority: -20,
-          name: 'vendors',
-          chunks: 'all',
-          filename: '[name].app.bundle.js',
+          name: "vendors",
+          chunks: "all",
+          filename: "[name].app.bundle.js",
         },
       },
     },
@@ -107,9 +107,11 @@ module.exports = {
   },
   devServer: {
     port: 3000,
-    contentBase: path.join(__dirname, 'public'),
     historyApiFallback: true,
-    watchContentBase: true,
     hot: true,
+    static: {
+      directory: path.join(__dirname, "public"),
+      watch: true,
+    },
   },
 };
