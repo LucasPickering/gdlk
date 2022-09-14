@@ -1,7 +1,7 @@
-import { makeStyles, Typography } from "@material-ui/core";
+import { makeStyles } from "@material-ui/core";
 import React from "react";
-import Link from "./Link";
 import clsx from "clsx";
+import HeaderBar from "../header/HeaderBar";
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   pageContainer: {
@@ -54,6 +54,8 @@ const PageContainer: React.FC<Props> & { defaultProps: Partial<Props> } = ({
 
   return (
     <div className={localClasses.pageContainer}>
+      {!fullScreen && <HeaderBar />}
+
       <div
         className={clsx(
           localClasses.pageBody,
@@ -64,16 +66,6 @@ const PageContainer: React.FC<Props> & { defaultProps: Partial<Props> } = ({
       >
         {children}
       </div>
-
-      {!fullScreen && (
-        <footer className={localClasses.pageFooter}>
-          <Typography variant="body2">
-            Created by <Link to="https://github.com/JRMurr">John Murray</Link>{" "}
-            and <Link to="https://lucaspickering.me">Lucas Pickering</Link>
-          </Typography>
-          <Link to="https://github.com/LucasPickering/gdlk">GitHub</Link>
-        </footer>
-      )}
     </div>
   );
 };

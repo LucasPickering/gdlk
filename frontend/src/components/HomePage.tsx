@@ -1,5 +1,5 @@
 import React from "react";
-import { Grid, Typography } from "@material-ui/core";
+import { Grid } from "@material-ui/core";
 import { puzzles } from "@root/data/puzzles";
 import NavMenu from "./common/NavMenu";
 import PuzzleList from "./puzzle/PuzzleList";
@@ -16,10 +16,6 @@ const HomePage: React.FC = () => {
 
   return (
     <Grid container>
-      <Grid item xs={12}>
-        <Typography variant="h1">GDLK_OS</Typography>
-      </Grid>
-
       <Grid item md={4} sm={8} xs={12}>
         <NavMenu
           items={[
@@ -44,6 +40,11 @@ const HomePage: React.FC = () => {
               id: "docs",
               label: "GDLK Reference Guide",
               to: "/docs",
+            },
+            {
+              id: "about",
+              label: "About",
+              to: "/about",
             },
           ]}
         />
