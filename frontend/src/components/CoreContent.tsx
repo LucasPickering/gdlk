@@ -5,6 +5,7 @@ import PuzzleDetailsView from "./puzzle/PuzzleDetailsView";
 import NotFoundPage from "./NotFoundPage";
 import PageContainer from "./common/PageContainer";
 import DocsPage from "@root/components/docs/DocsPage";
+import AboutPage from "./AboutPage";
 
 const ProgramIdeView = React.lazy(() => import("./ide/ProgramIdeView"));
 
@@ -30,6 +31,10 @@ const CoreContent: React.FC = () => {
 
             <Route path="/docs">
               <DocsPage />
+            </Route>
+
+            <Route path="/about">
+              <AboutPage />
             </Route>
 
             <Route path="/puzzles/:puzzleSlug" exact>

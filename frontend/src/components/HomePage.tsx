@@ -41,6 +41,11 @@ const HomePage: React.FC = () => {
               label: "GDLK Reference Guide",
               to: "/docs",
             },
+            {
+              id: "about",
+              label: "About",
+              to: "/about",
+            },
           ]}
         />
       </Grid>
