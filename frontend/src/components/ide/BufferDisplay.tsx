@@ -7,12 +7,13 @@ import LangValueDisplay from "./LangValueDisplay";
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   bufferDisplay: {
+    flex: 1, // Size all buffer blocks evenly
     display: "flex",
     flexDirection: "column",
 
-    // Spacing between multiple buffers
+    // Border between multiple buffers
     "&:not(:first-child)": {
-      paddingLeft: spacing(1),
+      borderTop: `1px solid ${palette.divider}`,
     },
   },
 
@@ -21,9 +22,9 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   },
   bufferCells: {
     display: "flex",
-    flexDirection: "column",
+    flexDirection: "row",
+    flexWrap: "wrap",
     padding: spacing(0.5),
-    border: `2px solid ${palette.divider}`,
     overflowY: "auto",
 
     "& + &": {
