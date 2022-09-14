@@ -2,6 +2,7 @@ import { makeStyles } from "@mui/styles";
 import React from "react";
 import clsx from "clsx";
 import HeaderBar from "../header/HeaderBar";
+import { useMatch } from "react-router-dom";
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   pageContainer: {
@@ -39,7 +40,6 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
 }));
 
 interface Props {
-  fullScreen: boolean;
   children?: React.ReactNode;
 }
 
@@ -47,15 +47,13 @@ interface Props {
  * Container for all content on the page. This is used in the root to wrap all
  * pages.
  */
-const PageContainer: React.FC<Props> & { defaultProps: Partial<Props> } = ({
-  fullScreen,
-  children,
-}) => {
+const PageContainer: React.FC<Props> = ({ children }) => {
   const localClasses = useLocalStyles();
+  const fullScreen = Boolean(useMatch("/puzzles/:puzzleSlug/solution"));
 
   return (
     <div className={localClasses.pageContainer}>
-      {!fullScreen && <HeaderBar />}
+      <HeaderBar />
 
       <div
         className={clsx(
@@ -69,10 +67,6 @@ const PageContainer: React.FC<Props> & { defaultProps: Partial<Props> } = ({
       </div>
     </div>
   );
-};
-
-PageContainer.defaultProps = {
-  fullScreen: false,
 };
 
 export default PageContainer;

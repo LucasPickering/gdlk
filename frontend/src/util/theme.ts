@@ -1,16 +1,12 @@
 import { Theme, responsiveFontSizes } from "@mui/material";
-import {
-  createTheme,
-  DeprecatedThemeOptions,
-  adaptV4Theme,
-} from "@mui/material/styles";
+import { createTheme, ThemeOptions } from "@mui/material/styles";
 
 const theme: Theme = (() => {
   // We have to create theme theme twice:
   // - First time, with the basic global options
   // - Second time including component-specific overrides
   // This allows us to reference the base theme in the overrides
-  const config: DeprecatedThemeOptions = {
+  const config: ThemeOptions = {
     palette: {
       // These colors are supposed to mimic the ANSI base 8
       mode: "dark",
@@ -24,7 +20,7 @@ const theme: Theme = (() => {
       divider: "#ffffff",
       action: {
         hover: "#ffffff",
-        selected: "#ffffff",
+        selected: "#dddddd",
       },
       success: {
         main: "#00ff00",
@@ -65,43 +61,46 @@ const theme: Theme = (() => {
       },
     },
 
-    props: {
+    components: {
       MuiCardHeader: {
-        // CardHeader enforces that the component is always 'span' which is shit
-        // so we just supply our own Typography everywhere
-        disableTypography: false,
+        defaultProps: {
+          // CardHeader enforces that the component is always 'span' which is shit
+          // so we just supply our own Typography everywhere
+          disableTypography: false,
+        },
       },
       MuiGrid: {
-        spacing: 2,
-      },
-      MuiSnackbar: {
-        autoHideDuration: 3000,
-        anchorOrigin: { vertical: "bottom", horizontal: "left" },
+        defaultProps: {
+          // TODO make this work again
+          spacing: 2,
+        },
       },
       MuiTypography: {
-        // <p> tags aren't actually what we want in most cases, so make them
-        // explicit.
-        // NOTE: do *NOT* override `component` here, or it will effectively
-        // disable the `paragraph` and `variantMapping` props in all places,
-        // since `component` always takes precedence
-        variantMapping: {
-          body1: "div",
-          body2: "div",
-          inherit: "div",
+        defaultProps: {
+          // <p> tags aren't actually what we want in most cases, so make them
+          // explicit.
+          // NOTE: do *NOT* override `component` here, or it will effectively
+          // disable the `paragraph` and `variantMapping` props in all places,
+          // since `component` always takes precedence
+          variantMapping: {
+            body1: "div",
+            body2: "div",
+            inherit: "div",
+          },
         },
       },
     },
   };
 
-  const theme = createTheme(adaptV4Theme(config));
+  const theme = createTheme(config);
 
   // Create the real deal now
   return responsiveFontSizes(
-    createTheme(
-      adaptV4Theme({
-        ...config,
-        overrides: {
-          MuiButton: {
+    createTheme({
+      ...config,
+      components: {
+        MuiButton: {
+          styleOverrides: {
             root: {
               borderRadius: 0,
             },
@@ -109,17 +108,21 @@ const theme: Theme = (() => {
               backgroundColor: theme.palette.common.white,
             },
           },
-          MuiListItem: {
-            button: {
+        },
+        MuiListItem: {
+          styleOverrides: {
+            root: {
               "&:hover": {
                 color: theme.palette.getContrastText(
                   theme.palette.action.hover
                 ),
+                // color: "red",
+                // We _should_ be able to do this as another override for the
+                // component, but that class never got applied so I had to this
+                // as a workaround
               },
-              // We _should_ be able to do this as another override for the
-              // component, but that class never got applied so I had to this
-              // as a workaround
               "&.Mui-selected": {
+                backgroundColor: theme.palette.action.selected,
                 color: theme.palette.getContrastText(
                   theme.palette.action.selected
                 ),
@@ -127,12 +130,15 @@ const theme: Theme = (() => {
                   content: '">"',
                   paddingRight: 8,
                 },
+                "&:hover": {
+                  backgroundColor: theme.palette.action.hover,
+                },
               },
             },
           },
         },
-      })
-    )
+      },
+    })
   );
 })();
 

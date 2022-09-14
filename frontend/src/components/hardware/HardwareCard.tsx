@@ -8,7 +8,7 @@ import {
 } from "@mui/material";
 import SimpleTable from "../common/SimpleTable";
 import { useRecoilValue } from "recoil";
-import { currencyState, hardwareState } from "@root/state/user";
+import { hardwareState } from "@root/state/user";
 import { hardwareComponents } from "@root/data/hardware";
 import useHardwareStore from "@root/hooks/useHardwareStore";
 import { formatCurrency } from "@root/util/format";
@@ -25,16 +25,12 @@ const useLocalStyles = makeStyles({
  */
 const HardwareCard: React.FC = () => {
   const localClasses = useLocalStyles();
-  const currency = useRecoilValue(currencyState);
   const hardware = useRecoilValue(hardwareState);
   const { getUpgradeCost, canUpgrade, purchaseUpgrade } = useHardwareStore();
 
   return (
-    <Card sx={{ maxWidth: 40 }}>
-      <CardHeader
-        title={<Typography variant="h2">Hardware</Typography>}
-        subheader={formatCurrency(currency)}
-      />
+    <Card sx={{ maxWidth: 400 }}>
+      <CardHeader title={<Typography variant="h2">Hardware</Typography>} />
       <CardContent>
         <SimpleTable
           className={localClasses.table}

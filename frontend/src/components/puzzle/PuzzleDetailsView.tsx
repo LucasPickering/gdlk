@@ -1,18 +1,20 @@
 import React from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import PuzzleDetails from "./PuzzleDetails";
 import NotFoundPage from "@root/components/NotFoundPage";
 import { puzzles } from "@root/data/puzzles";
+import { Drawer } from "@mui/material";
 
 const PuzzleDetailsView: React.FC = () => {
   const { puzzleSlug } = useParams();
   const puzzle = puzzleSlug && puzzles[puzzleSlug];
+  const navigate = useNavigate();
 
-  if (puzzle) {
-    return <PuzzleDetails puzzle={puzzle} />;
-  }
-
-  return <NotFoundPage />;
+  return (
+    <Drawer anchor="right" open onClose={() => navigate("/puzzles")}>
+      {puzzle ? <PuzzleDetails puzzle={puzzle} /> : <NotFoundPage />}
+    </Drawer>
+  );
 };
 
 export default PuzzleDetailsView;

@@ -1,15 +1,11 @@
 import React from "react";
 import { Grid } from "@mui/material";
-import { puzzles } from "@root/data/puzzles";
 import NavMenu from "./common/NavMenu";
-import PuzzleList from "./puzzle/PuzzleList";
-import { Outlet, useParams } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 
 const HomePage: React.FC = () => {
-  const { puzzleSlug } = useParams();
-
   return (
-    <Grid container>
+    <Grid container spacing={2}>
       <Grid item md={4} sm={8} xs={12}>
         <NavMenu
           items={[
@@ -17,13 +13,6 @@ const HomePage: React.FC = () => {
               id: "puzzles",
               label: "Puzzles",
               to: "/puzzles",
-              children: (
-                <PuzzleList
-                  puzzles={Object.values(puzzles)}
-                  selectedPuzzle={puzzleSlug}
-                  link
-                />
-              ),
             },
             {
               id: "hardware",

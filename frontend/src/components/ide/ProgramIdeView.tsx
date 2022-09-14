@@ -2,7 +2,6 @@ import React from "react";
 import { useParams } from "react-router-dom";
 import ProgramIde from "./ProgramIde";
 import NotFoundPage from "@root/components/NotFoundPage";
-import PageContainer from "@root/components/common/PageContainer";
 import { puzzles } from "@root/data/puzzles";
 
 /**
@@ -12,11 +11,11 @@ const ProgramIdeView: React.FC = () => {
   const { puzzleSlug } = useParams();
   const puzzle = puzzleSlug && puzzles[puzzleSlug];
 
-  return (
-    <PageContainer fullScreen>
-      {puzzle ? <ProgramIde puzzle={puzzle} /> : <NotFoundPage />}
-    </PageContainer>
-  );
+  if (!puzzle) {
+    return <NotFoundPage />;
+  }
+
+  return <ProgramIde puzzle={puzzle} />;
 };
 
 export default ProgramIdeView;

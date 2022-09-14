@@ -5,6 +5,7 @@ import {
   ListItemText,
   ListItemIcon,
   ListItemButton,
+  Grid,
 } from "@mui/material";
 import { makeStyles } from "@mui/styles";
 import { Puzzle } from "@root/util/types";
@@ -12,6 +13,7 @@ import UnstyledLink from "../common/UnstyledLink";
 import { Done as IconDone } from "@mui/icons-material";
 import { useRecoilValue } from "recoil";
 import { puzzleCompletionState } from "@root/state/user";
+import PuzzleCard from "./PuzzleCard";
 
 const useLocalStyles = makeStyles(({ palette }) => ({
   solvedIcon: {
@@ -39,19 +41,21 @@ const PuzzleList: React.FC<
   );
 
   return (
-    <List dense {...rest}>
-      {/* One item per puzzle */}
+    <Grid container spacing={2}>
       {puzzles.map((puzzle) => (
-        <PuzzleListItem
-          key={puzzle.slug}
-          puzzle={puzzle}
-          link={link}
-          selected={selectedPuzzle === puzzle.slug}
-          onClick={onSelectPuzzle && (() => onSelectPuzzle(puzzle.slug))}
-        />
+        <Grid key={puzzle.slug} item>
+          <PuzzleCard puzzle={puzzle} />
+        </Grid>
       ))}
-    </List>
+    </Grid>
   );
+  // <PuzzleListItem
+  //   key={puzzle.slug}
+  //   puzzle={puzzle}
+  //   link={link}
+  //   selected={selectedPuzzle === puzzle.slug}
+  //   onClick={onSelectPuzzle && (() => onSelectPuzzle(puzzle.slug))}
+  // />
 };
 
 const PuzzleListItem: React.FC<
