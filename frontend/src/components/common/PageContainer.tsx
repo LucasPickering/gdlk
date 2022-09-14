@@ -2,6 +2,7 @@ import { makeStyles, Typography } from "@material-ui/core";
 import React from "react";
 import Link from "./Link";
 import clsx from "clsx";
+import HeaderBar from "../header/HeaderBar";
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   pageContainer: {
@@ -54,6 +55,8 @@ const PageContainer: React.FC<Props> & { defaultProps: Partial<Props> } = ({
 
   return (
     <div className={localClasses.pageContainer}>
+      {!fullScreen && <HeaderBar />}
+
       <div
         className={clsx(
           localClasses.pageBody,
