@@ -23,7 +23,7 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => {
       height: "100%",
       display: "grid",
       gridTemplateRows: "auto auto 1fr 1fr",
-      gridTemplateColumns: "auto 1fr auto auto",
+      gridTemplateColumns: "200px 1fr auto auto",
       gridTemplateAreas: `
       'io rg rg sk'
       'io st ct sk'

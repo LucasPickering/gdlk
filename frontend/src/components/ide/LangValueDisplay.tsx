@@ -5,7 +5,7 @@ import clsx from "clsx";
 
 const useLocalStyles = makeStyles(() => ({
   langValueDisplay: {
-    minWidth: 60, // Based on the min/max value
+    width: 40, // TODO we'll need to tweak max value to make it fit into this
     textAlign: "right",
     lineHeight: 1.1,
   },

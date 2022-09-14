@@ -9,6 +9,7 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
     backgroundColor: palette.background.default,
     padding: spacing(1),
     display: "flex",
+    flexDirection: "column",
   },
 }));
 
@@ -32,8 +33,7 @@ const IoInfo: React.FC<{
       />
       <BufferDisplay
         label="Output"
-        values={expectedOutput}
-        secondaryValues={machineState?.output ?? []}
+        values={machineState?.output ?? []}
         maxLength={expectedOutput.length}
       />
     </div>
