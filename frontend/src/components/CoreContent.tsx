@@ -35,10 +35,9 @@ const CoreContent: React.FC = () => {
           <Route path="/puzzles" />
           <Route path="/hardware" element={<HardwareCard />} />
           <Route path="/puzzles/:puzzleSlug" element={<PuzzleDetailsView />} />
+          <Route path="/docs" element={<DocsPage />} />
+          <Route path="/about" element={<AboutPage />} />
         </Route>
-
-        <Route path="/docs" element={<DocsPage />} />
-        <Route path="/about" element={<AboutPage />} />
 
         <Route path="*" element={<NotFoundPage />} />
       </Route>
