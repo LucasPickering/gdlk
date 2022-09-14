@@ -1,23 +1,7 @@
 /**
- * The currency that the player earns and spends. We use a class instead of just
- * a type alias so we can get newtype-like benefits, and to enforce consistent
- * formatting.
+ * A value of currency, earned via puzzles and used to buy upgrades.
  */
-export class Currency {
-  constructor(private readonly currencyValue: number) {}
-
-  public plus(other: Currency): Currency {
-    return new Currency(this.currencyValue + other.currencyValue);
-  }
-
-  public minus(other: Currency): Currency {
-    return new Currency(this.currencyValue - other.currencyValue);
-  }
-
-  public toString(): string {
-    return `${this.currencyValue}ƒ`;
-  }
-}
+export type Currency = number;
 
 export type HardwareComponent = "numRegisters" | "numStacks" | "maxStackLength";
 
@@ -43,7 +27,7 @@ export interface Puzzle {
   name: string;
   slug: string;
   description: string;
-  currencyValue: Currency;
+  reward: Currency;
   examples: Array<{ input: number[]; output: number[] }>;
   input: number[];
   expectedOutput: number[];

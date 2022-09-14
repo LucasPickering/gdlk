@@ -19,7 +19,7 @@ function useHardwareStore(): ReturnValue {
   const getUpgradeCost: ReturnValue["getUpgradeCost"] = (component) => {
     const { min, upgradeCostFactor } = hardwareComponentsByName[component];
     const previousUpgrades = hardware[component] - min;
-    return new Currency((previousUpgrades + 1) * upgradeCostFactor);
+    return (previousUpgrades + 1) * upgradeCostFactor;
   };
 
   const canUpgrade: ReturnValue["canUpgrade"] = (component) => {
@@ -30,7 +30,7 @@ function useHardwareStore(): ReturnValue {
 
   const purchaseUpgrade: ReturnValue["purchaseUpgrade"] = (component) => {
     const cost = getUpgradeCost(component);
-    setCurrency((old) => old.minus(cost));
+    setCurrency((old) => old - cost);
     setHardware((old) => ({ ...old, [component]: old[component] + 1 }));
   };
 

@@ -11,8 +11,16 @@ import useDebouncedValue from "@root/hooks/useDebouncedValue";
 import PromptOnExit from "@root/components/common/PromptOnExit";
 import useCompiler from "./useCompiler";
 import { Puzzle } from "@root/util/types";
-import { useRecoilState, useRecoilValue } from "recoil";
-import { hardwareState, puzzleSolutionStateFamily } from "@root/state/user";
+import {
+  useRecoilState,
+  useRecoilTransaction_UNSTABLE,
+  useRecoilValue,
+} from "recoil";
+import {
+  currencyState,
+  hardwareState,
+  puzzleSolutionStateFamily,
+} from "@root/state/user";
 
 const useLocalStyles = makeStyles(({ palette, spacing }) => {
   const border = `2px solid ${palette.divider}`;
@@ -72,9 +80,11 @@ const ProgramIde: React.FC<{
   puzzle: Puzzle;
 }> = ({ puzzle }) => {
   const localClasses = useLocalStyles();
-  const [puzzleSolution, setPuzzleSolution] = useRecoilState(
-    puzzleSolutionStateFamily({ puzzleSlug: puzzle.slug })
-  );
+  const puzzleSolutionState = puzzleSolutionStateFamily({
+    puzzleSlug: puzzle.slug,
+  });
+  const [puzzleSolution, setPuzzleSolution] =
+    useRecoilState(puzzleSolutionState);
   const hardwareSpec = useRecoilValue(hardwareState);
 
   const [sourceCode, setSourceCode] = useState<string>(
@@ -85,6 +95,15 @@ const ProgramIde: React.FC<{
     useCompiler({ hardwareSpec, puzzle, sourceCode });
 
   const [stepping, setStepping] = useState<boolean>(false);
+
+  const onSolve = useRecoilTransaction_UNSTABLE(({ get, set }) => () => {
+    const puzzleSolution = get(puzzleSolutionState);
+
+    if (!puzzleSolution.solved) {
+      set(currencyState, (old) => old + puzzle.reward);
+      set(puzzleSolutionState, (old) => ({ ...old, solved: true }));
+    }
+  });
 
   // When the source changes, save it to local storage and recompile
   // Use a debounce to prevent constant recompilation
@@ -105,9 +124,9 @@ const ProgramIde: React.FC<{
   const successful = machineState?.successful ?? false;
   useEffect(() => {
     if (successful) {
-      setPuzzleSolution((old) => ({ ...old, solved: true }));
+      onSolve();
     }
-  }, [successful, setPuzzleSolution]);
+  }, [successful, onSolve]);
 
   const contextValue: IdeContextType = {
     wasmHardwareSpec,
