@@ -1,15 +1,19 @@
-import { Theme, responsiveFontSizes } from "@material-ui/core";
-import { createTheme, ThemeOptions } from "@material-ui/core/styles";
+import { Theme, responsiveFontSizes } from "@mui/material";
+import {
+  createTheme,
+  DeprecatedThemeOptions,
+  adaptV4Theme,
+} from "@mui/material/styles";
 
 const theme: Theme = (() => {
   // We have to create theme theme twice:
   // - First time, with the basic global options
   // - Second time including component-specific overrides
   // This allows us to reference the base theme in the overrides
-  const config: ThemeOptions = {
+  const config: DeprecatedThemeOptions = {
     palette: {
       // These colors are supposed to mimic the ANSI base 8
-      type: "dark",
+      mode: "dark",
       primary: {
         // ANSI cyan
         main: "#5ac2c6",
@@ -62,9 +66,6 @@ const theme: Theme = (() => {
     },
 
     props: {
-      MuiCard: {
-        component: "section",
-      },
       MuiCardHeader: {
         // CardHeader enforces that the component is always 'span' which is shit
         // so we just supply our own Typography everywhere
@@ -77,45 +78,61 @@ const theme: Theme = (() => {
         autoHideDuration: 3000,
         anchorOrigin: { vertical: "bottom", horizontal: "left" },
       },
+      MuiTypography: {
+        // <p> tags aren't actually what we want in most cases, so make them
+        // explicit.
+        // NOTE: do *NOT* override `component` here, or it will effectively
+        // disable the `paragraph` and `variantMapping` props in all places,
+        // since `component` always takes precedence
+        variantMapping: {
+          body1: "div",
+          body2: "div",
+          inherit: "div",
+        },
+      },
     },
   };
 
-  const theme = createTheme(config);
+  const theme = createTheme(adaptV4Theme(config));
 
   // Create the real deal now
   return responsiveFontSizes(
-    createTheme({
-      ...config,
-      overrides: {
-        MuiButton: {
-          root: {
-            borderRadius: 0,
-          },
-          contained: {
-            backgroundColor: theme.palette.common.white,
-          },
-        },
-        MuiListItem: {
-          button: {
-            "&:hover": {
-              color: theme.palette.getContrastText(theme.palette.action.hover),
+    createTheme(
+      adaptV4Theme({
+        ...config,
+        overrides: {
+          MuiButton: {
+            root: {
+              borderRadius: 0,
             },
-            // We _should_ be able to do this as another override for the
-            // component, but that class never got applied so I had to this
-            // as a workaround
-            "&.Mui-selected": {
-              color: theme.palette.getContrastText(
-                theme.palette.action.selected
-              ),
-              "&::before": {
-                content: '">"',
-                paddingRight: 8,
+            contained: {
+              backgroundColor: theme.palette.common.white,
+            },
+          },
+          MuiListItem: {
+            button: {
+              "&:hover": {
+                color: theme.palette.getContrastText(
+                  theme.palette.action.hover
+                ),
+              },
+              // We _should_ be able to do this as another override for the
+              // component, but that class never got applied so I had to this
+              // as a workaround
+              "&.Mui-selected": {
+                color: theme.palette.getContrastText(
+                  theme.palette.action.selected
+                ),
+                "&::before": {
+                  content: '">"',
+                  paddingRight: 8,
+                },
               },
             },
           },
         },
-      },
-    })
+      })
+    )
   );
 })();
 

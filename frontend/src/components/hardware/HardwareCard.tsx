@@ -5,14 +5,14 @@ import {
   CardHeader,
   CardContent,
   Button,
-  makeStyles,
-} from "@material-ui/core";
+} from "@mui/material";
 import SimpleTable from "../common/SimpleTable";
 import { useRecoilValue } from "recoil";
 import { currencyState, hardwareState } from "@root/state/user";
 import { hardwareComponents } from "@root/data/hardware";
 import useHardwareStore from "@root/hooks/useHardwareStore";
 import { formatCurrency } from "@root/util/format";
+import { makeStyles } from "@mui/styles";
 
 const useLocalStyles = makeStyles({
   card: {

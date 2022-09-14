@@ -1,4 +1,4 @@
-import { Breakpoints } from "@material-ui/core/styles/createBreakpoints";
+import { Breakpoints } from "@mui/material";
 
 export type ScreenSize = "small" | "large";
 

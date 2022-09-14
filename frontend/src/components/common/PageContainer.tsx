@@ -1,4 +1,4 @@
-import { makeStyles } from "@material-ui/core";
+import { makeStyles } from "@mui/styles";
 import React from "react";
 import clsx from "clsx";
 import HeaderBar from "../header/HeaderBar";
@@ -28,7 +28,7 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
     display: "flex",
     justifyContent: "center",
     "& > *": {
-      padding: `0px ${spacing(0.5)}px`,
+      padding: `0px ${spacing(0.5)}`,
     },
     "& > * + *": {
       borderLeftWidth: 1,
@@ -40,6 +40,7 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
 
 interface Props {
   fullScreen: boolean;
+  children?: React.ReactNode;
 }
 
 /**

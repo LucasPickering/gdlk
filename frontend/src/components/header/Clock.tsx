@@ -1,18 +1,20 @@
-import { Typography } from "@material-ui/core";
 import React, { useEffect, useState } from "react";
 
+/**
+ * Display the current time
+ */
 const Clock: React.FC = () => {
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()));
+    const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, [setNow]);
 
   return (
-    <Typography>
+    <span>
       {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-    </Typography>
+    </span>
   );
 };
 

@@ -1,6 +1,7 @@
 import React, { useContext } from "react";
 import { LangValue, IdeContext } from "@root/state/ide";
-import { makeStyles, Typography } from "@material-ui/core";
+import { Typography } from "@mui/material";
+import { makeStyles } from "@mui/styles";
 import LangValueDisplay from "./LangValueDisplay";
 import clsx from "clsx";
 

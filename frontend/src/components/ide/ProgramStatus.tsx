@@ -1,7 +1,7 @@
 import React, { useContext } from "react";
 import { CompiledState, IdeContext } from "@root/state/ide";
 import clsx from "clsx";
-import { makeStyles } from "@material-ui/core";
+import { makeStyles } from "@mui/styles";
 const { FailureReason } = await import("gdlk_wasm");
 
 const useLocalStyles = makeStyles(({ spacing }) => ({

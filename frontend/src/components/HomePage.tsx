@@ -1,18 +1,12 @@
 import React from "react";
-import { Grid } from "@material-ui/core";
+import { Grid } from "@mui/material";
 import { puzzles } from "@root/data/puzzles";
 import NavMenu from "./common/NavMenu";
 import PuzzleList from "./puzzle/PuzzleList";
-import { Route, Switch, useParams } from "react-router-dom";
-import PuzzleDetailsView from "./puzzle/PuzzleDetailsView";
-import HardwareCard from "./hardware/HardwareCard";
-
-interface RouteParams {
-  puzzleSlug: string;
-}
+import { Outlet, useParams } from "react-router-dom";
 
 const HomePage: React.FC = () => {
-  const { puzzleSlug } = useParams<RouteParams>();
+  const { puzzleSlug } = useParams();
 
   return (
     <Grid container>
@@ -51,14 +45,7 @@ const HomePage: React.FC = () => {
       </Grid>
 
       <Grid item md={8} sm={12}>
-        <Switch>
-          <Route path="/hardware" exact>
-            <HardwareCard />
-          </Route>
-          <Route path="/puzzles/:puzzleSlug" exact>
-            <PuzzleDetailsView />
-          </Route>
-        </Switch>
+        <Outlet />
       </Grid>
     </Grid>
   );

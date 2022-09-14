@@ -5,16 +5,12 @@ import NotFoundPage from "@root/components/NotFoundPage";
 import PageContainer from "@root/components/common/PageContainer";
 import { puzzles } from "@root/data/puzzles";
 
-interface RouteParams {
-  puzzleSlug: string;
-}
-
 /**
  * A view that allows the user to edit and run GDLK code.
  */
 const ProgramIdeView: React.FC = () => {
-  const { puzzleSlug } = useParams<RouteParams>();
-  const puzzle = puzzles[puzzleSlug];
+  const { puzzleSlug } = useParams();
+  const puzzle = puzzleSlug && puzzles[puzzleSlug];
 
   return (
     <PageContainer fullScreen>

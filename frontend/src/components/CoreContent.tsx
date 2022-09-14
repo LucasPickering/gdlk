@@ -1,11 +1,12 @@
 import React from "react";
-import { Switch, Route } from "react-router-dom";
+import { Routes, Route, Outlet } from "react-router-dom";
 import HomePage from "./HomePage";
 import PuzzleDetailsView from "./puzzle/PuzzleDetailsView";
 import NotFoundPage from "./NotFoundPage";
 import PageContainer from "./common/PageContainer";
 import DocsPage from "@root/components/docs/DocsPage";
 import AboutPage from "./AboutPage";
+import HardwareCard from "./hardware/HardwareCard";
 
 const ProgramIdeView = React.lazy(() => import("./ide/ProgramIdeView"));
 
@@ -15,39 +16,33 @@ const ProgramIdeView = React.lazy(() => import("./ide/ProgramIdeView"));
  */
 const CoreContent: React.FC = () => {
   return (
-    <Switch>
+    <Routes>
       {/* Full screen routes first */}
-      <Route path="/puzzles/:puzzleSlug/solution" exact>
-        <ProgramIdeView />
-      </Route>
+      <Route
+        path="/puzzles/:puzzleSlug/solution"
+        element={<ProgramIdeView />}
+      />
 
       {/* All non-full screen routes */}
-      <Route path="*">
-        <PageContainer>
-          <Switch>
-            <Route path={["/", "/hardware", "/puzzles/:puzzleSlug?"]} exact>
-              <HomePage />
-            </Route>
+      <Route
+        element={
+          <PageContainer>
+            <Outlet />
+          </PageContainer>
+        }
+      >
+        <Route path="/" element={<HomePage />}>
+          <Route path="/puzzles" />
+          <Route path="/hardware" element={<HardwareCard />} />
+          <Route path="/puzzles/:puzzleSlug" element={<PuzzleDetailsView />} />
+        </Route>
 
-            <Route path="/docs">
-              <DocsPage />
-            </Route>
+        <Route path="/docs" element={<DocsPage />} />
+        <Route path="/about" element={<AboutPage />} />
 
-            <Route path="/about">
-              <AboutPage />
-            </Route>
-
-            <Route path="/puzzles/:puzzleSlug" exact>
-              <PuzzleDetailsView />
-            </Route>
-
-            <Route path="*">
-              <NotFoundPage />
-            </Route>
-          </Switch>
-        </PageContainer>
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
-    </Switch>
+    </Routes>
   );
 };
 

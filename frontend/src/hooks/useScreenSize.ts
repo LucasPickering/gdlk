@@ -1,5 +1,5 @@
 import { ScreenSize } from "@root/util/styles";
-import { useMediaQuery, useTheme } from "@material-ui/core";
+import { useMediaQuery, useTheme } from "@mui/material";
 
 /**
  * Gets the current screen size.

@@ -5,15 +5,15 @@ import React, {
   useEffect,
   useRef,
 } from "react";
-import { makeStyles } from "@material-ui/core";
+import { makeStyles } from "@mui/styles";
 import {
   Pause as IconPause,
   PlayArrow as IconPlayArrow,
   Refresh as IconRefresh,
   NavigateNext as IconNavigateNext,
   SkipNext as IconSkipNext,
-} from "@material-ui/icons";
-import { ToggleButton, ToggleButtonGroup } from "@material-ui/lab";
+} from "@mui/icons-material";
+import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { IdeContext } from "@root/state/ide";
 import clsx from "clsx";
 import IconButton from "@root/components/common/IconButton";
@@ -85,6 +85,7 @@ const IdeControls: React.FC<{
           title="Execute Next Instruction"
           disabled={!machineState || machineState.terminated || stepping}
           onClick={executeNext}
+          size="large"
         >
           <IconNavigateNext />
         </IconButton>
@@ -93,6 +94,7 @@ const IdeControls: React.FC<{
           title={stepping ? "Pause Execution" : "Execute Program"}
           disabled={!machineState || machineState.terminated}
           onClick={() => setStepping((prev) => !prev)}
+          size="large"
         >
           {stepping ? <IconPause /> : <IconPlayArrow />}
         </IconButton>
@@ -101,6 +103,7 @@ const IdeControls: React.FC<{
           title="Execute to End"
           disabled={!machineState || machineState.terminated || stepping}
           onClick={() => execute(true)}
+          size="large"
         >
           <IconSkipNext />
         </IconButton>
@@ -113,6 +116,7 @@ const IdeControls: React.FC<{
             reset();
             setStepping(false);
           }}
+          size="large"
         >
           <IconRefresh />
         </IconButton>

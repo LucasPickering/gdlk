@@ -3,8 +3,8 @@ import {
   IconButton as MuiIconButton,
   Tooltip,
   CircularProgress,
-  makeStyles,
-} from "@material-ui/core";
+} from "@mui/material";
+import { makeStyles } from "@mui/styles";
 
 const useLocalStyles = makeStyles({
   loading: {

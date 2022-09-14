@@ -1,6 +1,6 @@
 import React, { useContext } from "react";
 import { IdeContext } from "@root/state/ide";
-import { makeStyles } from "@material-ui/core";
+import { makeStyles } from "@mui/styles";
 import BufferDisplay from "./BufferDisplay";
 import clsx from "clsx";
 

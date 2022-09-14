@@ -1,5 +1,5 @@
 import React, { ReactNode, useContext } from "react";
-import { Typography } from "@material-ui/core";
+import { Typography } from "@mui/material";
 import Link from "@root/components/common/Link";
 import DocsSection from "../DocsSection";
 import { DocsContextType, DocsContext } from "@root/state/docs";

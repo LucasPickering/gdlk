@@ -4,13 +4,9 @@ import PuzzleDetails from "./PuzzleDetails";
 import NotFoundPage from "@root/components/NotFoundPage";
 import { puzzles } from "@root/data/puzzles";
 
-interface RouteParams {
-  puzzleSlug: string;
-}
-
 const PuzzleDetailsView: React.FC = () => {
-  const { puzzleSlug } = useParams<RouteParams>();
-  const puzzle = puzzles[puzzleSlug];
+  const { puzzleSlug } = useParams();
+  const puzzle = puzzleSlug && puzzles[puzzleSlug];
 
   if (puzzle) {
     return <PuzzleDetails puzzle={puzzle} />;

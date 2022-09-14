@@ -1,27 +1,23 @@
-import { AppBar, Box, Toolbar, Typography } from "@material-ui/core";
+import { AppBar, Stack, Toolbar, Typography } from "@mui/material";
 import React from "react";
-import { useRecoilValue } from "recoil";
-import { currencyState } from "@root/state/user";
-import { formatCurrency } from "@root/util/format";
 import Clock from "./Clock";
+import Wallet from "./Wallet";
 
-const HeaderBar: React.FC = () => {
-  const currency = useRecoilValue(currencyState);
+const HeaderBar: React.FC = () => (
+  <AppBar position="static">
+    <Toolbar variant="dense">
+      <Typography variant="h2" component="h1">
+        GDLK_OS
+      </Typography>
 
-  return (
-    <AppBar position="static">
-      <Toolbar variant="dense">
-        <Typography variant="h2" component="h1">
-          GDLK_OS
-        </Typography>
-
-        <Box display="flex" flexDirection="row" marginLeft="auto">
-          <Typography>{formatCurrency(currency)}</Typography>
+      <Typography variant="h4" marginLeft="auto">
+        <Stack direction="row" spacing={2}>
+          <Wallet />
           <Clock />
-        </Box>
-      </Toolbar>
-    </AppBar>
-  );
-};
+        </Stack>
+      </Typography>
+    </Toolbar>
+  </AppBar>
+);
 
 export default HeaderBar;

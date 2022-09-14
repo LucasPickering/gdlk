@@ -1,5 +1,5 @@
 import React, { useContext } from "react";
-import { makeStyles } from "@material-ui/core";
+import { makeStyles } from "@mui/styles";
 import clsx from "clsx";
 import { IdeContext, gdlkSpanToAce } from "@root/state/ide";
 import AceEditor, { IAnnotation, IMarker, IEditorProps } from "react-ace";

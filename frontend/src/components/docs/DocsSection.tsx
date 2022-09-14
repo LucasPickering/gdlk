@@ -1,6 +1,7 @@
 import React from "react";
-import { makeStyles, Typography, Theme } from "@material-ui/core";
-import { Link as IconLink } from "@material-ui/icons";
+import { Typography, Theme } from "@mui/material";
+import { makeStyles } from "@mui/styles";
+import { Link as IconLink } from "@mui/icons-material";
 import Link from "@root/components/common/Link";
 
 type Level = 2 | 3 | 4 | 5;
@@ -17,7 +18,7 @@ const HEADER_MAPPINGS: Record<Level, "h2" | "h3" | "h4" | "h5"> = {
 const useLocalStyles = makeStyles<Theme>(({ spacing }) => ({
   docsSection: {},
   "docsSectionContent--3": {
-    padding: `0 ${spacing(2)}px`,
+    padding: `0 ${spacing(2)}`,
   },
   docsSectionHeader: {
     display: "flex",
@@ -36,6 +37,7 @@ const DocsSection: React.FC<{
   id?: string;
   level: Level;
   title: string;
+  children?: React.ReactNode;
 }> = ({ id, level, title, children }) => {
   const localClasses = useLocalStyles();
 

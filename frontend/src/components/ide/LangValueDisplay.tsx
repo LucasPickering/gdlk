@@ -1,6 +1,7 @@
 import React from "react";
 import { LangValue } from "@root/state/ide";
-import { makeStyles, Typography } from "@material-ui/core";
+import { Typography } from "@mui/material";
+import { makeStyles } from "@mui/styles";
 import clsx from "clsx";
 
 const useLocalStyles = makeStyles(() => ({

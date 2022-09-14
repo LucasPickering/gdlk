@@ -1,5 +1,5 @@
 import React, { useContext } from "react";
-import { Typography } from "@material-ui/core";
+import { Typography } from "@mui/material";
 import DocsSection from "../DocsSection";
 import InputOutputDocs from "./InputOutputDocs";
 import RegisterDocs from "./RegisterDocs";

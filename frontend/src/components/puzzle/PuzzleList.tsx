@@ -4,11 +4,12 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  makeStyles,
-} from "@material-ui/core";
+  ListItemButton,
+} from "@mui/material";
+import { makeStyles } from "@mui/styles";
 import { Puzzle } from "@root/util/types";
 import UnstyledLink from "../common/UnstyledLink";
-import { Done as IconDone } from "@material-ui/icons";
+import { Done as IconDone } from "@mui/icons-material";
 import { useRecoilValue } from "recoil";
 import { puzzleCompletionState } from "@root/state/user";
 
@@ -68,7 +69,6 @@ const PuzzleListItem: React.FC<
     <ListItem
       key={puzzle.name}
       disabled={completion === "locked"}
-      button
       {...(link
         ? {
             component: UnstyledLink,
@@ -77,12 +77,14 @@ const PuzzleListItem: React.FC<
         : {})}
       {...rest}
     >
-      <ListItemText primary={puzzle.name} />
-      {completion === "solved" && (
-        <ListItemIcon className={localClasses.solvedIcon}>
-          <IconDone />
-        </ListItemIcon>
-      )}
+      <ListItemButton>
+        <ListItemText primary={puzzle.name} />
+        {completion === "solved" && (
+          <ListItemIcon className={localClasses.solvedIcon}>
+            <IconDone />
+          </ListItemIcon>
+        )}
+      </ListItemButton>
     </ListItem>
   );
 };

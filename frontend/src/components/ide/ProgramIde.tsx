@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { makeStyles } from "@material-ui/core";
+import { makeStyles } from "@mui/styles";
 import CodeEditor from "./CodeEditor";
 import RegistersInfo from "./RegistersInfo";
 import { IdeContextType, IdeContext } from "@root/state/ide";
@@ -8,7 +8,6 @@ import StackInfo from "./StackInfo";
 import IdeControls from "./IdeControls";
 import ProgramStatus from "./ProgramStatus";
 import useDebouncedValue from "@root/hooks/useDebouncedValue";
-import PromptOnExit from "@root/components/common/PromptOnExit";
 import useCompiler from "./useCompiler";
 import { Puzzle } from "@root/util/types";
 import {
@@ -151,12 +150,6 @@ const ProgramIde: React.FC<{
           <StackInfo className={localClasses.stackInfo} />
         )}
         <CodeEditor className={localClasses.editor} />
-
-        {/* Prompt on exit for unsaved changes */}
-        <PromptOnExit
-          when={sourceCode !== puzzleSolution.sourceCode}
-          message="You have unsaved changes. Are you sure you want to leave?"
-        />
       </div>
     </IdeContext.Provider>
   );
