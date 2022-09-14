@@ -15,9 +15,6 @@ import { formatCurrency } from "@root/util/format";
 import { makeStyles } from "@mui/styles";
 
 const useLocalStyles = makeStyles({
-  card: {
-    maxWidth: 400,
-  },
   table: {
     width: "100%",
   },
@@ -33,7 +30,7 @@ const HardwareCard: React.FC = () => {
   const { getUpgradeCost, canUpgrade, purchaseUpgrade } = useHardwareStore();
 
   return (
-    <Card className={localClasses.card}>
+    <Card sx={{ maxWidth: 40 }}>
       <CardHeader
         title={<Typography variant="h2">Hardware</Typography>}
         subheader={formatCurrency(currency)}
