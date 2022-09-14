@@ -18,7 +18,7 @@ import { atom, AtomEffect, atomFamily, selectorFamily } from "recoil";
  */
 export const currencyState = atom<Currency>({
   key: "currency",
-  default: new Currency(0),
+  default: 0,
   effects: [localStorageEffect("currency")],
 });
 

@@ -12,6 +12,7 @@ import { useRecoilValue } from "recoil";
 import { currencyState, hardwareState } from "@root/state/user";
 import { hardwareComponents } from "@root/data/hardware";
 import useHardwareStore from "@root/hooks/useHardwareStore";
+import { formatCurrency } from "@root/util/format";
 
 const useLocalStyles = makeStyles({
   card: {
@@ -35,7 +36,7 @@ const HardwareCard: React.FC = () => {
     <Card className={localClasses.card}>
       <CardHeader
         title={<Typography variant="h2">Hardware</Typography>}
-        subheader={currency.toString()}
+        subheader={formatCurrency(currency)}
       />
       <CardContent>
         <SimpleTable
@@ -49,7 +50,7 @@ const HardwareCard: React.FC = () => {
                 disabled={!canUpgrade(component)}
                 onClick={() => purchaseUpgrade(component)}
               >
-                Upgrade ({getUpgradeCost(component).toString()})
+                Upgrade ({formatCurrency(getUpgradeCost(component))})
               </Button>
             ),
           }))}
