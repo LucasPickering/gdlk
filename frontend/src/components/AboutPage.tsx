@@ -4,7 +4,7 @@ import Link from "./common/Link";
 
 const AboutPage: React.FC = () => (
   <div>
-    <Typography variant="body2">
+    <Typography>
       Created by <Link to="https://github.com/JRMurr">John Murray</Link> and{" "}
       <Link to="https://lucaspickering.me">Lucas Pickering</Link>
     </Typography>

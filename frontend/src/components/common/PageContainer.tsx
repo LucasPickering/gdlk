@@ -1,43 +1,7 @@
-import { makeStyles } from "@mui/styles";
 import React from "react";
-import clsx from "clsx";
 import HeaderBar from "../header/HeaderBar";
 import { useMatch } from "react-router-dom";
-
-const useLocalStyles = makeStyles(({ palette, spacing }) => ({
-  pageContainer: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    height: "100%",
-  },
-  pageBody: {
-    width: "100%",
-  },
-  pageBodyNotFullScreen: {
-    maxWidth: 1280,
-    padding: spacing(2),
-    paddingBottom: 0,
-  },
-  pageBodyFullScreen: {
-    height: "100%",
-    overflowY: "hidden",
-  },
-  pageFooter: {
-    marginTop: "auto",
-    padding: spacing(2),
-    display: "flex",
-    justifyContent: "center",
-    "& > *": {
-      padding: `0px ${spacing(0.5)}`,
-    },
-    "& > * + *": {
-      borderLeftWidth: 1,
-      borderLeftStyle: "solid",
-      borderLeftColor: palette.divider,
-    },
-  },
-}));
+import { Box } from "@mui/material";
 
 interface Props {
   children?: React.ReactNode;
@@ -48,24 +12,35 @@ interface Props {
  * pages.
  */
 const PageContainer: React.FC<Props> = ({ children }) => {
-  const localClasses = useLocalStyles();
   const fullScreen = Boolean(useMatch("/puzzles/:puzzleSlug/solution"));
 
   return (
-    <div className={localClasses.pageContainer}>
+    <Box
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
+      height="100%"
+    >
       <HeaderBar />
 
-      <div
-        className={clsx(
-          localClasses.pageBody,
+      <Box
+        width="100%"
+        sx={
           fullScreen
-            ? localClasses.pageBodyFullScreen
-            : localClasses.pageBodyNotFullScreen
-        )}
+            ? {
+                height: "100%",
+                overflowY: "hidden",
+              }
+            : ({ spacing }) => ({
+                maxWidth: 1400,
+                padding: spacing(2),
+                paddingBottom: 0,
+              })
+        }
       >
         {children}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 

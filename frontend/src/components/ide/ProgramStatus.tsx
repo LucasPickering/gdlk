@@ -1,14 +1,7 @@
 import React, { useContext } from "react";
 import { CompiledState, IdeContext } from "@root/state/ide";
-import clsx from "clsx";
-import { makeStyles } from "@mui/styles";
+import { Box } from "@mui/material";
 const { FailureReason } = await import("gdlk_wasm");
-
-const useLocalStyles = makeStyles(({ spacing }) => ({
-  programStatus: {
-    padding: spacing(1),
-  },
-}));
 
 function getStatusText(
   compiledState: CompiledState | undefined,
@@ -61,17 +54,16 @@ function getStatusText(
 }
 
 const ProgramStatus: React.FC<{ className?: string }> = ({ className }) => {
-  const localClasses = useLocalStyles();
   const { stepping, compiledState } = useContext(IdeContext);
 
   const machineState =
     compiledState?.type === "compiled" ? compiledState.machineState : undefined;
 
   return (
-    <div className={clsx(className, localClasses.programStatus)}>
+    <Box className={className} padding={1}>
       <div>CPU Cycles: {machineState?.cycleCount ?? "–"}</div>
       <div>{getStatusText(compiledState, stepping)}</div>
-    </div>
+    </Box>
   );
 };
 

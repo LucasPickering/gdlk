@@ -1,12 +1,12 @@
 import React from "react";
 import { LangValue } from "@root/state/ide";
-import { Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import { makeStyles } from "@mui/styles";
 import { range } from "lodash-es";
 import clsx from "clsx";
 import LangValueDisplay from "./LangValueDisplay";
 
-const useLocalStyles = makeStyles(({ palette, spacing }) => ({
+const useLocalStyles = makeStyles(({ palette }) => ({
   bufferDisplay: {
     flex: 1, // Size all buffer blocks evenly
     display: "flex",
@@ -21,41 +21,23 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
   buffer: {
     display: "flex",
   },
-  bufferCells: {
-    display: "flex",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    padding: spacing(0.5),
-    overflowY: "auto",
-
-    "& + &": {
-      borderLeft: 0,
-    },
-  },
-  bufferCellsInverted: {
-    flexDirection: "column-reverse",
-  },
 }));
 
 const Buffer: React.FC<{
   values: readonly LangValue[];
   maxLength: number;
   invert: boolean;
-}> = ({ values, maxLength, invert }) => {
-  const localClasses = useLocalStyles();
-
-  return (
-    <div
-      className={clsx(localClasses.bufferCells, {
-        [localClasses.bufferCellsInverted]: invert,
-      })}
-    >
-      {range(maxLength).map((i) => (
-        <LangValueDisplay key={i} value={values[i]} />
-      ))}
-    </div>
-  );
-};
+}> = ({ values, maxLength, invert }) => (
+  <Box
+    display="flex"
+    flexDirection={invert ? "row-reverse" : "row"}
+    flexWrap="wrap"
+  >
+    {range(maxLength).map((i) => (
+      <LangValueDisplay key={i} value={values[i]} />
+    ))}
+  </Box>
+);
 
 interface Props {
   className?: string;
