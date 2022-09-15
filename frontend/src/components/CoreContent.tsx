@@ -1,7 +1,6 @@
 import React from "react";
 import { Routes, Route, Outlet } from "react-router-dom";
 import HomePage from "./HomePage";
-import PuzzleDetailsView from "./puzzle/PuzzleDetailsView";
 import NotFoundPage from "./NotFoundPage";
 import PageContainer from "./common/PageContainer";
 import DocsPage from "@root/components/docs/DocsPage";
@@ -28,10 +27,7 @@ const CoreContent: React.FC = () => {
         {/* Most routes get rendered within the home nav page */}
         <Route path="/" element={<HomePage />}>
           <Route path="/puzzles" element={<PuzzleListView />}>
-            <Route
-              path="/puzzles/:puzzleSlug"
-              element={<PuzzleDetailsView />}
-            />
+            <Route path="/puzzles/:puzzleSlug" element={null} />
           </Route>
           <Route path="/hardware" element={<HardwareCard />} />
           <Route path="/docs" element={<DocsPage />} />
