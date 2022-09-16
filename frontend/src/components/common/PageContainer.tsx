@@ -1,7 +1,7 @@
-import React from "react";
+import React, { Suspense } from "react";
 import HeaderBar from "../header/HeaderBar";
 import { useMatch } from "react-router-dom";
-import { Box } from "@mui/material";
+import { Box, CircularProgress } from "@mui/material";
 
 interface Props {
   children?: React.ReactNode;
@@ -38,7 +38,8 @@ const PageContainer: React.FC<Props> = ({ children }) => {
               })
         }
       >
-        {children}
+        {/* Scope laoding state to the page content. Useful for IDE loading */}
+        <Suspense fallback={<CircularProgress />}>{children}</Suspense>
       </Box>
     </Box>
   );

@@ -5,7 +5,6 @@ import React, {
   useEffect,
   useRef,
 } from "react";
-import { makeStyles } from "@mui/styles";
 import {
   Pause as IconPause,
   PlayArrow as IconPlayArrow,
@@ -13,32 +12,12 @@ import {
   NavigateNext as IconNavigateNext,
   SkipNext as IconSkipNext,
 } from "@mui/icons-material";
-import { ToggleButton, ToggleButtonGroup } from "@mui/material";
+import { Stack, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { IdeContext } from "@root/state/ide";
-import clsx from "clsx";
 import IconButton from "@root/components/common/IconButton";
 
 const DEFAULT_STEP_INTERVAL = 1000; // ms between steps at 1x speed
 const STEP_SPEED_OPTIONS: number[] = [2, 20];
-
-const useLocalStyles = makeStyles(({ palette, spacing }) => ({
-  controls: {
-    display: "flex",
-    justifyContent: "end",
-    alignItems: "center",
-
-    backgroundColor: palette.background.default,
-  },
-  buttons: {
-    padding: spacing(1),
-  },
-  speedSelect: {
-    padding: spacing(1),
-  },
-  speedSelectButton: {
-    minWidth: 48,
-  },
-}));
 
 /**
  * A component to edit and run GDLK programs.
@@ -46,7 +25,6 @@ const useLocalStyles = makeStyles(({ palette, spacing }) => ({
 const IdeControls: React.FC<{
   className?: string;
 }> = ({ className }) => {
-  const localClasses = useLocalStyles();
   const { compiledState, stepping, setStepping, execute, reset } =
     useContext(IdeContext);
   // We use this a few times so let's store it here
@@ -79,51 +57,48 @@ const IdeControls: React.FC<{
   }, [terminated, setStepping]);
 
   return (
-    <div className={clsx(localClasses.controls, className)}>
-      <div className={localClasses.buttons}>
-        <IconButton
-          title="Execute Next Instruction"
-          disabled={!machineState || machineState.terminated || stepping}
-          onClick={executeNext}
-          size="large"
-        >
-          <IconNavigateNext />
-        </IconButton>
+    <Stack className={className} direction="row" padding={1}>
+      <IconButton
+        title="Execute Next Instruction"
+        disabled={!machineState || machineState.terminated || stepping}
+        onClick={executeNext}
+        size="large"
+      >
+        <IconNavigateNext />
+      </IconButton>
 
-        <IconButton
-          title={stepping ? "Pause Execution" : "Execute Program"}
-          disabled={!machineState || machineState.terminated}
-          onClick={() => setStepping((prev) => !prev)}
-          size="large"
-        >
-          {stepping ? <IconPause /> : <IconPlayArrow />}
-        </IconButton>
+      <IconButton
+        title={stepping ? "Pause Execution" : "Execute Program"}
+        disabled={!machineState || machineState.terminated}
+        onClick={() => setStepping((prev) => !prev)}
+        size="large"
+      >
+        {stepping ? <IconPause /> : <IconPlayArrow />}
+      </IconButton>
 
-        <IconButton
-          title="Execute to End"
-          disabled={!machineState || machineState.terminated || stepping}
-          onClick={() => execute(true)}
-          size="large"
-        >
-          <IconSkipNext />
-        </IconButton>
+      <IconButton
+        title="Execute to End"
+        disabled={!machineState || machineState.terminated || stepping}
+        onClick={() => execute(true)}
+        size="large"
+      >
+        <IconSkipNext />
+      </IconButton>
 
-        <IconButton
-          title={"Reset Program"}
-          // Disable if the program hasn't started yet
-          disabled={!machineState || machineState.cycleCount === 0}
-          onClick={() => {
-            reset();
-            setStepping(false);
-          }}
-          size="large"
-        >
-          <IconRefresh />
-        </IconButton>
-      </div>
+      <IconButton
+        title={"Reset Program"}
+        // Disable if the program hasn't started yet
+        disabled={!machineState || machineState.cycleCount === 0}
+        onClick={() => {
+          reset();
+          setStepping(false);
+        }}
+        size="large"
+      >
+        <IconRefresh />
+      </IconButton>
 
       <ToggleButtonGroup
-        className={localClasses.speedSelect}
         value={stepSpeed}
         exclusive
         onChange={(e, newStepSpeed) => {
@@ -135,16 +110,17 @@ const IdeControls: React.FC<{
       >
         {STEP_SPEED_OPTIONS.map((speed, i) => (
           <ToggleButton
-            className={localClasses.speedSelectButton}
             key={speed}
             value={speed}
             aria-label={`${speed} times speed`}
+            // Consistent sizing
+            sx={{ width: 40 }}
           >
             {">".repeat(i + 1)}
           </ToggleButton>
         ))}
       </ToggleButtonGroup>
-    </div>
+    </Stack>
   );
 };
 

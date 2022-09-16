@@ -1,44 +1,28 @@
 import React, { useContext } from "react";
 import { IdeContext } from "@root/state/ide";
-import { makeStyles } from "@mui/styles";
 import BufferDisplay from "./BufferDisplay";
-import clsx from "clsx";
-
-const useLocalStyles = makeStyles(({ palette, spacing }) => ({
-  stackInfo: {
-    display: "flex",
-    flexDirection: "column",
-    padding: spacing(1),
-    backgroundColor: palette.background.default,
-    height: "100%",
-  },
-  stack: {
-    maxHeight: "100%",
-    paddingLeft: "0 !important",
-  },
-}));
+import { Stack } from "@mui/material";
 
 const StackInfo: React.FC<{
   className?: string;
 }> = ({ className }) => {
-  const localClasses = useLocalStyles();
   const { wasmHardwareSpec, compiledState } = useContext(IdeContext);
   const machineState =
     compiledState?.type === "compiled" ? compiledState.machineState : undefined;
 
   return (
-    <div className={clsx(localClasses.stackInfo, className)}>
+    <Stack className={className} direction="row" padding={1} spacing={1}>
       {wasmHardwareSpec.stacks.map((name) => (
         <BufferDisplay
-          className={localClasses.stack}
           key={name}
-          invert
+          // Reverse the column so values are inserted bottom-up
+          direction="column-reverse"
           label={name}
           values={machineState?.stacks[name] ?? []}
           maxLength={wasmHardwareSpec.max_stack_length}
         />
       ))}
-    </div>
+    </Stack>
   );
 };
 

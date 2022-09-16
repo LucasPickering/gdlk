@@ -1,22 +1,11 @@
 import React, { useContext } from "react";
 import { IdeContext } from "@root/state/ide";
-import { makeStyles } from "@mui/styles";
 import BufferDisplay from "./BufferDisplay";
-import clsx from "clsx";
-
-const useLocalStyles = makeStyles(({ palette, spacing }) => ({
-  ioBuffers: {
-    backgroundColor: palette.background.default,
-    padding: spacing(1),
-    display: "flex",
-    flexDirection: "column",
-  },
-}));
+import { Divider, Stack } from "@mui/material";
 
 const IoInfo: React.FC<{
   className?: string;
 }> = ({ className }) => {
-  const localClasses = useLocalStyles();
   const { wasmProgramSpec, compiledState } = useContext(IdeContext);
 
   const input = Array.from(wasmProgramSpec.input);
@@ -25,18 +14,23 @@ const IoInfo: React.FC<{
     compiledState?.type === "compiled" ? compiledState.machineState : undefined;
 
   return (
-    <div className={clsx(localClasses.ioBuffers, className)}>
+    <Stack className={className} direction="column" padding={1}>
       <BufferDisplay
+        direction="row"
         label="Input"
         values={machineState?.input ?? input}
         maxLength={input.length}
+        sx={{ flex: 1 }}
       />
+      <Divider />
       <BufferDisplay
+        direction="row"
         label="Output"
         values={machineState?.output ?? []}
         maxLength={expectedOutput.length}
+        sx={{ flex: 1 }}
       />
-    </div>
+    </Stack>
   );
 };
 

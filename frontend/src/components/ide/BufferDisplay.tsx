@@ -1,83 +1,44 @@
 import React from "react";
 import { LangValue } from "@root/state/ide";
-import { Box, Typography } from "@mui/material";
-import { makeStyles } from "@mui/styles";
-import { range } from "lodash-es";
-import clsx from "clsx";
+import { Box, StackProps, Typography } from "@mui/material";
 import LangValueDisplay from "./LangValueDisplay";
-
-const useLocalStyles = makeStyles(({ palette }) => ({
-  bufferDisplay: {
-    flex: 1, // Size all buffer blocks evenly
-    display: "flex",
-    flexDirection: "column",
-
-    // Border between multiple buffers
-    "&:not(:first-child)": {
-      borderTop: `1px solid ${palette.divider}`,
-    },
-  },
-
-  buffer: {
-    display: "flex",
-  },
-}));
-
-const Buffer: React.FC<{
-  values: readonly LangValue[];
-  maxLength: number;
-  invert: boolean;
-}> = ({ values, maxLength, invert }) => (
-  <Box
-    display="flex"
-    flexDirection={invert ? "row-reverse" : "row"}
-    flexWrap="wrap"
-  >
-    {range(maxLength).map((i) => (
-      <LangValueDisplay key={i} value={values[i]} />
-    ))}
-  </Box>
-);
+import { Stack } from "@mui/system";
+import { range } from "@root/util/general";
 
 interface Props {
   className?: string;
   label: string;
   values: readonly LangValue[];
-  secondaryValues?: readonly LangValue[];
   maxLength: number;
-  invert: boolean;
+  direction: StackProps["direction"];
+  sx?: StackProps["sx"];
 }
 
+/**
+ * Display a list of lang values. The display can be a grid layout (with
+ * direction="row"), or a stack layout (direction="column-reverse"). There may
+ * be further uses in the future too.
+ *
+ * If maxLength is given, empty slots in the buffer will be filled with a
+ * placeholder symbol.
+ */
 const BufferDisplay = ({
   className,
   label,
   values,
-  secondaryValues,
   maxLength,
-  invert,
-}: Props): React.ReactElement => {
-  const localClasses = useLocalStyles();
+  direction,
+  sx,
+}: Props): React.ReactElement => (
+  <Box className={className} sx={sx}>
+    <Typography variant="body2">{label}</Typography>
 
-  return (
-    <div className={clsx(localClasses.bufferDisplay, className)}>
-      <Typography variant="body2">{label}</Typography>
-
-      <div className={localClasses.buffer}>
-        <Buffer values={values} maxLength={maxLength} invert={invert} />
-        {secondaryValues && (
-          <Buffer
-            values={secondaryValues}
-            maxLength={maxLength}
-            invert={invert}
-          />
-        )}
-      </div>
-    </div>
-  );
-};
-
-BufferDisplay.defaultProps = {
-  invert: false,
-};
+    <Stack direction={direction} flexWrap="wrap">
+      {range(0, maxLength).map((i) => (
+        <LangValueDisplay key={i} value={values[i]} />
+      ))}
+    </Stack>
+  </Box>
+);
 
 export default BufferDisplay;
