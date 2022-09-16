@@ -12,9 +12,18 @@ export type HardwareComponent = "numRegisters" | "numStacks" | "maxStackLength";
 export interface HardwareComponentMetadata {
   component: HardwareComponent;
   label: string;
-  min: number;
-  max: number;
-  upgradeCostFactor: number;
+  default: number;
+  upgrades: Array<HardwareComponentUpgrade>;
+}
+
+/**
+ * A single available upgrade for a hardware component. Defines how much it
+ * costs, as well as the *gained value* of the upgrade. I.e. to get the new
+ * component value, add the upgrade value to its current value.
+ */
+export interface HardwareComponentUpgrade {
+  increase: number;
+  cost: Currency;
 }
 
 /**

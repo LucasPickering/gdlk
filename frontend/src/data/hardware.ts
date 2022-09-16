@@ -7,23 +7,32 @@ export const hardwareComponents: HardwareComponentMetadata[] = [
   {
     component: "numRegisters",
     label: "Registers",
-    min: 1,
-    max: 8,
-    upgradeCostFactor: 10,
+    default: 1,
+    upgrades: [
+      { increase: 1, cost: 10 },
+      { increase: 1, cost: 20 },
+      { increase: 1, cost: 40 },
+    ],
   },
   {
     component: "numStacks",
     label: "Stacks",
-    min: 0,
-    max: 4,
-    upgradeCostFactor: 20,
+    default: 0,
+    upgrades: [
+      { increase: 1, cost: 20 },
+      { increase: 1, cost: 40 },
+      { increase: 1, cost: 80 },
+    ],
   },
   {
     component: "maxStackLength",
     label: "Stack Size",
-    min: 0,
-    max: 16,
-    upgradeCostFactor: 4,
+    default: 0,
+    upgrades: [
+      { increase: 4, cost: 20 },
+      { increase: 4, cost: 40 },
+      { increase: 8, cost: 80 },
+    ],
   },
 ];
 

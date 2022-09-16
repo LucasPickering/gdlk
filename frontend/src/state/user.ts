@@ -3,6 +3,8 @@
  * user. This stores their solutions, progress, etc.
  */
 
+import { hardwareComponentsByName } from "@root/data/hardware";
+import { mapValues, sum } from "@root/util/general";
 import { isDefined } from "@root/util/guards";
 import { StorageHandler } from "@root/util/storage";
 import {
@@ -11,7 +13,7 @@ import {
   PuzzleCompletion,
   PuzzleSolution,
 } from "@root/util/types";
-import { atom, AtomEffect, atomFamily, selectorFamily } from "recoil";
+import { atom, AtomEffect, atomFamily, selector, selectorFamily } from "recoil";
 
 /**
  * Track how much money the user has
@@ -23,17 +25,46 @@ export const currencyState = atom<Currency>({
 });
 
 /**
- * Track the user's current hardware capabilities, which can be upgraded over
- * time
+ * Track the user's current hardware *upgrades*, which can be purchased over
+ * time. Each of the inner fields is the number of *upgrades* applied to that
+ * component.
  */
-export const hardwareState = atom<Hardware>({
-  key: "hardware",
+export const hardwareUpgradeState = atom<Hardware>({
+  key: "hardwareUpgrade",
   default: {
-    numRegisters: 1,
+    numRegisters: 0,
     numStacks: 0,
     maxStackLength: 0,
   },
-  effects: [localStorageEffect("hardware")],
+  effects: [localStorageEffect("hardwareUpgrade")],
+});
+
+/**
+ * TODO
+ */
+export const hardwareState = selector<Hardware>({
+  key: "hardware",
+  get: ({ get }) => {
+    const hardwareUpgrades = get(hardwareUpgradeState);
+    // For each component, compute its current value by compiling the upgrade
+    // list as far as the user has purchased.
+    // This feels kinda dumb, but blern always said to maintain minimal state
+    // and derive the rest, so I'm going with that. It'll make it easier to
+    // push out changes to the upgrade tiers anyway.
+    return mapValues<Hardware, number>(
+      hardwareUpgrades,
+      (numUpgrades, componentName) => {
+        const componentSpec = hardwareComponentsByName[componentName];
+        return (
+          componentSpec.default +
+          sum(
+            componentSpec.upgrades.slice(0, numUpgrades),
+            (upgrade) => upgrade.increase
+          )
+        );
+      }
+    );
+  },
 });
 
 /**

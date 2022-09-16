@@ -6,6 +6,21 @@ export function isDefined<T>(value: T): value is NonNullable<T> {
 }
 
 /**
+ * Assert the given value is defined. Useful as a type guard when you know
+ * something is defined but the typechecker doesn't.
+ */
+export function assertIsDefined<T>(
+  value: T,
+  message: string = ""
+): asserts value is NonNullable<T> {
+  if (!isDefined(value)) {
+    throw new Error(
+      `Expected value to be defined, but was ${value}. ${message}`
+    );
+  }
+}
+
+/**
  * Type guard for any uniformly typed array. Checks that the input is an array,
  * and that each element is of the specified type.
  *

@@ -26,7 +26,7 @@ const useLocalStyles = makeStyles({
 const HardwareCard: React.FC = () => {
   const localClasses = useLocalStyles();
   const hardware = useRecoilValue(hardwareState);
-  const { getUpgradeCost, canUpgrade, purchaseUpgrade } = useHardwareStore();
+  const { getNextUpgrade, canUpgrade, purchaseUpgrade } = useHardwareStore();
 
   return (
     <Card sx={{ maxWidth: 400 }}>
@@ -34,19 +34,24 @@ const HardwareCard: React.FC = () => {
       <CardContent>
         <SimpleTable
           className={localClasses.table}
-          data={hardwareComponents.map(({ component, label }) => ({
-            label,
-            value: hardware[component],
-            // If editing, show an upgrade button
-            action: (
-              <Button
-                disabled={!canUpgrade(component)}
-                onClick={() => purchaseUpgrade(component)}
-              >
-                Upgrade ({formatCurrency(getUpgradeCost(component))})
-              </Button>
-            ),
-          }))}
+          data={hardwareComponents.map(({ component, label }) => {
+            const nextUpgrade = getNextUpgrade(component);
+            return {
+              label,
+              value: hardware[component],
+              // Show an upgrade button if one is available (even if it's not
+              // affordable yet.)
+              // TODO figure out some placeholder once a component is maxed
+              action: nextUpgrade && (
+                <Button
+                  disabled={!canUpgrade(component)}
+                  onClick={() => purchaseUpgrade(component)}
+                >
+                  Upgrade ({formatCurrency(nextUpgrade.cost)})
+                </Button>
+              ),
+            };
+          })}
         />
       </CardContent>
     </Card>
