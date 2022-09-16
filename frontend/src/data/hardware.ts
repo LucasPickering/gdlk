@@ -27,11 +27,11 @@ export const hardwareComponents: HardwareComponentMetadata[] = [
   {
     component: "maxStackLength",
     label: "Stack Size",
-    default: 0,
+    default: 4,
     upgrades: [
       { increase: 4, cost: 20 },
-      { increase: 4, cost: 40 },
-      { increase: 8, cost: 80 },
+      { increase: 8, cost: 40 },
+      { increase: 16, cost: 80 },
     ],
   },
 ];
