@@ -1,7 +1,7 @@
 import React from "react";
 import { IconButton as MuiIconButton, Tooltip } from "@mui/material";
 
-interface Props {
+interface Props extends React.ComponentProps<typeof MuiIconButton> {
   title?: string;
   children?: React.ReactNode;
 }
@@ -16,7 +16,7 @@ const IconButton = ({
   color,
   children,
   ...rest
-}: Props & React.ComponentProps<typeof MuiIconButton>): React.ReactElement => {
+}: Props): React.ReactElement => {
   const button = (
     <MuiIconButton aria-label={title} color={color} {...rest}>
       {children}
@@ -32,9 +32,5 @@ const IconButton = ({
     button
   );
 };
-
-IconButton.defaultProps = {
-  loading: false,
-} as Partial<Props>;
 
 export default IconButton;

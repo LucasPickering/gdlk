@@ -40,6 +40,21 @@ const LanguageDocs: React.FC = () => (
       </Typography>
     </DocsSection>
 
+    <DocsSection id="labels" level={3} title="Labels">
+      A label references a particular position in code, which can be used as the
+      target of a jump instruction. For example:
+      <pre>
+        <code>
+          {`; An infinite loop that repeatedly writes 0 to output
+LOOP:
+  WRITE 0
+  JMP LOOP`}
+        </code>
+      </pre>
+      Typically, the code after a label is indented for readability purposes,
+      but this is simply a convention and <em>not required</em>.
+    </DocsSection>
+
     <InstructionDocs />
   </DocsSection>
 );

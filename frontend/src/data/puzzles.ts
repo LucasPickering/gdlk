@@ -20,9 +20,9 @@ export const puzzles: Record<string, Puzzle> = {
     input: [1, 1, 1],
     expectedOutput: [1, 1, 1],
   },
-  inAndOut: {
-    name: "In-N-Out",
-    slug: "inAndOut",
+  stream: {
+    name: "Streaming",
+    slug: "stream",
     description:
       "Read a sequence of values from input and write them all to output.",
     reward: 2,

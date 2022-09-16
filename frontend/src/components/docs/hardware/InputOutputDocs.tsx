@@ -26,8 +26,8 @@ const InputOutputDocs: React.FC = () => (
           been read, it is removed from the buffer.
         </li>
         <li>
-          Once <code>INPUT</code> is empty, subsequent reads will cause an
-          error.
+          Once <code>INPUT</code> is empty, subsequent reads will cause a
+          runtime error.
         </li>
         <li>
           The <Link to="#registers--rli">RLI</Link> register can be used to

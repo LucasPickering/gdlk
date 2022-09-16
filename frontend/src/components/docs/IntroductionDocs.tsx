@@ -10,6 +10,13 @@ const IntroductionDocs: React.FC = () => (
     </Typography>
 
     <Typography>
+      All values in GDLK are integers. The basic memory unit of GDLK is the{" "}
+      <em>register</em>, and the basic operational unit is the{" "}
+      <em>instruction</em>. Each program operates on an input stream of values
+      and produces a stream of output values.
+    </Typography>
+
+    <Typography>
       Here is an example of a simple GDLK program, which reads a single value
       from input and writes it to output, using the register <code>RX0</code> as
       an intermediate data store.

@@ -66,7 +66,7 @@ const INSTRUCTIONS: InstructionReference[] = [
     args: ["REG", "VAL"],
     examples: [
       "SET RX0 3   ; RX0 now holds the value 3",
-      "SET RX0 RX1 ; RX0 now holds whatever value is in RX1",
+      "SET RX0 RX1 ; Set RX0 to the value of RX1",
     ],
   },
   {
@@ -187,7 +187,7 @@ const INSTRUCTIONS: InstructionReference[] = [
     args: ["LABEL"],
     examples: [
       "JMP END\nREAD RX0 ; This instruction will be skipped\nEND:",
-      "LOOP:\nADD RX0 1\nJMP LOOP ; Infinite loop",
+      "LOOP:\n  ADD RX0 1\n  JMP LOOP ; Infinite loop",
     ],
   },
   {
@@ -199,8 +199,8 @@ const INSTRUCTIONS: InstructionReference[] = [
     ),
     args: ["VAL", "LABEL"],
     examples: [
-      "SET RX0 0\nJEZ END\nREAD RX0 ; This instruction will be skipped\nEND:",
-      "SET RX0 1\nJEZ END\nREAD RX0 ; This instruction will NOT be skipped\nEND:",
+      "JEZ 0 END\nREAD RX0 ; This instruction will be skipped\nEND:",
+      "JEZ 1 END\nREAD RX0 ; This instruction will be executed\nEND:",
     ],
   },
   {
@@ -212,8 +212,8 @@ const INSTRUCTIONS: InstructionReference[] = [
     ),
     args: ["VAL", "LABEL"],
     examples: [
-      "SET RX0 1\nJNZ END\nREAD RX0 ; This instruction will be skipped\nEND:",
-      "SET RX0 0\nJNZ END\nREAD RX0 ; This instruction will NOT be skipped\nEND:",
+      "JNZ 1 END\nREAD RX0 ; This instruction will be skipped\nEND:",
+      "JNZ 0 END\nREAD RX0 ; This instruction will be executed\nEND:",
     ],
   },
   {
@@ -225,8 +225,8 @@ const INSTRUCTIONS: InstructionReference[] = [
     ),
     args: ["VAL", "LABEL"],
     examples: [
-      "SET RX0 1\nJGZ END\nREAD RX0 ; This instruction will be skipped\nEND:",
-      "SET RX0 -1\nJGZ END\nREAD RX0 ; This instruction will NOT be skipped\nEND:",
+      "JGZ 1 END\nREAD RX0 ; This instruction will be skipped\nEND:",
+      "JGZ -1 END\nREAD RX0 ; This instruction will be executed\nEND:",
     ],
   },
   {
@@ -238,8 +238,8 @@ const INSTRUCTIONS: InstructionReference[] = [
     ),
     args: ["VAL", "LABEL"],
     examples: [
-      "SET RX0 -1\nJLZ END\nREAD RX0 ; This instruction will be skipped\nEND:",
-      "SET RX0 1\nJLZ END\nREAD RX0 ; This instruction will NOT be skipped\nEND:",
+      "JLZ -1 END\nREAD RX0 ; This instruction will be skipped\nEND:",
+      "JLZ 1 END\nREAD RX0 ; This instruction will be executed\nEND:",
     ],
   },
 ];
@@ -257,7 +257,8 @@ const InstructionDocs: React.FC = () => {
     <DocsSection id="instructions" level={3} title="Instruction Set">
       <Typography>
         A GDLK program consists of a series of instructions, which can perform a
-        variety of operations on your data.
+        variety of operations on your data. The available instruction set
+        consists of:
       </Typography>
       <table>
         <thead>
