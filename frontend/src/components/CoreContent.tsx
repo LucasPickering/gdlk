@@ -26,9 +26,7 @@ const CoreContent: React.FC = () => {
       >
         {/* Most routes get rendered within the home nav page */}
         <Route path="/" element={<HomePage />}>
-          <Route path="/puzzles" element={<PuzzleListView />}>
-            <Route path="/puzzles/:puzzleSlug" element={null} />
-          </Route>
+          <Route path="/puzzles" element={<PuzzleListView />} />
           <Route path="/hardware" element={<HardwareCard />} />
           <Route path="/docs" element={<DocsPage />} />
           <Route path="/about" element={<AboutPage />} />

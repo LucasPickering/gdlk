@@ -2,40 +2,53 @@ import {
   Button,
   Card,
   CardActionArea,
-  CardContent,
   CardHeader,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Typography,
 } from "@mui/material";
 import { formatCurrency } from "@root/util/format";
 import { Puzzle } from "@root/util/types";
-import React from "react";
+import React, { useState } from "react";
 import UnstyledLink from "../common/UnstyledLink";
 
 interface Props {
   puzzle: Puzzle;
-  showDetail?: boolean;
 }
 
 /**
- * A card with info on a single puzzle. If specified, show the full description.
+ * A card with info on a single puzzle. If specified, show the full description
+ * in a separate modal.
+ *
+ * TODO the detail view is kinda janky, break it apart once we know what we
+ * want it to look like (and probably make it route-enabled).
  */
-const PuzzleCard: React.FC<Props> = ({ puzzle, showDetail = false }) => (
-  <Card
-    sx={({ transitions }) => ({
-      width: showDetail ? 400 : 200,
-      transition: transitions.create(["width", "height"]),
-    })}
-  >
-    <CardActionArea component={UnstyledLink} to={`/puzzles/${puzzle.slug}`}>
-      <CardHeader
-        title={puzzle.name}
-        subheader={formatCurrency(puzzle.reward)}
-      />
+const PuzzleCard: React.FC<Props> = ({ puzzle }) => {
+  const [showDetail, setShowDetail] = useState(false);
+  return (
+    <>
+      <Card sx={{ width: 200 }}>
+        <CardActionArea onClick={() => setShowDetail(true)}>
+          <CardHeader
+            title={puzzle.name}
+            subheader={formatCurrency(puzzle.reward)}
+          />
+        </CardActionArea>
+      </Card>
 
-      {showDetail && (
-        <CardContent>
-          <Typography>{puzzle.description}</Typography>
+      <Dialog open={showDetail} onClose={() => setShowDetail(false)}>
+        <DialogTitle>{puzzle.name}</DialogTitle>
 
+        <DialogContent>
+          <Typography component="span" variant="h5">
+            {formatCurrency(puzzle.reward)} recoverable
+          </Typography>
+          <DialogContentText>{puzzle.description}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
           <Button
             variant="contained"
             component={UnstyledLink}
@@ -43,10 +56,10 @@ const PuzzleCard: React.FC<Props> = ({ puzzle, showDetail = false }) => (
           >
             Edit Solution
           </Button>
-        </CardContent>
-      )}
-    </CardActionArea>
-  </Card>
-);
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+};
 
 export default PuzzleCard;
