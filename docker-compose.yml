@@ -1,0 +1,29 @@
+version: "3"
+
+volumes:
+  api_poetry_cache:
+
+services:
+  db:
+    image: postgres:14-alpine
+    environment:
+      - POSTGRES_DB=gdlk
+      - POSTGRES_USER=gdlk
+      - POSTGRES_PASSWORD=gdlk
+
+  api:
+    build: ./api/
+    command: sh -c "poetry install && ./m.sh runserver 0.0.0.0:8000"
+    init: true # Fixes slow shutdown
+    tty: true # Colors!
+    environment:
+      - GDLK_DB_NAME=gdlk
+      - GDLK_DB_USER=gdlk
+      - GDLK_DB_PASSWORD=gdlk
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./api:/app
+      - api_poetry_cache:/root/.cache/pypoetry
