@@ -12,6 +12,5 @@ class CompileView(views.APIView):
         serializer = CompileSourceSerializer(data=request.data)
         serializer.is_valid()
         data = serializer.validated_data
-        return Response(
-            CompileResultSerializer({"ast": gdlk_pyo3.sum_as_string(1, 2)}).data
-        )
+        ast = gdlk_pyo3.compile(data["source"])
+        return Response(CompileResultSerializer({"ast": ast}).data)

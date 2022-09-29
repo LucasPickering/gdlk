@@ -129,6 +129,19 @@ flake8 = ">=3.0.0"
 tomli = "*"
 
 [[package]]
+name = "gdlk-pyo3"
+version = "0.1.0"
+description = ""
+category = "main"
+optional = false
+python-versions = ">=3.7"
+develop = false
+
+[package.source]
+type = "directory"
+url = "../crates/pyo3"
+
+[[package]]
 name = "gunicorn"
 version = "20.1.0"
 description = "WSGI HTTP Server for UNIX"
@@ -261,7 +274,7 @@ python-versions = ">=2"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "29e2f598a1caaf8bfc3bd2eafae93eb48421c83d4d26c8503e4dea0a6326ccd9"
+content-hash = "358053f91192ede21114bf50b4d95e8a1a2dd1d497a824eca29a6ad22c7da8ec"
 
 [metadata.files]
 asgiref = [
@@ -325,6 +338,7 @@ flake8-black = [
     {file = "flake8-black-0.3.3.tar.gz", hash = "sha256:8211f5e20e954cb57c709acccf2f3281ce27016d4c4b989c3e51f878bb7ce12a"},
     {file = "flake8_black-0.3.3-py3-none-any.whl", hash = "sha256:7d667d0059fd1aa468de1669d77cc934b7f1feeac258d57bdae69a8e73c4cd90"},
 ]
+gdlk-pyo3 = []
 gunicorn = [
     {file = "gunicorn-20.1.0-py3-none-any.whl", hash = "sha256:9dcc4547dbb1cb284accfb15ab5667a0e5d1881cc443e0677b4882a4067a807e"},
     {file = "gunicorn-20.1.0.tar.gz", hash = "sha256:e0a968b5ba15f8a328fdfd7ab1fcb5af4470c28aaf7e55df02a99bc13138e6e8"},

@@ -7,4 +7,5 @@ version = "0.1.0"
 crate-type = ["cdylib"]
 
 [dependencies]
+gdlk = {path = "../core"}
 pyo3 = {version = "0.17.1", features = ["extension-module"]}

@@ -18,11 +18,11 @@ RUN apt-get update && \
 # maturin needed for pyo3 crate
 RUN pip install maturin poetry
 
-# Install rustup
+# Install rustup/rust toolchain
+WORKDIR /app/crates
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
-# Install rust toolchain
-ADD ./crates/rust-toolchain.toml /app/crates/
-RUN rustup show
+ADD ./crates/rust-toolchain.toml ./
+RUN rustup show && cargo install cargo-watch
 
 WORKDIR /app/api
 ADD ./api/pyproject.toml ./api/poetry.lock ./
