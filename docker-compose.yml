@@ -12,8 +12,10 @@ services:
       - POSTGRES_PASSWORD=gdlk
 
   api:
-    build: ./api/
-    command: sh -c "poetry install && ./m.sh runserver 0:8000"
+    build:
+      context: ./
+      dockerfile: ./api/Dockerfile
+    command: ./scripts/cmd_dev.sh
     init: true # Fixes slow shutdown
     tty: true # Colors!
     environment:
@@ -25,5 +27,6 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./api:/app
+      - ./api:/app/api
+      - ./crates/:/app/crates
       - api_poetry_cache:/root/.cache/pypoetry

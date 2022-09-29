@@ -2,17 +2,18 @@
 authors = ["Lucas Pickering <lucas@lucaspickering.me>"]
 description = ""
 license = "UNLICENSED"
-name = "gdlk"
+name = "gdlk-api"
 version = "0.1.0"
 
 [tool.poetry.dependencies]
 Django = "^4.0.3"
 django-debug-toolbar = "^3.5.0"
 django-extensions = "^3.1.5"
+djangorestframework = "^3.14.0"
+gdlk-pyo3 = {path = "../crates/pyo3"}
 gunicorn = "^20.1.0"
 psycopg2 = "^2.9.3"
 python = "^3.9"
-djangorestframework = "^3.14.0"
 
 [tool.poetry.dev-dependencies]
 flake8-black = "^0.3.2"

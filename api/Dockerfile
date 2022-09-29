@@ -2,19 +2,27 @@
 # https://discuss.python.org/t/wheels-for-musl-alpine/7084
 FROM python:3.9-slim
 
-ENV PYTHONUNBUFFERED=1
-WORKDIR /app
+ENV PATH="/root/.cargo/bin:${PATH}" \
+    PYTHONUNBUFFERED=1
 
 # Dependencies first, for layer caching
 RUN apt-get update && \
     apt-get install -y \
+    curl \
     gcc \
     git \
     openssl \
     libpq-dev \
     && \
     rm -rf /var/lib/apt/lists/*
-RUN pip install poetry
+# maturin needed for pyo3 crate
+RUN pip install maturin poetry
 
-ADD pyproject.toml poetry.lock ./
-RUN poetry install
+# Install rustup
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
+# Install rust toolchain
+ADD ./crates/rust-toolchain.toml /app/crates/
+RUN rustup show
+
+WORKDIR /app/api
+ADD ./api/pyproject.toml ./api/poetry.lock ./
