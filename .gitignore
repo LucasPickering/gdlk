@@ -11,3 +11,4 @@ backups/
 backups.tar.gz
 frontend/dist/
 frontend/tsc-build/
+*.pyc

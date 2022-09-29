@@ -13,7 +13,7 @@ services:
 
   api:
     build: ./api/
-    command: sh -c "poetry install && ./m.sh runserver 0.0.0.0:8000"
+    command: sh -c "poetry install && ./m.sh runserver 0:8000"
     init: true # Fixes slow shutdown
     tty: true # Colors!
     environment:
